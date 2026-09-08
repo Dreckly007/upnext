@@ -1530,10 +1530,19 @@
           </div>
 
           <label class="section-label">Teams</label>
+          <div class="format-toggle" id="tournamentDoublesEntryModeToggle">
+            <button type="button" class="format-btn active" data-entry-mode="players">Player names</button>
+            <button type="button" class="format-btn" data-entry-mode="teamnames">Team names</button>
+          </div>
           <div class="inline-form" id="tournamentTeamEntryDoubles">
             <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" />
             <input type="text" id="tournamentPlayer2Input" placeholder="Player 2" />
             <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
+          </div>
+          <div class="inline-form" id="tournamentTeamEntryDoublesByName" style="display:none;">
+            <input type="text" id="tournamentTeamName1Input" placeholder="Team name 1" />
+            <input type="text" id="tournamentTeamName2Input" placeholder="Team name 2" />
+            <button class="small-btn add" id="tournamentAddNamedTeamsBtn">Add teams</button>
           </div>
           <div class="inline-form" id="tournamentTeamEntrySingles" style="display:none;">
             <input type="text" id="tournamentSinglesInput" placeholder="Player name" />
@@ -2035,6 +2044,7 @@
   config.useLadderHistory = config.useLadderHistory ?? true;
   config.tournamentGroups = config.tournamentGroups ?? 2;
   config.tournamentAdvance = config.tournamentAdvance ?? 2;
+  config.tournamentDoublesEntryMode = config.tournamentDoublesEntryMode === "teamnames" ? "teamnames" : "players";
   if ((config.schemaVersion || 1) < CONFIG_SCHEMA_VERSION) {
     // One-time migration: browsers with settings saved before the
     // "games to play" mode existed get bumped onto the new defaults.
@@ -2089,11 +2099,17 @@
   const tournamentsListPanel = document.getElementById("tournamentsListPanel");
   const tournamentNameInput = document.getElementById("tournamentNameInput");
   const tournamentFormatButtons = document.querySelectorAll("#tournamentFormatToggle .format-btn");
+  const tournamentDoublesEntryModeToggle = document.getElementById("tournamentDoublesEntryModeToggle");
+  const tournamentDoublesEntryModeButtons = document.querySelectorAll("#tournamentDoublesEntryModeToggle .format-btn");
   const tournamentTeamEntryDoubles = document.getElementById("tournamentTeamEntryDoubles");
+  const tournamentTeamEntryDoublesByName = document.getElementById("tournamentTeamEntryDoublesByName");
   const tournamentTeamEntrySingles = document.getElementById("tournamentTeamEntrySingles");
   const tournamentPlayer1Input = document.getElementById("tournamentPlayer1Input");
   const tournamentPlayer2Input = document.getElementById("tournamentPlayer2Input");
   const tournamentAddTeamBtn = document.getElementById("tournamentAddTeamBtn");
+  const tournamentTeamName1Input = document.getElementById("tournamentTeamName1Input");
+  const tournamentTeamName2Input = document.getElementById("tournamentTeamName2Input");
+  const tournamentAddNamedTeamsBtn = document.getElementById("tournamentAddNamedTeamsBtn");
   const tournamentSinglesInput = document.getElementById("tournamentSinglesInput");
   const tournamentAddSinglesBtn = document.getElementById("tournamentAddSinglesBtn");
   const tournamentTeamChips = document.getElementById("tournamentTeamChips");
@@ -2370,8 +2386,8 @@
     });
   }
 
-  function tournamentTeamDisplayName(players) {
-    return players.join(" & ");
+  function tournamentTeamDisplayName(team) {
+    return team.teamName || team.players.join(" & ");
   }
 
   function renderTournamentTeamChips() {
@@ -2380,7 +2396,7 @@
       const chip = document.createElement("div");
       chip.className = "chip";
       const span = document.createElement("span");
-      span.textContent = tournamentTeamDisplayName(team.players);
+      span.textContent = tournamentTeamDisplayName(team);
       const btn = document.createElement("button");
       btn.textContent = "×";
       btn.title = "Remove";
@@ -2394,12 +2410,11 @@
     });
   }
 
-  function addTournamentTeam(players) {
-    const cleaned = players.map((p) => p.trim()).filter(Boolean);
-    if (cleaned.length !== players.length) return;
-    const name = tournamentTeamDisplayName(cleaned);
-    if (tournamentTeams.some((t) => tournamentTeamDisplayName(t.players) === name)) return;
-    tournamentTeams.push({ players: cleaned });
+  function addTournamentTeam(team) {
+    const displayName = tournamentTeamDisplayName(team);
+    if (!displayName) return;
+    if (tournamentTeams.some((t) => tournamentTeamDisplayName(t) === displayName)) return;
+    tournamentTeams.push(team);
     renderTournamentTeamChips();
   }
 
@@ -2407,7 +2422,7 @@
     const p1 = tournamentPlayer1Input.value.trim();
     const p2 = tournamentPlayer2Input.value.trim();
     if (!p1 || !p2) return;
-    addTournamentTeam([p1, p2]);
+    addTournamentTeam({ players: [p1, p2] });
     tournamentPlayer1Input.value = "";
     tournamentPlayer2Input.value = "";
     tournamentPlayer1Input.focus();
@@ -2418,10 +2433,45 @@
     });
   });
 
+  tournamentAddNamedTeamsBtn.addEventListener("click", () => {
+    const n1 = tournamentTeamName1Input.value.trim();
+    const n2 = tournamentTeamName2Input.value.trim();
+    if (!n1 && !n2) return;
+    if (n1) addTournamentTeam({ players: [], teamName: n1 });
+    if (n2) addTournamentTeam({ players: [], teamName: n2 });
+    tournamentTeamName1Input.value = "";
+    tournamentTeamName2Input.value = "";
+    tournamentTeamName1Input.focus();
+  });
+  [tournamentTeamName1Input, tournamentTeamName2Input].forEach((input) => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") tournamentAddNamedTeamsBtn.click();
+    });
+  });
+
+  function syncTournamentDoublesEntryMode() {
+    const isSingles = config.format === "singles";
+    const showNamed = !isSingles && config.tournamentDoublesEntryMode === "teamnames";
+    const showPlayers = !isSingles && !showNamed;
+    tournamentTeamEntryDoubles.style.display = showPlayers ? "flex" : "none";
+    tournamentTeamEntryDoublesByName.style.display = showNamed ? "flex" : "none";
+    tournamentDoublesEntryModeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.entryMode === config.tournamentDoublesEntryMode);
+    });
+  }
+
+  tournamentDoublesEntryModeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.tournamentDoublesEntryMode = btn.dataset.entryMode;
+      save(STORAGE.config, config);
+      syncTournamentDoublesEntryMode();
+    });
+  });
+
   tournamentAddSinglesBtn.addEventListener("click", () => {
     const name = tournamentSinglesInput.value.trim();
     if (!name) return;
-    addTournamentTeam([name]);
+    addTournamentTeam({ players: [name] });
     tournamentSinglesInput.value = "";
     tournamentSinglesInput.focus();
   });
@@ -3078,8 +3128,9 @@
       btn.classList.toggle("active", btn.dataset.format === config.format);
     });
     const isSingles = config.format === "singles";
-    tournamentTeamEntryDoubles.style.display = isSingles ? "none" : "flex";
+    tournamentDoublesEntryModeToggle.style.display = isSingles ? "none" : "flex";
     tournamentTeamEntrySingles.style.display = isSingles ? "flex" : "none";
+    syncTournamentDoublesEntryMode();
   }
   tournamentFormatButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -4958,7 +5009,7 @@
     const teams = tournamentTeams.map((t, i) => ({
       id: `t${i}`,
       players: t.players.slice(),
-      name: tournamentTeamDisplayName(t.players),
+      name: tournamentTeamDisplayName(t),
       groupIndex: 0,
     }));
     const dealt = dealIntoGroups(teams.map((t) => t.id), numGroups);
