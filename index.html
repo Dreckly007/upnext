@@ -1764,6 +1764,8 @@
         <button class="nav-btn next" id="nextBtn">Next &rarr;</button>
       </div>
 
+      <button class="debug-btn no-print no-share" id="debugFillScoresBtn">Debug: fill in scores</button>
+
       <div class="icon-btn-row cols-5 no-print no-share" id="actionButtonsRow">
         <button class="icon-btn" id="startOverLink" aria-label="Start Over">
           <span class="icon-glyph" aria-hidden="true">↺</span>
@@ -1907,6 +1909,8 @@
         <div id="tournamentMedalsPanel" style="display:none;"></div>
         <div id="tournamentBracketContainer"></div>
       </div>
+
+      <button class="debug-btn no-print" id="tournamentDebugScoresBtn">Debug: fill in scores</button>
 
       <div class="icon-btn-row cols-3 no-print" id="tournamentActionsRow">
         <button class="icon-btn" id="tournamentBackBtn" aria-label="Back to setup">
@@ -2119,6 +2123,7 @@
   const tournamentWinByTwoNoBtn = document.getElementById("tournamentWinByTwoNoBtn");
   const generateTournamentBtn = document.getElementById("generateTournamentBtn");
   const tournamentDebugBtn = document.getElementById("tournamentDebugBtn");
+  const tournamentDebugScoresBtn = document.getElementById("tournamentDebugScoresBtn");
   const tournamentView = document.getElementById("tournamentView");
   const tournamentHeader = document.getElementById("tournamentHeader");
   const tournamentGroupStageView = document.getElementById("tournamentGroupStageView");
@@ -2155,6 +2160,7 @@
   const courtLabelsRow = document.getElementById("courtLabelsRow");
   const generateBtn = document.getElementById("generateBtn");
   const debugBtn = document.getElementById("debugBtn");
+  const debugFillScoresBtn = document.getElementById("debugFillScoresBtn");
   const newSavedName = document.getElementById("newSavedName");
   const addSavedBtn = document.getElementById("addSavedBtn");
 
@@ -2504,6 +2510,42 @@
         addTournamentTeam({ players: [TOURNAMENT_DEBUG_NAMES[2 * i], TOURNAMENT_DEBUG_NAMES[2 * i + 1]] });
       }
     }
+  });
+
+  function debugFillTournamentGroups(tournament) {
+    tournament.groups.forEach((group) => {
+      group.fixtures.forEach((fixture) => {
+        if (fixture.scoreA !== "" && fixture.scoreB !== "") return;
+        [fixture.scoreA, fixture.scoreB] = debugRandomScore(tournamentMaxScore(tournament), tournament.targetScore);
+      });
+    });
+    updateTournamentInStorage(tournament);
+    renderTournamentGroupStage(tournament);
+  }
+
+  function debugFillTournamentKnockout(tournament) {
+    const ko = tournament.knockout;
+    if (!ko) return;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const allMatches = ko.rounds.flatMap((r) => r.matches).concat(ko.thirdPlaceMatch ? [ko.thirdPlaceMatch] : []);
+      allMatches.forEach((match) => {
+        if (knockoutMatchKind(match) === "real" && (match.scoreA === "" || match.scoreB === "")) {
+          [match.scoreA, match.scoreB] = debugRandomScore(tournamentMaxScore(tournament), tournament.targetScore);
+          changed = true;
+        }
+      });
+      if (changed) propagateKnockoutWinner(tournament);
+    }
+    updateTournamentInStorage(tournament);
+    renderTournamentKnockout(tournament, true);
+  }
+
+  tournamentDebugScoresBtn.addEventListener("click", () => {
+    if (!currentTournament) return;
+    if (currentTournament.status === "groups") debugFillTournamentGroups(currentTournament);
+    else debugFillTournamentKnockout(currentTournament);
   });
 
   function syncTournamentWinByTwoButtons() {
@@ -3414,6 +3456,26 @@
       "Ivy", "Jack", "Kate", "Liam", "Mia", "Nick", "Olivia",
     ];
     sample.forEach(addTodayPlayer);
+  });
+
+  function debugRandomScore(cap, fallbackTarget) {
+    const winnerScore = cap != null ? cap : fallbackTarget || 11;
+    const loserScore = Math.max(0, winnerScore - (2 + Math.floor(Math.random() * 5)));
+    return Math.random() < 0.5 ? [String(winnerScore), String(loserScore)] : [String(loserScore), String(winnerScore)];
+  }
+
+  debugFillScoresBtn.addEventListener("click", () => {
+    if (!currentSession) return;
+    currentSession.rounds.forEach((round) => {
+      round.courts.forEach((court) => {
+        if (court.scoreA !== "" && court.scoreB !== "") return;
+        const cap = currentSession.config.winByTwo ? null : currentSession.config.targetScore;
+        [court.scoreA, court.scoreB] = debugRandomScore(cap, currentSession.config.targetScore);
+      });
+    });
+    updateSessionInStorage();
+    renderAll();
+    if (currentSession.isLadder) renderLadderStandingsTable();
   });
 
   function shuffle(arr) {
