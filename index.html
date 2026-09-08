@@ -638,6 +638,40 @@
     border-color: var(--green);
   }
 
+  .mode-toggle {
+    margin-top: 0;
+    margin-bottom: 20px;
+  }
+  .ladder-setup-panel {
+    background: var(--green-pale);
+    border: 1px solid var(--green-pale-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+  .ladder-setup-panel .field { margin-bottom: 0; }
+  .ladder-setup-panel .hint { margin-top: 8px; }
+  .ladder-setup-panel .dropdown { margin-top: 12px; }
+  .ladder-rating-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: -8px 0 10px;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
   .theme-swatches {
     display: flex;
     flex-wrap: wrap;
@@ -1232,6 +1266,7 @@
   #printScoreSheetView { display: none; }
   #printLeaderboardView { display: none; }
   #printSessionStatsView { display: none; }
+  #printLadderStandingsView { display: none; }
   .print-score-line {
     display: flex;
     align-items: center;
@@ -1270,6 +1305,9 @@
     body.printing-session-stats .bg-watermark,
     body.printing-session-stats .app > *:not(#printSessionStatsView) { display: none !important; }
     body.printing-session-stats #printSessionStatsView { display: block !important; }
+    body.printing-ladder-standings .bg-watermark,
+    body.printing-ladder-standings .app > *:not(#printLadderStandingsView) { display: none !important; }
+    body.printing-ladder-standings #printLadderStandingsView { display: block !important; }
     @page { size: A4; margin: 12mm; }
   }
 </style>
@@ -1368,10 +1406,50 @@
         </div>
       </div>
 
+      <div class="format-toggle mode-toggle" id="modeToggle">
+        <button type="button" class="format-btn active" data-mode="session">Session Scheduler</button>
+        <button type="button" class="format-btn" data-mode="ladder">Ladder</button>
+      </div>
+
+      <div class="ladder-setup-panel" id="ladderSetupPanel" style="display:none;">
+        <div class="field">
+          <label>Use ladder history when generating</label>
+          <div class="yesno-toggle">
+            <button type="button" class="yesno-btn active" id="ladderHistoryYesBtn">Yes</button>
+            <button type="button" class="yesno-btn" id="ladderHistoryNoBtn">No</button>
+          </div>
+        </div>
+        <div class="hint">
+          "Yes" steers new pairings towards players and opponents who haven't faced each
+          other yet in the ladder. "No" generates a completely fresh session, same as the
+          regular scheduler.
+        </div>
+        <div class="dropdown" id="ladderStandingsDropdown">
+          <button class="dropdown-toggle" data-target="ladderStandingsDropdown">
+            View Ladder Standings <span class="arrow">▾</span>
+          </button>
+          <div class="dropdown-panel">
+            <table class="schedule-table" id="ladderStandingsTable"></table>
+            <button class="outline-btn no-print" id="printLadderStandingsBtn">Print standings</button>
+          </div>
+        </div>
+      </div>
+
       <label class="section-label">Today's players</label>
       <div class="inline-form">
         <input type="text" id="playerInput" placeholder="Type a name to add..." />
         <button class="small-btn add" id="playerAddBtn">Add</button>
+      </div>
+      <div class="ladder-rating-row" id="ladderRatingRow" style="display:none;">
+        <label class="checkbox-row">
+          <input type="checkbox" id="ladderCustomRatingToggle" />
+          Set a starting rating for this player
+        </label>
+        <div class="number-stepper number-stepper-sm" id="ladderCustomRatingStepper" style="display:none;">
+          <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="-0.1" aria-label="Decrease starting rating">−</button>
+          <input type="number" id="ladderCustomRatingInput" min="1" max="8" step="0.1" value="3.0" />
+          <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="0.1" aria-label="Increase starting rating">+</button>
+        </div>
       </div>
       <div class="chips" id="todayChips"></div>
 
@@ -1662,6 +1740,8 @@
 
     <div id="printSessionStatsView"></div>
 
+    <div id="printLadderStandingsView"></div>
+
     <div class="modal-overlay no-print" id="swapConfirmOverlay" style="display:none;">
       <div class="modal-card">
         <div class="modal-title">Swap players?</div>
@@ -1712,7 +1792,11 @@
     config: "pbs_config",
     installTipDismissed: "pbs_installTipDismissed",
     logo: "pbs_clubLogo",
+    ladderStartingRatings: "pbs_ladderStartingRatings",
   };
+
+  const LADDER_DEFAULT_RATING = 3.0;
+  const LADDER_POINT_VALUE = 0.005;
 
   function load(key, fallback) {
     try {
@@ -1731,6 +1815,7 @@
   let todayPlayers = load(STORAGE.today, []);
   let savedPlayers = load(STORAGE.saved, []);
   let pastSessions = load(STORAGE.sessions, []);
+  let ladderStartingRatings = load(STORAGE.ladderStartingRatings, {});
   const CONFIG_SCHEMA_VERSION = 2;
   let config = load(STORAGE.config, {
     courts: 1,
@@ -1744,6 +1829,8 @@
     theme: "cornish-gold",
     customColor: "#b8860b",
     timerSound: "beep",
+    mode: "session",
+    useLadderHistory: true,
     schemaVersion: CONFIG_SCHEMA_VERSION,
   });
   config.gamesToPlay = config.gamesToPlay ?? 0;
@@ -1753,6 +1840,8 @@
   config.winByTwo = config.winByTwo ?? false;
   config.format = config.format === "singles" ? "singles" : "doubles";
   config.timerSound = config.timerSound || "beep";
+  config.mode = config.mode === "ladder" ? "ladder" : "session";
+  config.useLadderHistory = config.useLadderHistory ?? true;
   if ((config.schemaVersion || 1) < CONFIG_SCHEMA_VERSION) {
     // One-time migration: browsers with settings saved before the
     // "games to play" mode existed get bumped onto the new defaults.
@@ -1791,6 +1880,15 @@
   const themeToggleDot = document.getElementById("themeToggleDot");
   const themeToggleName = document.getElementById("themeToggleName");
   const formatButtons = document.querySelectorAll("#formatToggle .format-btn");
+  const modeButtons = document.querySelectorAll("#modeToggle .format-btn");
+  const ladderSetupPanel = document.getElementById("ladderSetupPanel");
+  const ladderHistoryYesBtn = document.getElementById("ladderHistoryYesBtn");
+  const ladderHistoryNoBtn = document.getElementById("ladderHistoryNoBtn");
+  const ladderStandingsTable = document.getElementById("ladderStandingsTable");
+  const ladderRatingRow = document.getElementById("ladderRatingRow");
+  const ladderCustomRatingToggle = document.getElementById("ladderCustomRatingToggle");
+  const ladderCustomRatingStepper = document.getElementById("ladderCustomRatingStepper");
+  const ladderCustomRatingInput = document.getElementById("ladderCustomRatingInput");
   const courtsInput = document.getElementById("courtsInput");
   const gamesToPlayInput = document.getElementById("gamesToPlayInput");
   const gameLengthInput = document.getElementById("gameLengthInput");
@@ -1870,6 +1968,8 @@
   const printScoreSheetView = document.getElementById("printScoreSheetView");
   const printLeaderboardBtn = document.getElementById("printLeaderboardBtn");
   const printLeaderboardView = document.getElementById("printLeaderboardView");
+  const printLadderStandingsBtn = document.getElementById("printLadderStandingsBtn");
+  const printLadderStandingsView = document.getElementById("printLadderStandingsView");
   const printSessionStatsBtn = document.getElementById("printSessionStatsBtn");
   const printSessionStatsView = document.getElementById("printSessionStatsView");
   const clubLogoImg = document.getElementById("clubLogoImg");
@@ -2067,8 +2167,19 @@
   }
 
   function submitPlayerAdd() {
+    const name = playerInput.value.trim();
     addTodayPlayer(playerInput.value);
     playerInput.value = "";
+    if (config.mode === "ladder" && name && ladderCustomRatingToggle.checked) {
+      const rating = parseFloat(ladderCustomRatingInput.value);
+      if (!isNaN(rating)) {
+        ladderStartingRatings[name] = rating;
+        save(STORAGE.ladderStartingRatings, ladderStartingRatings);
+      }
+      ladderCustomRatingToggle.checked = false;
+      ladderCustomRatingStepper.style.display = "none";
+      renderLadderStandingsTable();
+    }
   }
   playerInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitPlayerAdd();
@@ -2258,6 +2369,79 @@
     });
   }
 
+  function ladderStartingRating(name) {
+    const override = ladderStartingRatings[name];
+    return typeof override === "number" && !isNaN(override) ? override : LADDER_DEFAULT_RATING;
+  }
+
+  function computeLadderPointsDelta(scoreWinner, scoreLoser) {
+    return Math.round((scoreWinner - scoreLoser) * LADDER_POINT_VALUE * 1000) / 1000;
+  }
+
+  function computeLadderRatings() {
+    const stats = {};
+    const ensure = (name) => {
+      if (!stats[name]) {
+        stats[name] = { rating: ladderStartingRating(name), matches: 0, wins: 0, losses: 0 };
+      }
+      return stats[name];
+    };
+    pastSessions.forEach((session) => {
+      if (!session.isLadder) return;
+      session.rounds.forEach((round) => {
+        round.courts.forEach((court) => {
+          if (court.scoreA === "" || court.scoreB === "") return;
+          const scoreA = parseInt(court.scoreA, 10);
+          const scoreB = parseInt(court.scoreB, 10);
+          if (isNaN(scoreA) || isNaN(scoreB) || scoreA === scoreB) return;
+          const aWon = scoreA > scoreB;
+          const delta = computeLadderPointsDelta(Math.max(scoreA, scoreB), Math.min(scoreA, scoreB));
+          court.teamA.forEach((p) => {
+            const st = ensure(p);
+            st.matches += 1;
+            if (aWon) { st.wins += 1; st.rating += delta; } else { st.losses += 1; st.rating -= delta; }
+          });
+          court.teamB.forEach((p) => {
+            const st = ensure(p);
+            st.matches += 1;
+            if (!aWon) { st.wins += 1; st.rating += delta; } else { st.losses += 1; st.rating -= delta; }
+          });
+        });
+      });
+    });
+    Object.keys(ladderStartingRatings).forEach(ensure);
+    Object.keys(stats).forEach((name) => {
+      stats[name].rating = Math.round(stats[name].rating * 1000) / 1000;
+    });
+    return stats;
+  }
+
+  function getSortedLadderNames(stats) {
+    return Object.keys(stats).sort((a, b) => {
+      if (stats[b].rating !== stats[a].rating) return stats[b].rating - stats[a].rating;
+      return a.localeCompare(b);
+    });
+  }
+
+  function buildLadderStandingsTableHtml() {
+    const stats = computeLadderRatings();
+    const names = getSortedLadderNames(stats);
+    let html = "<thead><tr><th>#</th><th>Player</th><th>Rating</th><th>Matches</th><th>Won</th><th>Lost</th></tr></thead><tbody>";
+    if (names.length === 0) {
+      html += `<tr><td colspan="6" class="empty-note">No ladder matches recorded yet.</td></tr>`;
+    }
+    names.forEach((name, i) => {
+      const st = stats[name];
+      html += `<tr><td>${i + 1}</td><td>${name}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td></tr>`;
+    });
+    html += "</tbody>";
+    return html;
+  }
+
+  function renderLadderStandingsTable() {
+    ladderStandingsTable.innerHTML = buildLadderStandingsTableHtml();
+  }
+
   document.querySelectorAll(".dropdown-toggle[data-target]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const dropdown = document.getElementById(btn.dataset.target);
@@ -2283,6 +2467,42 @@
       save(STORAGE.config, config);
       syncFormatButtons();
     });
+  });
+
+  function syncModeUI() {
+    modeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.mode === config.mode);
+    });
+    const isLadder = config.mode === "ladder";
+    ladderSetupPanel.style.display = isLadder ? "block" : "none";
+    ladderRatingRow.style.display = isLadder ? "flex" : "none";
+    if (isLadder) renderLadderStandingsTable();
+  }
+  modeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.mode = btn.dataset.mode;
+      save(STORAGE.config, config);
+      syncModeUI();
+    });
+  });
+
+  function syncLadderHistoryButtons() {
+    ladderHistoryYesBtn.classList.toggle("active", config.useLadderHistory);
+    ladderHistoryNoBtn.classList.toggle("active", !config.useLadderHistory);
+  }
+  ladderHistoryYesBtn.addEventListener("click", () => {
+    config.useLadderHistory = true;
+    syncLadderHistoryButtons();
+    save(STORAGE.config, config);
+  });
+  ladderHistoryNoBtn.addEventListener("click", () => {
+    config.useLadderHistory = false;
+    syncLadderHistoryButtons();
+    save(STORAGE.config, config);
+  });
+
+  ladderCustomRatingToggle.addEventListener("change", () => {
+    ladderCustomRatingStepper.style.display = ladderCustomRatingToggle.checked ? "flex" : "none";
   });
 
   const THEMES = [
@@ -2442,12 +2662,12 @@
     btn.addEventListener("click", () => {
       const input = document.getElementById(btn.dataset.target);
       if (!input) return;
-      const step = parseInt(btn.dataset.step, 10);
-      const min = input.min !== "" ? parseInt(input.min, 10) : -Infinity;
-      const max = input.max !== "" ? parseInt(input.max, 10) : Infinity;
-      let value = parseInt(input.value, 10);
+      const step = parseFloat(btn.dataset.step);
+      const min = input.min !== "" ? parseFloat(input.min) : -Infinity;
+      const max = input.max !== "" ? parseFloat(input.max) : Infinity;
+      let value = parseFloat(input.value);
       if (isNaN(value)) value = min !== -Infinity ? min : 0;
-      value = Math.min(max, Math.max(min, value + step));
+      value = Math.min(max, Math.max(min, Math.round((value + step) * 100) / 100));
       input.value = value;
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -2602,6 +2822,24 @@
       });
     });
     return { partnerCount, opponentCount, groupCount, lastPartnerRound, lastOpponentRound, sitCount, lastRestRound };
+  }
+
+  function buildLadderHistorySeed(format) {
+    const historicalRounds = pastSessions
+      .filter((s) => s.isLadder && s.config.format === format && s !== currentSession)
+      .flatMap((s) => s.rounds);
+    if (historicalRounds.length === 0) return null;
+    const state = computeFairnessState(historicalRounds, format);
+    return {
+      startRound: 0,
+      partnerCount: state.partnerCount,
+      opponentCount: state.opponentCount,
+      groupCount: state.groupCount,
+      lastPartnerRound: {},
+      lastOpponentRound: {},
+      sitCount: {},
+      lastRestRound: {},
+    };
   }
 
   function seedNewPlayers(state, roster, frozenCount) {
@@ -3010,6 +3248,7 @@
     sessionView.style.display = "none";
     syncFormatButtons();
     renderClubStatsPanel();
+    if (config.mode === "ladder") renderLadderStandingsTable();
   }
   function showSessionView() {
     setupView.style.display = "none";
@@ -3150,7 +3389,7 @@
     const gameDesc = s.config.gamesToPlay > 0
       ? `${s.config.gameLength} min games (to ${s.config.targetScore})`
       : `${s.config.gameLength} min games`;
-    const formatLabel = s.config.format === "singles" ? "Singles" : "Doubles";
+    const formatLabel = (s.isLadder ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
     const statParts = [];
     if (s.config.format !== "singles") statParts.push(`Max repeat partner: ${s.maxPartner}`);
     statParts.push(`Max repeat opponent: ${s.maxOpponent}`);
@@ -3422,7 +3661,7 @@
     }
   });
 
-  const PRINT_MODE_CLASSES = ["printing-court-sheets", "printing-score-sheet", "printing-leaderboard", "printing-session-stats"];
+  const PRINT_MODE_CLASSES = ["printing-court-sheets", "printing-score-sheet", "printing-leaderboard", "printing-session-stats", "printing-ladder-standings"];
 
   printBtn.addEventListener("click", () => {
     document.body.classList.remove(...PRINT_MODE_CLASSES);
@@ -3450,7 +3689,7 @@
   function buildPrintRoundsHtml(showScoreLine) {
     const s = currentSession;
     const maxCourts = Math.max(1, ...s.rounds.map((r) => r.courts.length));
-    const formatLabel = s.config.format === "singles" ? "Singles" : "Doubles";
+    const formatLabel = (s.isLadder ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
     const scoreBox = `<span class="print-score-box"></span>`;
 
     let html = `${printLogoHtml()}<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${maxCourts} courts · ${s.rounds.length} rounds</div>`;
@@ -3493,7 +3732,7 @@
 
   function buildPrintLeaderboardHtml() {
     const s = currentSession;
-    const formatLabel = s.config.format === "singles" ? "Singles" : "Doubles";
+    const formatLabel = (s.isLadder ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
     const header = `${printLogoHtml()}<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${s.rounds.length} rounds · Leaderboard</div>`;
     return `${header}<table class="schedule-table">${buildLeaderboardTableHtml(s)}</table>`;
   }
@@ -3501,6 +3740,16 @@
   printLeaderboardBtn.addEventListener("click", () => {
     printLeaderboardView.innerHTML = buildPrintLeaderboardHtml();
     printWithClass("printing-leaderboard");
+  });
+
+  function buildPrintLadderStandingsHtml() {
+    const header = `${printLogoHtml()}<div class="print-sheets-header">Ladder Standings</div>`;
+    return `${header}<table class="schedule-table">${buildLadderStandingsTableHtml()}</table>`;
+  }
+
+  printLadderStandingsBtn.addEventListener("click", () => {
+    printLadderStandingsView.innerHTML = buildPrintLadderStandingsHtml();
+    printWithClass("printing-ladder-standings");
   });
 
   function buildPrintSessionStatsHtml() {
@@ -3742,8 +3991,10 @@
       effectiveGameLength = config.gameLength;
     }
 
+    const isLadder = config.mode === "ladder";
+    const ladderSeed = isLadder && config.useLadderHistory ? buildLadderHistorySeed(config.format) : null;
     const { rounds, actualCourts, maxPartner, maxOpponent, maxGroup } = generateRounds(
-      todayPlayers, numRounds, config.courts, config.courtLabels, config.format
+      todayPlayers, numRounds, config.courts, config.courtLabels, config.format, ladderSeed
     );
     if (rounds.length === 0) {
       alert(`Not enough players for even one court (need at least ${minPlayers}).`);
@@ -3754,6 +4005,7 @@
       date: new Date().toLocaleString(),
       players: todayPlayers.slice(),
       config: { ...config, courtLabels: config.courtLabels.slice(), gameLength: effectiveGameLength },
+      isLadder,
       actualCourts,
       maxPartner,
       maxOpponent,
@@ -3793,6 +4045,8 @@
   updateGamesModeUI();
   syncFormatButtons();
   syncWinByTwoButtons();
+  syncModeUI();
+  syncLadderHistoryButtons();
   loadSharedSessionFromHash();
 
   const setupDropdownRow = document.getElementById("setupDropdownRow");
