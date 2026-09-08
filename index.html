@@ -1587,6 +1587,7 @@
           </div>
 
           <button class="generate-btn" id="generateTournamentBtn">Generate Groups</button>
+          <button class="debug-btn" id="tournamentDebugBtn">Debug: fill 30 names</button>
         </div>
       </div>
 
@@ -2117,6 +2118,7 @@
   const tournamentWinByTwoYesBtn = document.getElementById("tournamentWinByTwoYesBtn");
   const tournamentWinByTwoNoBtn = document.getElementById("tournamentWinByTwoNoBtn");
   const generateTournamentBtn = document.getElementById("generateTournamentBtn");
+  const tournamentDebugBtn = document.getElementById("tournamentDebugBtn");
   const tournamentView = document.getElementById("tournamentView");
   const tournamentHeader = document.getElementById("tournamentHeader");
   const tournamentGroupStageView = document.getElementById("tournamentGroupStageView");
@@ -2451,6 +2453,7 @@
     tournamentDoublesEntryModeButtons.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.entryMode === config.tournamentDoublesEntryMode);
     });
+    syncTournamentDebugBtn();
   }
 
   tournamentDoublesEntryModeButtons.forEach((btn) => {
@@ -2470,6 +2473,37 @@
   });
   tournamentSinglesInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") tournamentAddSinglesBtn.click();
+  });
+
+  const TOURNAMENT_DEBUG_NAMES = [
+    "Alice", "Bob", "Charlie", "Dave", "Eve", "Frank", "Grace", "Hank",
+    "Ivy", "Jack", "Kate", "Liam", "Mia", "Nick", "Olivia",
+    "Oscar", "Paula", "Quinn", "Rosa", "Sam", "Tina", "Umar", "Vera",
+    "Will", "Xena", "Yusuf", "Zara", "Amos", "Bree", "Cleo",
+  ];
+
+  function syncTournamentDebugBtn() {
+    const isSingles = config.format === "singles";
+    const isTeamNames = !isSingles && config.tournamentDoublesEntryMode === "teamnames";
+    tournamentDebugBtn.textContent = isSingles
+      ? "Debug: fill 15 names"
+      : isTeamNames
+      ? "Debug: fill 15 teams"
+      : "Debug: fill 30 names";
+  }
+
+  tournamentDebugBtn.addEventListener("click", () => {
+    const isSingles = config.format === "singles";
+    const isTeamNames = !isSingles && config.tournamentDoublesEntryMode === "teamnames";
+    if (isSingles) {
+      TOURNAMENT_DEBUG_NAMES.slice(0, 15).forEach((name) => addTournamentTeam({ players: [name] }));
+    } else if (isTeamNames) {
+      for (let i = 1; i <= 15; i++) addTournamentTeam({ players: [], teamName: `Team ${i}` });
+    } else {
+      for (let i = 0; i < 15; i++) {
+        addTournamentTeam({ players: [TOURNAMENT_DEBUG_NAMES[2 * i], TOURNAMENT_DEBUG_NAMES[2 * i + 1]] });
+      }
+    }
   });
 
   function syncTournamentWinByTwoButtons() {
