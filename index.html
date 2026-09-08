@@ -1540,9 +1540,8 @@
             <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
           </div>
           <div class="inline-form" id="tournamentTeamEntryDoublesByName" style="display:none;">
-            <input type="text" id="tournamentTeamName1Input" placeholder="Team name 1" />
-            <input type="text" id="tournamentTeamName2Input" placeholder="Team name 2" />
-            <button class="small-btn add" id="tournamentAddNamedTeamsBtn">Add teams</button>
+            <input type="text" id="tournamentTeamNameInput" placeholder="Team name" />
+            <button class="small-btn add" id="tournamentAddNamedTeamBtn">Add team</button>
           </div>
           <div class="inline-form" id="tournamentTeamEntrySingles" style="display:none;">
             <input type="text" id="tournamentSinglesInput" placeholder="Player name" />
@@ -2107,9 +2106,8 @@
   const tournamentPlayer1Input = document.getElementById("tournamentPlayer1Input");
   const tournamentPlayer2Input = document.getElementById("tournamentPlayer2Input");
   const tournamentAddTeamBtn = document.getElementById("tournamentAddTeamBtn");
-  const tournamentTeamName1Input = document.getElementById("tournamentTeamName1Input");
-  const tournamentTeamName2Input = document.getElementById("tournamentTeamName2Input");
-  const tournamentAddNamedTeamsBtn = document.getElementById("tournamentAddNamedTeamsBtn");
+  const tournamentTeamNameInput = document.getElementById("tournamentTeamNameInput");
+  const tournamentAddNamedTeamBtn = document.getElementById("tournamentAddNamedTeamBtn");
   const tournamentSinglesInput = document.getElementById("tournamentSinglesInput");
   const tournamentAddSinglesBtn = document.getElementById("tournamentAddSinglesBtn");
   const tournamentTeamChips = document.getElementById("tournamentTeamChips");
@@ -2433,20 +2431,15 @@
     });
   });
 
-  tournamentAddNamedTeamsBtn.addEventListener("click", () => {
-    const n1 = tournamentTeamName1Input.value.trim();
-    const n2 = tournamentTeamName2Input.value.trim();
-    if (!n1 && !n2) return;
-    if (n1) addTournamentTeam({ players: [], teamName: n1 });
-    if (n2) addTournamentTeam({ players: [], teamName: n2 });
-    tournamentTeamName1Input.value = "";
-    tournamentTeamName2Input.value = "";
-    tournamentTeamName1Input.focus();
+  tournamentAddNamedTeamBtn.addEventListener("click", () => {
+    const name = tournamentTeamNameInput.value.trim();
+    if (!name) return;
+    addTournamentTeam({ players: [], teamName: name });
+    tournamentTeamNameInput.value = "";
+    tournamentTeamNameInput.focus();
   });
-  [tournamentTeamName1Input, tournamentTeamName2Input].forEach((input) => {
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") tournamentAddNamedTeamsBtn.click();
-    });
+  tournamentTeamNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") tournamentAddNamedTeamBtn.click();
   });
 
   function syncTournamentDoublesEntryMode() {
