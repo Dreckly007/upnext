@@ -3033,14 +3033,14 @@
     const group = tournament.groups[groupIndex];
     const complete = groupFixturesComplete(group);
     const { stats, ranked } = computeGroupStandings(tournament, groupIndex);
-    let html = "<thead><tr><th>#</th><th>Team</th><th>Won</th><th>Lost</th><th>+/-</th></tr></thead><tbody>";
+    let html = "<thead><tr><th>#</th><th>Team</th><th>Won</th><th>Lost</th><th>For</th><th>Against</th><th>+/-</th></tr></thead><tbody>";
     ranked.forEach((id, i) => {
       const st = stats[id];
       const diff = st.pointsFor - st.pointsAgainst;
       const diffText = diff > 0 ? `+${diff}` : String(diff);
       const isAdvancing = complete && i < tournament.advancePerGroup;
       const chip = isAdvancing ? ` <span class="advance-chip">Advancing</span>` : "";
-      html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${diffText}</td></tr>`;
+      html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
     });
     html += "</tbody>";
     return html;
@@ -4429,11 +4429,14 @@
     tournamentGroupsContainer.innerHTML = "";
     tournament.groups.forEach((group) => {
       const content = document.createElement("div");
+      const tableWrap = document.createElement("div");
+      tableWrap.className = "table-scroll";
       const table = document.createElement("table");
       table.className = "schedule-table";
       table.innerHTML = buildGroupStandingsTableHtml(tournament, group.index);
       groupStandingsTableEls[group.index] = table;
-      content.appendChild(table);
+      tableWrap.appendChild(table);
+      content.appendChild(tableWrap);
       group.fixtures.forEach((fixture) => {
         content.appendChild(buildFixtureRow(tournament, fixture, onTournamentGroupScoreChange));
       });
