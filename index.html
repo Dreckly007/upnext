@@ -1114,6 +1114,14 @@
   .qualifiers-box .qteams { color: var(--text); }
   .qualifiers-box .qteams-pending { color: var(--muted); font-style: italic; }
 
+  .court-schedule-round { padding: 8px 0; border-bottom: 1px solid var(--card-border); }
+  .court-schedule-round:last-child { border-bottom: none; }
+  .court-schedule-round-title { font-weight: 700; color: var(--green-dark); font-size: 0.85rem; margin-bottom: 4px; }
+  .court-schedule-slot { display: flex; gap: 8px; padding: 3px 0; font-size: 0.88rem; }
+  .court-schedule-court { font-weight: 700; color: var(--muted); min-width: 72px; flex-shrink: 0; }
+  .court-schedule-match { color: var(--text); }
+  .court-schedule-score { color: var(--green-dark); font-weight: 700; }
+
   .resting-bar {
     background: #f5ecd9;
     border-radius: 10px;
@@ -1617,6 +1625,24 @@
             </div>
           </div>
 
+          <div class="field">
+            <label for="tournamentCourtsInput">Courts available</label>
+            <div class="number-stepper">
+              <button type="button" class="stepper-btn" data-target="tournamentCourtsInput" data-step="-1" aria-label="Decrease courts available">−</button>
+              <input type="number" id="tournamentCourtsInput" min="1" max="12" value="2" />
+              <button type="button" class="stepper-btn" data-target="tournamentCourtsInput" data-step="1" aria-label="Increase courts available">+</button>
+            </div>
+          </div>
+          <div class="courts-row" id="tournamentCourtLabelsRow"></div>
+
+          <div class="field estimate-field" id="tournamentEstimateField" style="display:none;">
+            <label>Estimated tournament duration</label>
+            <div class="estimate-box">
+              <span class="estimate-number" id="tournamentEstimateNumber"></span>
+              <span class="estimate-reason" id="tournamentEstimateReason"></span>
+            </div>
+          </div>
+
           <div class="paired-grid">
             <div class="field">
               <label for="tournamentTargetScoreInput">Points to win</label>
@@ -1951,6 +1977,13 @@
         <button type="button" class="format-btn" data-tab="knockout">Knockout Bracket</button>
       </div>
 
+      <div class="field estimate-field no-print" id="tournamentViewEstimateField" style="display:none;">
+        <div class="estimate-box">
+          <span class="estimate-number" id="tournamentViewEstimateNumber"></span>
+          <span class="estimate-reason" id="tournamentViewEstimateReason"></span>
+        </div>
+      </div>
+
       <div id="tournamentGroupStageView">
         <div id="tournamentGroupsContainer"></div>
         <div id="tournamentQualifiersBox" class="qualifiers-box"></div>
@@ -2104,6 +2137,8 @@
   config.tournamentGroups = config.tournamentGroups ?? 2;
   config.tournamentAdvance = config.tournamentAdvance ?? 2;
   config.tournamentDoublesEntryMode = config.tournamentDoublesEntryMode === "teamnames" ? "teamnames" : "players";
+  config.tournamentCourts = config.tournamentCourts ?? 2;
+  if (!Array.isArray(config.tournamentCourtLabels)) config.tournamentCourtLabels = ["1", "2"];
   if ((config.schemaVersion || 1) < CONFIG_SCHEMA_VERSION) {
     // One-time migration: browsers with settings saved before the
     // "games to play" mode existed get bumped onto the new defaults.
@@ -2174,6 +2209,11 @@
   const tournamentTeamChips = document.getElementById("tournamentTeamChips");
   const tournamentGroupsInput = document.getElementById("tournamentGroupsInput");
   const tournamentAdvanceInput = document.getElementById("tournamentAdvanceInput");
+  const tournamentCourtsInput = document.getElementById("tournamentCourtsInput");
+  const tournamentCourtLabelsRow = document.getElementById("tournamentCourtLabelsRow");
+  const tournamentEstimateField = document.getElementById("tournamentEstimateField");
+  const tournamentEstimateNumber = document.getElementById("tournamentEstimateNumber");
+  const tournamentEstimateReason = document.getElementById("tournamentEstimateReason");
   const tournamentTargetScoreInput = document.getElementById("tournamentTargetScoreInput");
   const tournamentWinByTwoYesBtn = document.getElementById("tournamentWinByTwoYesBtn");
   const tournamentWinByTwoNoBtn = document.getElementById("tournamentWinByTwoNoBtn");
@@ -2184,6 +2224,9 @@
   const tournamentHeader = document.getElementById("tournamentHeader");
   const tournamentStageTabs = document.getElementById("tournamentStageTabs");
   const tournamentStageTabButtons = document.querySelectorAll("#tournamentStageTabs .format-btn");
+  const tournamentViewEstimateField = document.getElementById("tournamentViewEstimateField");
+  const tournamentViewEstimateNumber = document.getElementById("tournamentViewEstimateNumber");
+  const tournamentViewEstimateReason = document.getElementById("tournamentViewEstimateReason");
   const tournamentGroupStageView = document.getElementById("tournamentGroupStageView");
   const tournamentGroupsContainer = document.getElementById("tournamentGroupsContainer");
   const tournamentQualifiersBox = document.getElementById("tournamentQualifiersBox");
@@ -2300,6 +2343,7 @@
   const leaderboardTable = document.getElementById("leaderboardTable");
 
   courtsInput.value = config.courts;
+  tournamentCourtsInput.value = config.tournamentCourts;
   gamesToPlayInput.value = config.gamesToPlay;
   gameLengthInput.value = config.gameLength;
   timeAvailableHoursInput.value = Math.floor(config.timeAvailable / 60);
@@ -2434,6 +2478,32 @@
     });
   }
 
+  function renderTournamentCourtLabels() {
+    const n = Math.max(1, parseInt(tournamentCourtsInput.value, 10) || 1);
+    const labels = config.tournamentCourtLabels || [];
+    while (labels.length < n) labels.push(String(labels.length + 1));
+    labels.length = n;
+    config.tournamentCourtLabels = labels;
+
+    tournamentCourtLabelsRow.innerHTML = "";
+    labels.forEach((label, i) => {
+      const wrap = document.createElement("div");
+      wrap.className = "court-field";
+      const span = document.createElement("span");
+      span.textContent = "Court";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = label;
+      input.addEventListener("input", () => {
+        config.tournamentCourtLabels[i] = input.value || String(i + 1);
+        save(STORAGE.config, config);
+      });
+      wrap.appendChild(span);
+      wrap.appendChild(input);
+      tournamentCourtLabelsRow.appendChild(wrap);
+    });
+  }
+
   function renderTodayChips() {
     todayChips.innerHTML = "";
     todayPlayers.forEach((name) => {
@@ -2473,6 +2543,7 @@
       chip.appendChild(btn);
       tournamentTeamChips.appendChild(chip);
     });
+    updateTournamentSetupEstimate();
   }
 
   function addTournamentTeam(team) {
@@ -2615,10 +2686,22 @@
   tournamentWinByTwoYesBtn.addEventListener("click", () => {
     tournamentWinByTwo = true;
     syncTournamentWinByTwoButtons();
+    updateTournamentSetupEstimate();
   });
   tournamentWinByTwoNoBtn.addEventListener("click", () => {
     tournamentWinByTwo = false;
     syncTournamentWinByTwoButtons();
+    updateTournamentSetupEstimate();
+  });
+
+  tournamentCourtsInput.addEventListener("input", () => {
+    config.tournamentCourts = Math.max(1, parseInt(tournamentCourtsInput.value, 10) || 1);
+    save(STORAGE.config, config);
+    renderTournamentCourtLabels();
+    updateTournamentSetupEstimate();
+  });
+  [tournamentGroupsInput, tournamentAdvanceInput, tournamentTargetScoreInput].forEach((input) => {
+    input.addEventListener("input", updateTournamentSetupEstimate);
   });
 
   function addTodayPlayer(name) {
@@ -3115,6 +3198,175 @@
     if (fromEnd === 1) return "Semifinal";
     if (fromEnd === 2) return "Quarterfinal";
     return `Round of ${Math.pow(2, fromEnd + 1)}`;
+  }
+
+  function courtRoundsNeeded(bucketSizes, courtsCount) {
+    return bucketSizes.reduce((sum, size) => sum + Math.ceil(size / courtsCount), 0);
+  }
+
+  function projectGroupSizes(teamCount, numGroups) {
+    const base = Math.floor(teamCount / numGroups);
+    const remainder = teamCount % numGroups;
+    const sizes = [];
+    for (let i = 0; i < numGroups; i++) sizes.push(base + (i < remainder ? 1 : 0));
+    return sizes;
+  }
+
+  function groupRoundRobinShape(size) {
+    const roundsForGroup = size % 2 === 0 ? size - 1 : size;
+    const fixturesPerRound = size % 2 === 0 ? size / 2 : (size - 1) / 2;
+    return { roundsForGroup, fixturesPerRound };
+  }
+
+  function groupStageBucketSizesProjected(groupSizes) {
+    const shapes = groupSizes.map(groupRoundRobinShape);
+    const maxRounds = Math.max(0, ...shapes.map((s) => s.roundsForGroup));
+    const buckets = [];
+    for (let r = 1; r <= maxRounds; r++) {
+      const size = shapes.reduce((sum, s) => sum + (r <= s.roundsForGroup ? s.fixturesPerRound : 0), 0);
+      if (size > 0) buckets.push(size);
+    }
+    return buckets;
+  }
+
+  function estimateGroupStageMinutes(teamCount, numGroups, courtsCount, targetScore) {
+    if (teamCount < numGroups * 2) return null;
+    const buckets = groupStageBucketSizesProjected(projectGroupSizes(teamCount, numGroups));
+    const rounds = courtRoundsNeeded(buckets, courtsCount);
+    const perRound = estimateMinutesForTarget(targetScore) + CHANGEOVER_MINUTES;
+    return { rounds, minutes: rounds * perRound };
+  }
+
+  function knockoutBracketShape(qualifierCount) {
+    if (qualifierCount < 2) return null;
+    const bracketSize = nextPowerOfTwo(qualifierCount);
+    const byes = bracketSize - qualifierCount;
+    const totalRounds = Math.log2(bracketSize);
+    const roundMatchCounts = [];
+    for (let k = 1; k <= totalRounds; k++) {
+      const matches = bracketSize / Math.pow(2, k);
+      roundMatchCounts.push(k === 1 ? matches - byes : matches);
+    }
+    if (bracketSize >= 4) roundMatchCounts[roundMatchCounts.length - 1] += 1; // 3rd-place match shares the Final's slot
+    return { bracketSize, byes, roundMatchCounts };
+  }
+
+  function estimateKnockoutMinutes(qualifierCount, courtsCount, targetScore) {
+    const shape = knockoutBracketShape(qualifierCount);
+    if (!shape) return null;
+    const rounds = courtRoundsNeeded(shape.roundMatchCounts, courtsCount);
+    const perRound = estimateMinutesForTarget(targetScore) + CHANGEOVER_MINUTES;
+    return { rounds, minutes: rounds * perRound };
+  }
+
+  function projectQualifierCount(teamCount, numGroups, advancePerGroup) {
+    return projectGroupSizes(teamCount, numGroups).reduce((sum, size) => sum + Math.min(advancePerGroup, size), 0);
+  }
+
+  function buildGroupStageCourtSchedule(tournament) {
+    const allFixtures = tournament.groups.flatMap((g) => g.fixtures);
+    if (allFixtures.length === 0) return [];
+    const maxRound = Math.max(...allFixtures.map((f) => f.roundHint));
+    const schedule = [];
+    for (let r = 1; r <= maxRound; r++) {
+      const bucket = allFixtures.filter((f) => f.roundHint === r);
+      for (let i = 0; i < bucket.length; i += tournament.courts) {
+        schedule.push({ roundNumber: schedule.length + 1, fixtures: bucket.slice(i, i + tournament.courts) });
+      }
+    }
+    return schedule;
+  }
+
+  function buildKnockoutCourtSchedule(tournament) {
+    const ko = tournament.knockout;
+    if (!ko) return [];
+    const schedule = [];
+    ko.rounds.forEach((round, idx) => {
+      const realMatches = round.matches.filter((m) => !m.byeAdvance);
+      const isLastRound = idx === ko.rounds.length - 1;
+      const matches = isLastRound && ko.thirdPlaceMatch ? [...realMatches, ko.thirdPlaceMatch] : realMatches;
+      const totalWaves = Math.max(1, Math.ceil(matches.length / tournament.courts));
+      for (let i = 0; i < matches.length; i += tournament.courts) {
+        const waveIndex = Math.floor(i / tournament.courts) + 1;
+        const label = totalWaves > 1 ? `${round.name} (${waveIndex}/${totalWaves})` : round.name;
+        schedule.push({ label, matches: matches.slice(i, i + tournament.courts) });
+      }
+    });
+    return schedule;
+  }
+
+  function buildCourtScheduleHtml(tournament, schedule, items, roundLabel) {
+    return schedule.map((entry) => {
+      const entryItems = items(entry);
+      const slots = entryItems.map((item, i) => {
+        const courtLabel = tournament.courtLabels[i] || String(i + 1);
+        const nameA = tournamentTeamName(tournament, item.teamAId);
+        const nameB = tournamentTeamName(tournament, item.teamBId);
+        const hasScore = item.scoreA !== "" && item.scoreB !== "";
+        const scoreText = hasScore ? ` <span class="court-schedule-score">(${item.scoreA}-${item.scoreB})</span>` : "";
+        return `<div class="court-schedule-slot"><span class="court-schedule-court">Court ${courtLabel}</span><span class="court-schedule-match">${nameA} vs ${nameB}${scoreText}</span></div>`;
+      }).join("");
+      return `<div class="court-schedule-round"><div class="court-schedule-round-title">${roundLabel(entry)}</div>${slots}</div>`;
+    }).join("");
+  }
+
+  function buildGroupStageCourtScheduleHtml(tournament) {
+    const schedule = buildGroupStageCourtSchedule(tournament);
+    if (schedule.length === 0) return `<div class="empty-note">No fixtures yet.</div>`;
+    return buildCourtScheduleHtml(tournament, schedule, (e) => e.fixtures, (e) => `Round ${e.roundNumber}`);
+  }
+
+  function buildKnockoutCourtScheduleHtml(tournament) {
+    const schedule = buildKnockoutCourtSchedule(tournament);
+    if (schedule.length === 0) return `<div class="empty-note">No matches need a court yet.</div>`;
+    return buildCourtScheduleHtml(tournament, schedule, (e) => e.matches, (e) => e.label);
+  }
+
+  function computeTournamentLiveEstimate(tournament) {
+    const perRound = estimateMinutesForTarget(tournament.targetScore) + CHANGEOVER_MINUTES;
+    const groupRounds = buildGroupStageCourtSchedule(tournament).length;
+    let knockoutRounds;
+    if (tournament.knockout) {
+      knockoutRounds = buildKnockoutCourtSchedule(tournament).length;
+    } else {
+      const qualifierCount = tournament.groups.reduce(
+        (sum, g) => sum + Math.min(tournament.advancePerGroup, g.teamIds.length), 0
+      );
+      const shape = knockoutBracketShape(qualifierCount);
+      knockoutRounds = shape ? courtRoundsNeeded(shape.roundMatchCounts, tournament.courts) : 0;
+    }
+    const groupMinutes = groupRounds * perRound;
+    const knockoutMinutes = knockoutRounds * perRound;
+    return { groupMinutes, knockoutMinutes, totalMinutes: groupMinutes + knockoutMinutes };
+  }
+
+  function updateTournamentSetupEstimate() {
+    const numGroups = Math.max(1, parseInt(tournamentGroupsInput.value, 10) || 1);
+    const advancePerGroup = Math.max(1, parseInt(tournamentAdvanceInput.value, 10) || 1);
+    const courts = Math.max(1, parseInt(tournamentCourtsInput.value, 10) || 1);
+    const targetScore = Math.max(1, Math.min(21, parseInt(tournamentTargetScoreInput.value, 10) || 11));
+    const groupEst = estimateGroupStageMinutes(tournamentTeams.length, numGroups, courts, targetScore);
+    if (!groupEst) {
+      tournamentEstimateField.style.display = "none";
+      return;
+    }
+    const qualifierCount = projectQualifierCount(tournamentTeams.length, numGroups, advancePerGroup);
+    const knockoutEst = estimateKnockoutMinutes(qualifierCount, courts, targetScore);
+    const totalMinutes = groupEst.minutes + (knockoutEst ? knockoutEst.minutes : 0);
+    tournamentEstimateField.style.display = "block";
+    tournamentEstimateNumber.textContent = `${totalMinutes} min`;
+    tournamentEstimateReason.textContent = knockoutEst
+      ? `Group stage ~${groupEst.minutes} min + Knockout ~${knockoutEst.minutes} min (projected)`
+      : `Group stage ~${groupEst.minutes} min (projected)`;
+  }
+
+  function updateTournamentViewEstimate(tournament) {
+    const est = computeTournamentLiveEstimate(tournament);
+    tournamentViewEstimateField.style.display = "block";
+    tournamentViewEstimateNumber.textContent = `${est.totalMinutes} min`;
+    tournamentViewEstimateReason.textContent = tournament.knockout
+      ? `Group stage ~${est.groupMinutes} min + Knockout ~${est.knockoutMinutes} min`
+      : `Group stage ~${est.groupMinutes} min + Knockout ~${est.knockoutMinutes} min (projected)`;
   }
 
   function resolveMatchWinner(match) {
@@ -4395,6 +4647,7 @@
   }
 
   let groupStandingsTableEls = {};
+  let tournamentGroupScheduleEl = null;
 
   function onTournamentGroupScoreChange() {
     updateTournamentInStorage(currentTournament);
@@ -4413,6 +4666,8 @@
       if (table) table.innerHTML = buildGroupStandingsTableHtml(tournament, group.index);
     });
     tournamentQualifiersBox.innerHTML = buildQualifiersBoxHtml(tournament);
+    if (tournamentGroupScheduleEl) tournamentGroupScheduleEl.innerHTML = buildGroupStageCourtScheduleHtml(tournament);
+    updateTournamentViewEstimate(tournament);
     const remaining = tournament.groups.reduce(
       (sum, g) => sum + g.fixtures.filter((f) => f.scoreA === "" || f.scoreB === "").length,
       0
@@ -4427,6 +4682,9 @@
   function renderTournamentGroupStage(tournament) {
     groupStandingsTableEls = {};
     tournamentGroupsContainer.innerHTML = "";
+    tournamentGroupScheduleEl = document.createElement("div");
+    tournamentGroupScheduleEl.innerHTML = buildGroupStageCourtScheduleHtml(tournament);
+    tournamentGroupsContainer.appendChild(buildCollapsibleSection("Court Schedule", tournamentGroupScheduleEl, false));
     tournament.groups.forEach((group) => {
       const content = document.createElement("div");
       const tableWrap = document.createElement("div");
@@ -4477,6 +4735,7 @@
 
   let knockoutRowEls = {};
   let knockoutRenderedTournamentId = null;
+  let tournamentKnockoutScheduleEl = null;
 
   function knockoutMatchKind(match) {
     if (match.byeAdvance) return "bye";
@@ -4508,6 +4767,9 @@
       knockoutRowEls = {};
       knockoutRenderedTournamentId = tournament.id;
       tournamentBracketContainer.innerHTML = "";
+      tournamentKnockoutScheduleEl = document.createElement("div");
+      tournamentKnockoutScheduleEl.innerHTML = buildKnockoutCourtScheduleHtml(tournament);
+      tournamentBracketContainer.appendChild(buildCollapsibleSection("Court Schedule", tournamentKnockoutScheduleEl, false));
       ko.rounds.forEach((round) => {
         const content = document.createElement("div");
         round.matches.forEach((match) => {
@@ -4539,6 +4801,10 @@
       });
     }
 
+    if (!fullRebuild && tournamentKnockoutScheduleEl) {
+      tournamentKnockoutScheduleEl.innerHTML = buildKnockoutCourtScheduleHtml(tournament);
+    }
+
     if (tournament.medals) {
       tournamentMedalsPanel.style.display = "block";
       tournamentMedalsPanel.innerHTML = "";
@@ -4546,6 +4812,7 @@
     } else {
       tournamentMedalsPanel.style.display = "none";
     }
+    updateTournamentViewEstimate(tournament);
   }
 
   let tournamentActiveTab = "groups";
@@ -5228,6 +5495,7 @@
     });
 
     const targetScore = Math.max(1, Math.min(21, parseInt(tournamentTargetScoreInput.value, 10) || 11));
+    const courts = Math.max(1, parseInt(tournamentCourtsInput.value, 10) || 1);
     const tournament = {
       id: `tour-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: tournamentNameInput.value.trim() || "Untitled Tournament",
@@ -5236,6 +5504,8 @@
       format: config.format,
       targetScore,
       winByTwo: tournamentWinByTwo,
+      courts,
+      courtLabels: config.tournamentCourtLabels.slice(0, courts),
       teams,
       groups,
       advancePerGroup,
@@ -5374,6 +5644,7 @@
   renderSessionsPanel();
   renderClubStatsPanel();
   renderCourtLabels();
+  renderTournamentCourtLabels();
   updateGamesModeUI();
   syncFormatButtons();
   syncWinByTwoButtons();
