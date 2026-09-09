@@ -1633,7 +1633,7 @@
 
         <div class="dropdown" id="sessionsDropdown">
           <button class="dropdown-toggle" data-target="sessionsDropdown">
-            Past sessions <span class="arrow">▾</span>
+            <span id="sessionsDropdownLabel">Past sessions</span> <span class="arrow">▾</span>
           </button>
           <div class="dropdown-panel" id="sessionsPanel"></div>
         </div>
@@ -1897,6 +1897,11 @@
         <h2 id="tournamentHeader"></h2>
       </div>
 
+      <div class="format-toggle no-print" id="tournamentStageTabs" style="display:none;">
+        <button type="button" class="format-btn active" data-tab="groups">Group Stage</button>
+        <button type="button" class="format-btn" data-tab="knockout">Knockout Bracket</button>
+      </div>
+
       <div id="tournamentGroupStageView">
         <div id="tournamentGroupsContainer"></div>
         <div class="field" style="margin-top:16px;">
@@ -2082,6 +2087,7 @@
   const pickPanel = document.getElementById("pickPanel");
   const managePanel = document.getElementById("managePanel");
   const sessionsPanel = document.getElementById("sessionsPanel");
+  const sessionsDropdownLabel = document.getElementById("sessionsDropdownLabel");
   const clubStatsPanel = document.getElementById("clubStatsPanel");
   const themeSwatchesContainer = document.getElementById("themeSwatches");
   const customColorRow = document.getElementById("customColorRow");
@@ -2126,6 +2132,8 @@
   const tournamentDebugScoresBtn = document.getElementById("tournamentDebugScoresBtn");
   const tournamentView = document.getElementById("tournamentView");
   const tournamentHeader = document.getElementById("tournamentHeader");
+  const tournamentStageTabs = document.getElementById("tournamentStageTabs");
+  const tournamentStageTabButtons = document.querySelectorAll("#tournamentStageTabs .format-btn");
   const tournamentGroupStageView = document.getElementById("tournamentGroupStageView");
   const tournamentGroupsContainer = document.getElementById("tournamentGroupsContainer");
   const startKnockoutBtn = document.getElementById("startKnockoutBtn");
@@ -2680,15 +2688,18 @@
   });
 
   function renderSessionsPanel() {
+    const isLadder = config.mode === "ladder";
+    sessionsDropdownLabel.textContent = isLadder ? "Past ladder sessions" : "Past sessions";
+    const relevantSessions = pastSessions.filter((s) => !!s.isLadder === isLadder);
     sessionsPanel.innerHTML = "";
-    if (pastSessions.length === 0) {
+    if (relevantSessions.length === 0) {
       const note = document.createElement("div");
       note.className = "empty-note";
-      note.textContent = "No past sessions yet.";
+      note.textContent = isLadder ? "No past ladder sessions yet." : "No past sessions yet.";
       sessionsPanel.appendChild(note);
       return;
     }
-    [...pastSessions].reverse().forEach((session) => {
+    [...relevantSessions].reverse().forEach((session) => {
       const row = document.createElement("div");
       row.className = "session-row";
       const span = document.createElement("span");
@@ -3220,6 +3231,7 @@
     if (isLadder) renderLadderStandingsTable();
     tournamentSetupPanel.style.display = isTournament ? "block" : "none";
     sessionSetupFields.style.display = isTournament ? "none" : "block";
+    renderSessionsPanel();
     if (isTournament) {
       renderTournamentTeamChips();
       renderPastTournamentsPanel();
@@ -4029,6 +4041,7 @@
     setupView.style.display = "none";
     sessionView.style.display = "none";
     tournamentView.style.display = "block";
+    tournamentActiveTab = currentTournament && currentTournament.status !== "groups" ? "knockout" : "groups";
     renderTournamentView();
   }
 
@@ -4454,14 +4467,32 @@
     }
   }
 
+  let tournamentActiveTab = "groups";
+
+  function syncTournamentStageTabs() {
+    const hasKnockout = !!(currentTournament && currentTournament.knockout);
+    tournamentStageTabs.style.display = hasKnockout ? "flex" : "none";
+    tournamentStageTabButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.tab === tournamentActiveTab);
+    });
+  }
+
+  tournamentStageTabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      tournamentActiveTab = btn.dataset.tab;
+      renderTournamentView();
+    });
+  });
+
   function renderTournamentView() {
     if (!currentTournament) return;
     const t = currentTournament;
     tournamentHeader.textContent = t.name || "Tournament";
-    const isKnockout = t.status === "knockout" || t.status === "complete";
-    tournamentGroupStageView.style.display = isKnockout ? "none" : "block";
-    tournamentKnockoutView.style.display = isKnockout ? "block" : "none";
-    if (isKnockout) {
+    syncTournamentStageTabs();
+    const showKnockout = tournamentActiveTab === "knockout" && !!t.knockout;
+    tournamentGroupStageView.style.display = showKnockout ? "none" : "block";
+    tournamentKnockoutView.style.display = showKnockout ? "block" : "none";
+    if (showKnockout) {
       renderTournamentKnockout(t, true);
     } else {
       renderTournamentGroupStage(t);
@@ -4472,6 +4503,7 @@
     if (!currentTournament || startKnockoutBtn.disabled) return;
     generateKnockoutBracket(currentTournament);
     updateTournamentInStorage(currentTournament);
+    tournamentActiveTab = "knockout";
     renderTournamentView();
   });
 
