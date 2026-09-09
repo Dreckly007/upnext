@@ -1055,16 +1055,28 @@
     color: var(--muted);
   }
 
-  .medal-panel { margin-bottom: 16px; }
-  .medal-row {
-    display: flex;
-    align-items: center;
+  .medal-boxes {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    padding: 6px 4px;
-    font-size: 1.05rem;
-    font-weight: 700;
+    margin-top: 16px;
   }
-  .medal-badge { font-size: 1.4rem; }
+  .medal-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 10px;
+    border-radius: 12px;
+    border: 1px solid;
+    text-align: center;
+  }
+  .medal-box-icon { font-size: 1.8rem; }
+  .medal-box-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  .medal-box-team { font-size: 1rem; font-weight: 800; }
+  .medal-box-gold { background: #fdf3d8; border-color: #e0b12c; color: #8a6d1a; }
+  .medal-box-silver { background: #f2f2f4; border-color: #b8bcc4; color: #5c6570; }
+  .medal-box-bronze { background: #f7e3d4; border-color: #c98a52; color: #8a5626; }
 
   .resting-bar {
     background: #f5ecd9;
@@ -1237,6 +1249,7 @@
     .config-grid .or-divider { grid-column: 1 / -1; }
     .config-grid .field-wide-mobile { grid-column: 1 / -1; }
     .paired-grid { grid-template-columns: 1fr; }
+    .medal-boxes { grid-template-columns: 1fr; }
     .dropdown-row .dropdown-toggle { font-size: 0.78rem; padding: 12px 8px; }
     .dropdown-row .dropdown-toggle .arrow { flex-shrink: 0; margin-left: 4px; }
   }
@@ -1911,8 +1924,8 @@
       </div>
 
       <div id="tournamentKnockoutView" style="display:none;">
-        <div id="tournamentMedalsPanel" style="display:none;"></div>
         <div id="tournamentBracketContainer"></div>
+        <div id="tournamentMedalsPanel" style="display:none;"></div>
       </div>
 
       <button class="debug-btn no-print" id="tournamentDebugScoresBtn">Debug: fill in scores</button>
@@ -4372,24 +4385,29 @@
 
   function buildMedalsPanel(tournament) {
     const wrap = document.createElement("div");
-    wrap.className = "medal-panel";
+    wrap.className = "medal-boxes";
     const entries = [
-      ["🥇", "Gold", tournament.medals.gold],
-      ["🥈", "Silver", tournament.medals.silver],
-      ["🥉", "Bronze", tournament.medals.bronze],
+      ["🥇", "Winner", "gold", tournament.medals.gold],
+      ["🥈", "Second", "silver", tournament.medals.silver],
+      ["🥉", "Third", "bronze", tournament.medals.bronze],
     ];
-    entries.forEach(([icon, label, teamId]) => {
+    entries.forEach(([icon, label, className, teamId]) => {
       if (!teamId) return;
-      const row = document.createElement("div");
-      row.className = "medal-row";
-      const badge = document.createElement("span");
-      badge.className = "medal-badge";
-      badge.textContent = icon;
-      const text = document.createElement("span");
-      text.textContent = `${label}: ${tournamentTeamName(tournament, teamId)}`;
-      row.appendChild(badge);
-      row.appendChild(text);
-      wrap.appendChild(row);
+      const box = document.createElement("div");
+      box.className = `medal-box medal-box-${className}`;
+      const iconEl = document.createElement("span");
+      iconEl.className = "medal-box-icon";
+      iconEl.textContent = icon;
+      const labelEl = document.createElement("span");
+      labelEl.className = "medal-box-label";
+      labelEl.textContent = label;
+      const teamEl = document.createElement("span");
+      teamEl.className = "medal-box-team";
+      teamEl.textContent = tournamentTeamName(tournament, teamId);
+      box.appendChild(iconEl);
+      box.appendChild(labelEl);
+      box.appendChild(teamEl);
+      wrap.appendChild(box);
     });
     return wrap;
   }
