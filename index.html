@@ -1078,6 +1078,41 @@
   .medal-box-silver { background: #f2f2f4; border-color: #b8bcc4; color: #5c6570; }
   .medal-box-bronze { background: #f7e3d4; border-color: #c98a52; color: #8a5626; }
 
+  .schedule-table tr.advancing td { background: #eaf6ec; }
+  .advance-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: #2e7d32;
+    background: rgba(46,125,50,0.12);
+    border: 1px solid #a9d8b1;
+    padding: 2px 7px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-left: 6px;
+  }
+  .qualifiers-box {
+    margin-top: 16px;
+    background: #eaf6ec;
+    border: 1px solid #a9d8b1;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .qualifiers-box h3 {
+    margin: 0 0 8px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #2e7d32;
+  }
+  .qualifiers-box .qgroup { display: flex; gap: 10px; padding: 5px 0; font-size: 0.88rem; flex-wrap: wrap; }
+  .qualifiers-box .qgroup:not(:last-child) { border-bottom: 1px solid #a9d8b1; }
+  .qualifiers-box .qname { font-weight: 800; min-width: 64px; color: var(--text); }
+  .qualifiers-box .qteams { color: var(--text); }
+
   .resting-bar {
     background: #f5ecd9;
     border-radius: 10px;
@@ -1917,6 +1952,7 @@
 
       <div id="tournamentGroupStageView">
         <div id="tournamentGroupsContainer"></div>
+        <div id="tournamentQualifiersBox" class="qualifiers-box"></div>
         <div class="field" style="margin-top:16px;">
           <button class="generate-btn" id="startKnockoutBtn" disabled>Start Knockout Stage</button>
           <div class="hint" id="startKnockoutHint"></div>
@@ -2149,6 +2185,7 @@
   const tournamentStageTabButtons = document.querySelectorAll("#tournamentStageTabs .format-btn");
   const tournamentGroupStageView = document.getElementById("tournamentGroupStageView");
   const tournamentGroupsContainer = document.getElementById("tournamentGroupsContainer");
+  const tournamentQualifiersBox = document.getElementById("tournamentQualifiersBox");
   const startKnockoutBtn = document.getElementById("startKnockoutBtn");
   const startKnockoutHint = document.getElementById("startKnockoutHint");
   const tournamentKnockoutView = document.getElementById("tournamentKnockoutView");
@@ -2998,10 +3035,21 @@
       const st = stats[id];
       const diff = st.pointsFor - st.pointsAgainst;
       const diffText = diff > 0 ? `+${diff}` : String(diff);
-      html += `<tr><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}</td><td>${st.wins}</td><td>${st.losses}</td><td>${diffText}</td></tr>`;
+      const isAdvancing = i < tournament.advancePerGroup;
+      const chip = isAdvancing ? ` <span class="advance-chip">Advancing</span>` : "";
+      html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${diffText}</td></tr>`;
     });
     html += "</tbody>";
     return html;
+  }
+
+  function buildQualifiersBoxHtml(tournament) {
+    const rows = tournament.groups.map((group) => {
+      const { ranked } = computeGroupStandings(tournament, group.index);
+      const advancing = ranked.slice(0, tournament.advancePerGroup).map((id) => tournamentTeamName(tournament, id));
+      return `<div class="qgroup"><span class="qname">Group ${group.name}</span><span class="qteams">${advancing.join(", ")}</span></div>`;
+    });
+    return `<h3>Qualifiers</h3>${rows.join("")}`;
   }
 
   function groupFixturesComplete(group) {
@@ -4353,6 +4401,7 @@
       const table = groupStandingsTableEls[group.index];
       if (table) table.innerHTML = buildGroupStandingsTableHtml(tournament, group.index);
     });
+    tournamentQualifiersBox.innerHTML = buildQualifiersBoxHtml(tournament);
     const remaining = tournament.groups.reduce(
       (sum, g) => sum + g.fixtures.filter((f) => f.scoreA === "" || f.scoreB === "").length,
       0
