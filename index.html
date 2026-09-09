@@ -1670,9 +1670,23 @@
           </div>
           <div class="courts-row" id="tournamentCourtLabelsRow"></div>
 
-          <div class="field">
-            <label for="tournamentStartTimeInput">Start time</label>
-            <input type="time" id="tournamentStartTimeInput" />
+          <div class="paired-grid">
+            <div class="field">
+              <label for="tournamentStartTimeInput">Start time</label>
+              <input type="time" id="tournamentStartTimeInput" />
+            </div>
+            <div class="field field-wide-mobile">
+              <label for="tournamentRoundMinutesInput">Round length</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentRoundMinutesInput" data-step="-1" aria-label="Decrease round length">−</button>
+                <div class="stepper-input-wrap has-unit">
+                  <input type="number" id="tournamentRoundMinutesInput" min="0" value="0" />
+                  <span class="unit-suffix">mins</span>
+                </div>
+                <button type="button" class="stepper-btn" data-target="tournamentRoundMinutesInput" data-step="1" aria-label="Increase round length">+</button>
+              </div>
+              <div class="hint" id="tournamentRoundMinutesHint"></div>
+            </div>
           </div>
 
           <div class="field estimate-field" id="tournamentEstimateField" style="display:none;">
@@ -2195,6 +2209,7 @@
   config.tournamentDoublesEntryMode = config.tournamentDoublesEntryMode === "teamnames" ? "teamnames" : "players";
   config.tournamentCourts = config.tournamentCourts ?? 2;
   if (!Array.isArray(config.tournamentCourtLabels)) config.tournamentCourtLabels = ["1", "2"];
+  config.tournamentRoundMinutes = config.tournamentRoundMinutes ?? 0;
   if ((config.schemaVersion || 1) < CONFIG_SCHEMA_VERSION) {
     // One-time migration: browsers with settings saved before the
     // "games to play" mode existed get bumped onto the new defaults.
@@ -2267,6 +2282,8 @@
   const tournamentAdvanceInput = document.getElementById("tournamentAdvanceInput");
   const tournamentCourtsInput = document.getElementById("tournamentCourtsInput");
   const tournamentCourtLabelsRow = document.getElementById("tournamentCourtLabelsRow");
+  const tournamentRoundMinutesInput = document.getElementById("tournamentRoundMinutesInput");
+  const tournamentRoundMinutesHint = document.getElementById("tournamentRoundMinutesHint");
   const tournamentEstimateField = document.getElementById("tournamentEstimateField");
   const tournamentEstimateNumber = document.getElementById("tournamentEstimateNumber");
   const tournamentEstimateReason = document.getElementById("tournamentEstimateReason");
@@ -2407,6 +2424,7 @@
   courtsInput.value = config.courts;
   tournamentCourtsInput.value = config.tournamentCourts;
   tournamentStartTimeInput.value = new Date().toTimeString().slice(0, 5);
+  tournamentRoundMinutesInput.value = config.tournamentRoundMinutes;
   gamesToPlayInput.value = config.gamesToPlay;
   gameLengthInput.value = config.gameLength;
   timeAvailableHoursInput.value = Math.floor(config.timeAvailable / 60);
@@ -2442,6 +2460,10 @@
       }
     }
     return 15;
+  }
+
+  function tournamentPerRoundMinutes(targetScore, overrideMinutes) {
+    return overrideMinutes > 0 ? overrideMinutes : estimateMinutesForTarget(targetScore) + CHANGEOVER_MINUTES;
   }
 
   function isGamesMode() {
@@ -2765,6 +2787,11 @@
   });
   [tournamentGroupsInput, tournamentAdvanceInput, tournamentTargetScoreInput].forEach((input) => {
     input.addEventListener("input", updateTournamentSetupEstimate);
+  });
+  tournamentRoundMinutesInput.addEventListener("input", () => {
+    config.tournamentRoundMinutes = Math.max(0, parseInt(tournamentRoundMinutesInput.value, 10) || 0);
+    save(STORAGE.config, config);
+    updateTournamentSetupEstimate();
   });
 
   function addTodayPlayer(name) {
@@ -3304,23 +3331,13 @@
     return { roundsForGroup, fixturesPerRound };
   }
 
-  function groupStageBucketSizesProjected(groupSizes) {
-    const shapes = groupSizes.map(groupRoundRobinShape);
-    const maxRounds = Math.max(0, ...shapes.map((s) => s.roundsForGroup));
-    const buckets = [];
-    for (let r = 1; r <= maxRounds; r++) {
-      const size = shapes.reduce((sum, s) => sum + (r <= s.roundsForGroup ? s.fixturesPerRound : 0), 0);
-      if (size > 0) buckets.push(size);
-    }
-    return buckets;
-  }
-
-  function estimateGroupStageMinutes(teamCount, numGroups, courtsCount, targetScore) {
+  function estimateGroupStageMinutes(teamCount, numGroups, courtsCount, perRoundMinutes) {
     if (teamCount < numGroups * 2) return null;
-    const buckets = groupStageBucketSizesProjected(projectGroupSizes(teamCount, numGroups));
-    const rounds = courtRoundsNeeded(buckets, courtsCount);
-    const perRound = estimateMinutesForTarget(targetScore) + CHANGEOVER_MINUTES;
-    return { rounds, minutes: rounds * perRound };
+    const shapes = projectGroupSizes(teamCount, numGroups).map(groupRoundRobinShape);
+    const maxRoundsForGroup = Math.max(0, ...shapes.map((s) => s.roundsForGroup));
+    const totalFixtures = shapes.reduce((sum, s) => sum + s.roundsForGroup * s.fixturesPerRound, 0);
+    const rounds = Math.max(maxRoundsForGroup, Math.ceil(totalFixtures / courtsCount));
+    return { rounds, minutes: rounds * perRoundMinutes };
   }
 
   function knockoutBracketShape(qualifierCount) {
@@ -3337,12 +3354,11 @@
     return { bracketSize, byes, roundMatchCounts };
   }
 
-  function estimateKnockoutMinutes(qualifierCount, courtsCount, targetScore) {
+  function estimateKnockoutMinutes(qualifierCount, courtsCount, perRoundMinutes) {
     const shape = knockoutBracketShape(qualifierCount);
     if (!shape) return null;
     const rounds = courtRoundsNeeded(shape.roundMatchCounts, courtsCount);
-    const perRound = estimateMinutesForTarget(targetScore) + CHANGEOVER_MINUTES;
-    return { rounds, minutes: rounds * perRound };
+    return { rounds, minutes: rounds * perRoundMinutes };
   }
 
   function projectQualifierCount(teamCount, numGroups, advancePerGroup) {
@@ -3352,13 +3368,44 @@
   function buildGroupStageCourtSchedule(tournament) {
     const allFixtures = tournament.groups.flatMap((g) => g.fixtures);
     if (allFixtures.length === 0) return [];
-    const maxRound = Math.max(...allFixtures.map((f) => f.roundHint));
+    let remaining = allFixtures.map((fixture, order) => ({ fixture, order }));
+    const playCount = {};
+    const lastWave = {};
+    tournament.teams.forEach((t) => { playCount[t.id] = 0; lastWave[t.id] = -1; });
     const schedule = [];
-    for (let r = 1; r <= maxRound; r++) {
-      const bucket = allFixtures.filter((f) => f.roundHint === r);
-      for (let i = 0; i < bucket.length; i += tournament.courts) {
-        schedule.push({ roundNumber: schedule.length + 1, fixtures: bucket.slice(i, i + tournament.courts) });
+    let waveIndex = 0;
+    while (remaining.length > 0) {
+      remaining.sort((a, b) => {
+        const { teamAId: aA, teamBId: aB } = a.fixture;
+        const { teamAId: bA, teamBId: bB } = b.fixture;
+        const aPlayed = Math.min(playCount[aA], playCount[aB]);
+        const bPlayed = Math.min(playCount[bA], playCount[bB]);
+        if (aPlayed !== bPlayed) return aPlayed - bPlayed;
+        const aWait = waveIndex - Math.max(lastWave[aA], lastWave[aB]);
+        const bWait = waveIndex - Math.max(lastWave[bA], lastWave[bB]);
+        if (aWait !== bWait) return bWait - aWait;
+        return a.order - b.order;
+      });
+      const usedTeams = new Set();
+      const waveItems = [];
+      for (const item of remaining) {
+        if (waveItems.length >= tournament.courts) break;
+        const { teamAId, teamBId } = item.fixture;
+        if (usedTeams.has(teamAId) || usedTeams.has(teamBId)) continue;
+        waveItems.push(item);
+        usedTeams.add(teamAId);
+        usedTeams.add(teamBId);
       }
+      waveItems.forEach(({ fixture }) => {
+        playCount[fixture.teamAId] += 1;
+        playCount[fixture.teamBId] += 1;
+        lastWave[fixture.teamAId] = waveIndex;
+        lastWave[fixture.teamBId] = waveIndex;
+      });
+      schedule.push({ roundNumber: waveIndex + 1, fixtures: waveItems.map((item) => item.fixture) });
+      const scheduled = new Set(waveItems);
+      remaining = remaining.filter((item) => !scheduled.has(item));
+      waveIndex++;
     }
     return schedule;
   }
@@ -3382,7 +3429,7 @@
   }
 
   function buildCourtScheduleHtml(tournament, schedule, items, roundLabel, baseMinutes) {
-    const perRound = estimateMinutesForTarget(tournament.targetScore) + CHANGEOVER_MINUTES;
+    const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
     return schedule.map((entry, idx) => {
       const entryItems = items(entry);
       const timeText = baseMinutes != null
@@ -3415,7 +3462,7 @@
   }
 
   function computeTournamentLiveEstimate(tournament) {
-    const perRound = estimateMinutesForTarget(tournament.targetScore) + CHANGEOVER_MINUTES;
+    const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
     const groupRounds = buildGroupStageCourtSchedule(tournament).length;
     let knockoutRounds;
     if (tournament.knockout) {
@@ -3437,13 +3484,16 @@
     const advancePerGroup = Math.max(1, parseInt(tournamentAdvanceInput.value, 10) || 1);
     const courts = Math.max(1, parseInt(tournamentCourtsInput.value, 10) || 1);
     const targetScore = Math.max(1, Math.min(21, parseInt(tournamentTargetScoreInput.value, 10) || 11));
-    const groupEst = estimateGroupStageMinutes(tournamentTeams.length, numGroups, courts, targetScore);
+    const roundOverride = Math.max(0, parseInt(tournamentRoundMinutesInput.value, 10) || 0);
+    const perRoundMinutes = tournamentPerRoundMinutes(targetScore, roundOverride);
+    tournamentRoundMinutesHint.textContent = roundOverride > 0 ? "" : `Auto: ${perRoundMinutes} min`;
+    const groupEst = estimateGroupStageMinutes(tournamentTeams.length, numGroups, courts, perRoundMinutes);
     if (!groupEst) {
       tournamentEstimateField.style.display = "none";
       return;
     }
     const qualifierCount = projectQualifierCount(tournamentTeams.length, numGroups, advancePerGroup);
-    const knockoutEst = estimateKnockoutMinutes(qualifierCount, courts, targetScore);
+    const knockoutEst = estimateKnockoutMinutes(qualifierCount, courts, perRoundMinutes);
     const totalMinutes = groupEst.minutes + (knockoutEst ? knockoutEst.minutes : 0);
     tournamentEstimateField.style.display = "block";
     tournamentEstimateNumber.textContent = `${totalMinutes} min`;
@@ -5325,7 +5375,7 @@
   function buildPrintTournamentScheduleHtml() {
     const t = currentTournament;
     const schedule = buildGroupStageCourtSchedule(t);
-    const perRound = estimateMinutesForTarget(t.targetScore) + CHANGEOVER_MINUTES;
+    const perRound = tournamentPerRoundMinutes(t.targetScore, t.roundMinutes);
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Court Schedule</div>`;
     schedule.forEach((entry, idx) => {
       const timeText = t.startMinutes != null ? ` · ${formatMinutesAsClock(t.startMinutes + idx * perRound)}` : "";
@@ -5348,7 +5398,7 @@
     const t = currentTournament;
     const ko = t.knockout;
     const schedule = buildKnockoutCourtSchedule(t);
-    const perRound = estimateMinutesForTarget(t.targetScore) + CHANGEOVER_MINUTES;
+    const perRound = tournamentPerRoundMinutes(t.targetScore, t.roundMinutes);
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
     schedule.forEach((entry, idx) => {
       const timeText = t.knockoutStartMinutes != null ? ` · ${formatMinutesAsClock(t.knockoutStartMinutes + idx * perRound)}` : "";
@@ -5657,6 +5707,7 @@
       courtLabels: config.tournamentCourtLabels.slice(0, courts),
       startMinutes: parseTimeInputToMinutes(tournamentStartTimeInput.value),
       knockoutStartMinutes: null,
+      roundMinutes: Math.max(0, parseInt(tournamentRoundMinutesInput.value, 10) || 0),
       teams,
       groups,
       advancePerGroup,
