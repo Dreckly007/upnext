@@ -918,6 +918,7 @@
     padding: 16px 18px;
     background: #fff;
   }
+  .court-card, .team-cell { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .court-title {
     text-align: center;
     text-transform: uppercase;
@@ -1139,6 +1140,7 @@
   .court-card-compact .court-title { margin-bottom: 6px; font-size: 0.75rem; }
   .court-card-compact .team-cell { padding: 8px 8px; font-size: 0.82rem; }
   .court-schedule-card-score { text-align: center; font-weight: 700; color: var(--green-dark); font-size: 0.85rem; margin-top: 6px; }
+  .court-schedule-pending { text-align: center; color: var(--muted); font-size: 0.8rem; font-style: italic; padding: 10px 4px; }
 
   .resting-bar {
     background: #f5ecd9;
@@ -3428,37 +3430,141 @@
     return schedule;
   }
 
-  function buildCourtScheduleHtml(tournament, schedule, items, roundLabel, baseMinutes) {
+  function buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange) {
+    const card = document.createElement("div");
+    card.className = "court-card court-card-compact";
+    const title = document.createElement("div");
+    title.className = "court-title";
+    title.textContent = `Court ${courtLabel}`;
+    card.appendChild(title);
+
+    if (kind !== "real") {
+      const pending = document.createElement("div");
+      pending.className = "court-schedule-pending";
+      pending.textContent = "Waiting on earlier results...";
+      card.appendChild(pending);
+      return card;
+    }
+
+    const teamBox = document.createElement("div");
+    teamBox.className = "team-box";
+    courtCardCellNames(tournament, item.teamAId, item.teamBId).forEach((name) => {
+      const cell = document.createElement("div");
+      cell.className = "team-cell";
+      cell.textContent = name;
+      teamBox.appendChild(cell);
+    });
+    const netDivider = document.createElement("div");
+    netDivider.className = "net-divider";
+    teamBox.appendChild(netDivider);
+    card.appendChild(teamBox);
+
+    const maxVal = tournamentMaxScore(tournament);
+    const scoreRow = document.createElement("div");
+    scoreRow.className = "score-row";
+    const scoreA = document.createElement("input");
+    scoreA.type = "number";
+    scoreA.min = "0";
+    if (maxVal != null) scoreA.max = String(maxVal);
+    scoreA.value = item.scoreA;
+    scoreA.addEventListener("input", () => {
+      sanitizeScoreInput(scoreA, maxVal);
+      item.scoreA = scoreA.value;
+      syncFixtureScoreWidgets(item, fixtureRowWidgets.get(item));
+      onScoreChange();
+    });
+    const scoreB = document.createElement("input");
+    scoreB.type = "number";
+    scoreB.min = "0";
+    if (maxVal != null) scoreB.max = String(maxVal);
+    scoreB.value = item.scoreB;
+    scoreB.addEventListener("input", () => {
+      sanitizeScoreInput(scoreB, maxVal);
+      item.scoreB = scoreB.value;
+      syncFixtureScoreWidgets(item, fixtureRowWidgets.get(item));
+      onScoreChange();
+    });
+    const scoreLabel = document.createElement("div");
+    scoreLabel.className = "score-label";
+    scoreLabel.textContent = "Score";
+    scoreRow.appendChild(buildScoreStepperGroup(scoreA, tournamentTeamName(tournament, item.teamAId), maxVal));
+    scoreRow.appendChild(scoreLabel);
+    scoreRow.appendChild(buildScoreStepperGroup(scoreB, tournamentTeamName(tournament, item.teamBId), maxVal));
+    card.appendChild(scoreRow);
+
+    courtScheduleWidgets.set(item, { scoreA, scoreB });
+    return card;
+  }
+
+  function buildCourtScheduleEl(tournament, schedule, items, roundLabel, baseMinutes, kindOf, onScoreChange, onCardBuilt) {
+    const wrap = document.createElement("div");
+    if (schedule.length === 0) {
+      wrap.className = "empty-note";
+      wrap.textContent = "No fixtures yet.";
+      return wrap;
+    }
     const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
-    return schedule.map((entry, idx) => {
-      const entryItems = items(entry);
-      const timeText = baseMinutes != null
-        ? ` <span class="court-schedule-round-time">· ${formatMinutesAsClock(baseMinutes + idx * perRound)}</span>`
-        : "";
-      const cards = entryItems.map((item, i) => {
+    schedule.forEach((entry, idx) => {
+      const roundEl = document.createElement("div");
+      roundEl.className = "court-schedule-round";
+      const titleEl = document.createElement("div");
+      titleEl.className = "court-schedule-round-title";
+      titleEl.textContent = roundLabel(entry);
+      if (baseMinutes != null) {
+        const timeEl = document.createElement("span");
+        timeEl.className = "court-schedule-round-time";
+        timeEl.textContent = ` · ${formatMinutesAsClock(baseMinutes + idx * perRound)}`;
+        titleEl.appendChild(timeEl);
+      }
+      roundEl.appendChild(titleEl);
+      const cardsRow = document.createElement("div");
+      cardsRow.className = "court-cards-row";
+      items(entry).forEach((item, i) => {
         const courtLabel = tournament.courtLabels[i] || String(i + 1);
-        const cellNames = courtCardCellNames(tournament, item.teamAId, item.teamBId);
-        const cells = cellNames.map((name) => `<div class="team-cell">${name}</div>`).join("");
-        const hasScore = item.scoreA !== "" && item.scoreB !== "";
-        const scoreHtml = hasScore
-          ? `<div class="court-schedule-card-score">${item.scoreA} – ${item.scoreB}</div>`
-          : "";
-        return `<div class="court-card court-card-compact"><div class="court-title">Court ${courtLabel}</div><div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
-      }).join("");
-      return `<div class="court-schedule-round"><div class="court-schedule-round-title">${roundLabel(entry)}${timeText}</div><div class="court-cards-row">${cards}</div></div>`;
-    }).join("");
+        const kind = kindOf(item);
+        const card = buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange);
+        cardsRow.appendChild(card);
+        if (onCardBuilt) onCardBuilt(item, card, kind);
+      });
+      roundEl.appendChild(cardsRow);
+      wrap.appendChild(roundEl);
+    });
+    return wrap;
   }
 
-  function buildGroupStageCourtScheduleHtml(tournament) {
+  function buildGroupStageCourtScheduleEl(tournament) {
     const schedule = buildGroupStageCourtSchedule(tournament);
-    if (schedule.length === 0) return `<div class="empty-note">No fixtures yet.</div>`;
-    return buildCourtScheduleHtml(tournament, schedule, (e) => e.fixtures, (e) => `Round ${e.roundNumber}`, tournament.startMinutes);
+    return buildCourtScheduleEl(
+      tournament, schedule, (e) => e.fixtures, (e) => `Round ${e.roundNumber}`,
+      tournament.startMinutes, () => "real", onTournamentGroupScoreChange
+    );
   }
 
-  function buildKnockoutCourtScheduleHtml(tournament) {
+  function buildKnockoutCourtScheduleEl(tournament) {
     const schedule = buildKnockoutCourtSchedule(tournament);
-    if (schedule.length === 0) return `<div class="empty-note">No matches need a court yet.</div>`;
-    return buildCourtScheduleHtml(tournament, schedule, (e) => e.matches, (e) => e.label, tournament.knockoutStartMinutes);
+    return buildCourtScheduleEl(
+      tournament, schedule, (e) => e.matches, (e) => e.label,
+      tournament.knockoutStartMinutes, knockoutMatchKind, onTournamentKnockoutScoreChange,
+      (match, card, kind) => { knockoutScheduleCards[match.id] = { kind, el: card }; }
+    );
+  }
+
+  function updateKnockoutScheduleCards(tournament) {
+    const schedule = buildKnockoutCourtSchedule(tournament);
+    schedule.forEach((entry) => {
+      entry.matches.forEach((match, i) => {
+        const existing = knockoutScheduleCards[match.id];
+        const kind = knockoutMatchKind(match);
+        if (!existing || existing.kind !== kind) {
+          const courtLabel = tournament.courtLabels[i] || String(i + 1);
+          const newCard = buildCourtScheduleCard(tournament, match, courtLabel, kind, onTournamentKnockoutScoreChange);
+          if (existing && existing.el.parentNode) existing.el.parentNode.replaceChild(newCard, existing.el);
+          knockoutScheduleCards[match.id] = { kind, el: newCard };
+        }
+        // kind unchanged (still "real"): leave the existing card untouched, values already stay
+        // correct via syncFixtureScoreWidgets so focus/cursor position survive.
+      });
+    });
   }
 
   function computeTournamentLiveEstimate(tournament) {
@@ -4726,6 +4832,17 @@
     return tournament.winByTwo ? null : tournament.targetScore;
   }
 
+  let fixtureRowWidgets = new Map();
+  let courtScheduleWidgets = new Map();
+
+  function syncFixtureScoreWidgets(fixture, ...widgets) {
+    widgets.forEach((w) => {
+      if (!w) return;
+      if (document.activeElement !== w.scoreA) w.scoreA.value = fixture.scoreA;
+      if (document.activeElement !== w.scoreB) w.scoreB.value = fixture.scoreB;
+    });
+  }
+
   function buildFixtureRow(tournament, fixture, onScoreChange) {
     const row = document.createElement("div");
     row.className = "fixture-row";
@@ -4745,6 +4862,7 @@
     scoreA.addEventListener("input", () => {
       sanitizeScoreInput(scoreA, maxVal);
       fixture.scoreA = scoreA.value;
+      syncFixtureScoreWidgets(fixture, courtScheduleWidgets.get(fixture));
       onScoreChange();
     });
     const scoreB = document.createElement("input");
@@ -4755,6 +4873,7 @@
     scoreB.addEventListener("input", () => {
       sanitizeScoreInput(scoreB, maxVal);
       fixture.scoreB = scoreB.value;
+      syncFixtureScoreWidgets(fixture, courtScheduleWidgets.get(fixture));
       onScoreChange();
     });
     const dash = document.createElement("div");
@@ -4771,6 +4890,7 @@
     row.appendChild(nameA);
     row.appendChild(scoreRow);
     row.appendChild(nameB);
+    fixtureRowWidgets.set(fixture, { scoreA, scoreB });
     return row;
   }
 
@@ -4811,7 +4931,6 @@
       if (table) table.innerHTML = buildGroupStandingsTableHtml(tournament, group.index);
     });
     tournamentQualifiersBox.innerHTML = buildQualifiersBoxHtml(tournament);
-    if (tournamentGroupScheduleEl) tournamentGroupScheduleEl.innerHTML = buildGroupStageCourtScheduleHtml(tournament);
     updateTournamentViewEstimate(tournament);
     const remaining = tournament.groups.reduce(
       (sum, g) => sum + g.fixtures.filter((f) => f.scoreA === "" || f.scoreB === "").length,
@@ -4826,9 +4945,11 @@
 
   function renderTournamentGroupStage(tournament) {
     groupStandingsTableEls = {};
+    fixtureRowWidgets = new Map();
+    courtScheduleWidgets = new Map();
     tournamentGroupsContainer.innerHTML = "";
     tournamentGroupScheduleEl = document.createElement("div");
-    tournamentGroupScheduleEl.innerHTML = buildGroupStageCourtScheduleHtml(tournament);
+    tournamentGroupScheduleEl.appendChild(buildGroupStageCourtScheduleEl(tournament));
     tournamentGroupsContainer.appendChild(buildCollapsibleSection("Court Schedule", tournamentGroupScheduleEl, false));
     tournament.groups.forEach((group) => {
       const content = document.createElement("div");
@@ -4881,6 +5002,7 @@
   let knockoutRowEls = {};
   let knockoutRenderedTournamentId = null;
   let tournamentKnockoutScheduleEl = null;
+  let knockoutScheduleCards = {};
 
   function knockoutMatchKind(match) {
     if (match.byeAdvance) return "bye";
@@ -4910,10 +5032,12 @@
 
     if (fullRebuild) {
       knockoutRowEls = {};
+      knockoutScheduleCards = {};
+      courtScheduleWidgets = new Map();
       knockoutRenderedTournamentId = tournament.id;
       tournamentBracketContainer.innerHTML = "";
       tournamentKnockoutScheduleEl = document.createElement("div");
-      tournamentKnockoutScheduleEl.innerHTML = buildKnockoutCourtScheduleHtml(tournament);
+      tournamentKnockoutScheduleEl.appendChild(buildKnockoutCourtScheduleEl(tournament));
       tournamentBracketContainer.appendChild(buildCollapsibleSection("Court Schedule", tournamentKnockoutScheduleEl, false));
       ko.rounds.forEach((round) => {
         const content = document.createElement("div");
@@ -4947,7 +5071,7 @@
     }
 
     if (!fullRebuild && tournamentKnockoutScheduleEl) {
-      tournamentKnockoutScheduleEl.innerHTML = buildKnockoutCourtScheduleHtml(tournament);
+      updateKnockoutScheduleCards(tournament);
     }
 
     if (tournament.medals) {
@@ -5352,6 +5476,21 @@
     return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams"><span>${nameA}</span><span>${nameB}</span></div>${scoreLine}</div>`;
   }
 
+  function buildPrintCourtCardHtml(tournament, item, courtLabel) {
+    const kind = knockoutMatchKind(item);
+    const title = `<div class="court-title">Court ${courtLabel}</div>`;
+    if (kind !== "real") {
+      return `<div class="court-card court-card-compact">${title}<div class="print-fixture-bye">Waiting on earlier results...</div></div>`;
+    }
+    const cells = courtCardCellNames(tournament, item.teamAId, item.teamBId)
+      .map((name) => `<div class="team-cell">${name}</div>`).join("");
+    const hasScore = item.scoreA !== "" && item.scoreB !== "";
+    const scoreHtml = hasScore
+      ? `<div class="court-schedule-card-score">${item.scoreA} – ${item.scoreB}</div>`
+      : `<div class="court-schedule-card-score"><span class="print-score-box"></span><span class="print-score-dash">–</span><span class="print-score-box"></span></div>`;
+    return `<div class="court-card court-card-compact">${title}<div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
+  }
+
   function buildPrintTournamentGroupsHtml() {
     const t = currentTournament;
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Group Stage</div>`;
@@ -5379,10 +5518,10 @@
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Court Schedule</div>`;
     schedule.forEach((entry, idx) => {
       const timeText = t.startMinutes != null ? ` · ${formatMinutesAsClock(t.startMinutes + idx * perRound)}` : "";
-      html += `<div class="print-round"><div class="print-round-top">Round ${entry.roundNumber}${timeText}</div><div class="print-courts-row">`;
+      html += `<div class="print-round"><div class="print-round-top">Round ${entry.roundNumber}${timeText}</div><div class="court-cards-row">`;
       entry.fixtures.forEach((fixture, i) => {
         const courtLabel = t.courtLabels[i] || String(i + 1);
-        html += buildPrintFixtureCardHtml(t, fixture, "", courtLabel);
+        html += buildPrintCourtCardHtml(t, fixture, courtLabel);
       });
       html += `</div></div>`;
     });
@@ -5402,10 +5541,10 @@
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
     schedule.forEach((entry, idx) => {
       const timeText = t.knockoutStartMinutes != null ? ` · ${formatMinutesAsClock(t.knockoutStartMinutes + idx * perRound)}` : "";
-      html += `<div class="print-round"><div class="print-round-top">${entry.label}${timeText}</div><div class="print-courts-row">`;
+      html += `<div class="print-round"><div class="print-round-top">${entry.label}${timeText}</div><div class="court-cards-row">`;
       entry.matches.forEach((match, i) => {
         const courtLabel = t.courtLabels[i] || String(i + 1);
-        html += buildPrintFixtureCardHtml(t, match, "Waiting on earlier results...", courtLabel);
+        html += buildPrintCourtCardHtml(t, match, courtLabel);
       });
       html += `</div></div>`;
     });
