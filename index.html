@@ -1097,17 +1097,20 @@
   }
   .qualifiers-box {
     margin-top: 16px;
-    background: #eaf6ec;
     border: 1px solid #a9d8b1;
-    border-radius: 12px;
-    padding: 14px 16px;
+    border-radius: 10px;
+    overflow: hidden;
   }
-  .qualifiers-box h3 {
-    margin: 0 0 8px;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+  .qualifiers-box-header {
+    background: #d7f0da;
     color: #2e7d32;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 12px 16px;
+  }
+  .qualifiers-box-panel {
+    background: #eaf6ec;
+    padding: 12px 14px;
   }
   .qualifiers-box .qgroup { display: flex; gap: 10px; padding: 5px 0; font-size: 0.88rem; flex-wrap: wrap; }
   .qualifiers-box .qgroup:not(:last-child) { border-bottom: 1px solid #a9d8b1; }
@@ -3244,7 +3247,7 @@
       });
       return `<div class="qgroup"><span class="qname">Group ${group.name}</span><span class="qteams">${advancing.join(", ")}</span></div>`;
     });
-    return `<h3>Qualifiers</h3>${rows.join("")}`;
+    return `<div class="qualifiers-box-header">Qualifiers</div><div class="qualifiers-box-panel">${rows.join("")}</div>`;
   }
 
   function groupFixturesComplete(group) {
