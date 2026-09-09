@@ -309,7 +309,7 @@
     font-size: 0.95rem;
     margin: 18px 0 8px;
   }
-  input[type="text"], input[type="number"] {
+  input[type="text"], input[type="number"], input[type="time"] {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid var(--card-border);
@@ -318,7 +318,7 @@
     background: #fff;
     color: var(--text);
   }
-  input[type="text"]:focus, input[type="number"]:focus {
+  input[type="text"]:focus, input[type="number"]:focus, input[type="time"]:focus {
     outline: 2px solid var(--green);
     outline-offset: 1px;
   }
@@ -1116,11 +1116,29 @@
 
   .court-schedule-round { padding: 8px 0; border-bottom: 1px solid var(--card-border); }
   .court-schedule-round:last-child { border-bottom: none; }
-  .court-schedule-round-title { font-weight: 700; color: var(--green-dark); font-size: 0.85rem; margin-bottom: 4px; }
+  .court-schedule-round-title { font-weight: 700; color: var(--green-dark); font-size: 0.85rem; margin-bottom: 8px; }
+  .court-schedule-round-time { color: var(--muted); font-weight: 600; }
   .court-schedule-slot { display: flex; gap: 8px; padding: 3px 0; font-size: 0.88rem; }
   .court-schedule-court { font-weight: 700; color: var(--muted); min-width: 72px; flex-shrink: 0; }
   .court-schedule-match { color: var(--text); }
   .court-schedule-score { color: var(--green-dark); font-weight: 700; }
+
+  .court-cards-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  @media (min-width: 620px) {
+    .court-cards-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width: 900px) {
+    .court-cards-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  .court-card-compact { padding: 8px 10px; }
+  .court-card-compact .court-title { margin-bottom: 6px; font-size: 0.75rem; }
+  .court-card-compact .team-cell { padding: 8px 8px; font-size: 0.82rem; }
+  .court-schedule-card-score { text-align: center; font-weight: 700; color: var(--green-dark); font-size: 0.85rem; margin-top: 6px; }
 
   .resting-bar {
     background: #f5ecd9;
@@ -1370,7 +1388,9 @@
   #printSessionStatsView { display: none; }
   #printLadderStandingsView { display: none; }
   #printTournamentGroupsView { display: none; }
+  #printTournamentScheduleView { display: none; }
   #printTournamentBracketView { display: none; }
+  #printTournamentMedalGamesView { display: none; }
   .print-score-line {
     display: flex;
     align-items: center;
@@ -1393,6 +1413,15 @@
     flex: 1 1 150px;
     min-width: 150px;
     max-width: 220px;
+  }
+  .print-fixture-court {
+    text-align: center;
+    font-weight: 800;
+    font-size: 7.5pt;
+    letter-spacing: 0.04em;
+    padding: 1px 4px 2px;
+    border-bottom: 1px solid var(--green);
+    color: var(--green-dark);
   }
   .print-fixture-teams {
     display: flex;
@@ -1437,9 +1466,15 @@
     body.printing-tournament-groups .bg-watermark,
     body.printing-tournament-groups .app > *:not(#printTournamentGroupsView) { display: none !important; }
     body.printing-tournament-groups #printTournamentGroupsView { display: block !important; }
+    body.printing-tournament-schedule .bg-watermark,
+    body.printing-tournament-schedule .app > *:not(#printTournamentScheduleView) { display: none !important; }
+    body.printing-tournament-schedule #printTournamentScheduleView { display: block !important; }
     body.printing-tournament-bracket .bg-watermark,
     body.printing-tournament-bracket .app > *:not(#printTournamentBracketView) { display: none !important; }
     body.printing-tournament-bracket #printTournamentBracketView { display: block !important; }
+    body.printing-tournament-medal-games .bg-watermark,
+    body.printing-tournament-medal-games .app > *:not(#printTournamentMedalGamesView) { display: none !important; }
+    body.printing-tournament-medal-games #printTournamentMedalGamesView { display: block !important; }
     @page { size: A4; margin: 12mm; }
   }
 </style>
@@ -1634,6 +1669,11 @@
             </div>
           </div>
           <div class="courts-row" id="tournamentCourtLabelsRow"></div>
+
+          <div class="field">
+            <label for="tournamentStartTimeInput">Start time</label>
+            <input type="time" id="tournamentStartTimeInput" />
+          </div>
 
           <div class="field estimate-field" id="tournamentEstimateField" style="display:none;">
             <label>Estimated tournament duration</label>
@@ -1987,6 +2027,10 @@
       <div id="tournamentGroupStageView">
         <div id="tournamentGroupsContainer"></div>
         <div id="tournamentQualifiersBox" class="qualifiers-box"></div>
+        <div class="field no-print" style="margin-top:16px;">
+          <label for="tournamentKnockoutStartTimeInput">Knockout start time</label>
+          <input type="time" id="tournamentKnockoutStartTimeInput" />
+        </div>
         <div class="field" style="margin-top:16px;">
           <button class="generate-btn" id="startKnockoutBtn" disabled>Start Knockout Stage</button>
           <div class="hint" id="startKnockoutHint"></div>
@@ -2000,7 +2044,7 @@
 
       <button class="debug-btn no-print" id="tournamentDebugScoresBtn">Debug: fill in scores</button>
 
-      <div class="icon-btn-row cols-3 no-print" id="tournamentActionsRow">
+      <div class="icon-btn-row cols-5 no-print" id="tournamentActionsRow">
         <button class="icon-btn" id="tournamentBackBtn" aria-label="Back to setup">
           <span class="icon-glyph" aria-hidden="true">↺</span>
           <span class="icon-label">Back to Setup</span>
@@ -2009,9 +2053,17 @@
           <span class="icon-glyph" aria-hidden="true">🧾</span>
           <span class="icon-label">Print Groups</span>
         </button>
+        <button class="icon-btn" id="printTournamentScheduleBtn" aria-label="Print court schedule">
+          <span class="icon-glyph" aria-hidden="true">🗓️</span>
+          <span class="icon-label">Print Schedule</span>
+        </button>
         <button class="icon-btn" id="printTournamentBracketBtn" aria-label="Print bracket">
           <span class="icon-glyph" aria-hidden="true">🏆</span>
           <span class="icon-label">Print Bracket</span>
+        </button>
+        <button class="icon-btn" id="printTournamentMedalGamesBtn" aria-label="Print medal games">
+          <span class="icon-glyph" aria-hidden="true">🏅</span>
+          <span class="icon-label">Print Medal Games</span>
         </button>
       </div>
     </div>
@@ -2028,7 +2080,11 @@
 
     <div id="printTournamentGroupsView"></div>
 
+    <div id="printTournamentScheduleView"></div>
+
     <div id="printTournamentBracketView"></div>
+
+    <div id="printTournamentMedalGamesView"></div>
 
     <div class="modal-overlay no-print" id="swapConfirmOverlay" style="display:none;">
       <div class="modal-card">
@@ -2214,6 +2270,8 @@
   const tournamentEstimateField = document.getElementById("tournamentEstimateField");
   const tournamentEstimateNumber = document.getElementById("tournamentEstimateNumber");
   const tournamentEstimateReason = document.getElementById("tournamentEstimateReason");
+  const tournamentStartTimeInput = document.getElementById("tournamentStartTimeInput");
+  const tournamentKnockoutStartTimeInput = document.getElementById("tournamentKnockoutStartTimeInput");
   const tournamentTargetScoreInput = document.getElementById("tournamentTargetScoreInput");
   const tournamentWinByTwoYesBtn = document.getElementById("tournamentWinByTwoYesBtn");
   const tournamentWinByTwoNoBtn = document.getElementById("tournamentWinByTwoNoBtn");
@@ -2237,9 +2295,13 @@
   const tournamentBracketContainer = document.getElementById("tournamentBracketContainer");
   const tournamentBackBtn = document.getElementById("tournamentBackBtn");
   const printTournamentGroupsBtn = document.getElementById("printTournamentGroupsBtn");
+  const printTournamentScheduleBtn = document.getElementById("printTournamentScheduleBtn");
   const printTournamentBracketBtn = document.getElementById("printTournamentBracketBtn");
+  const printTournamentMedalGamesBtn = document.getElementById("printTournamentMedalGamesBtn");
   const printTournamentGroupsView = document.getElementById("printTournamentGroupsView");
+  const printTournamentScheduleView = document.getElementById("printTournamentScheduleView");
   const printTournamentBracketView = document.getElementById("printTournamentBracketView");
+  const printTournamentMedalGamesView = document.getElementById("printTournamentMedalGamesView");
   const courtsInput = document.getElementById("courtsInput");
   const gamesToPlayInput = document.getElementById("gamesToPlayInput");
   const gameLengthInput = document.getElementById("gameLengthInput");
@@ -2344,6 +2406,7 @@
 
   courtsInput.value = config.courts;
   tournamentCourtsInput.value = config.tournamentCourts;
+  tournamentStartTimeInput.value = new Date().toTimeString().slice(0, 5);
   gamesToPlayInput.value = config.gamesToPlay;
   gameLengthInput.value = config.gameLength;
   timeAvailableHoursInput.value = Math.floor(config.timeAvailable / 60);
@@ -3019,6 +3082,15 @@
     return team ? team.name : "?";
   }
 
+  function courtCardCellNames(tournament, teamAId, teamBId) {
+    const teamA = findTeamById(tournament, teamAId);
+    const teamB = findTeamById(tournament, teamBId);
+    if (teamA && teamB && teamA.players.length === 2 && teamB.players.length === 2) {
+      return [teamA.players[0], teamB.players[0], teamA.players[1], teamB.players[1]];
+    }
+    return [tournamentTeamName(tournament, teamAId) || "TBD", tournamentTeamName(tournament, teamBId) || "TBD"];
+  }
+
   function updateTournamentInStorage(tournament) {
     const idx = pastTournaments.findIndex((t) => t.id === tournament.id);
     if (idx !== -1) pastTournaments[idx] = tournament;
@@ -3204,6 +3276,20 @@
     return bucketSizes.reduce((sum, size) => sum + Math.ceil(size / courtsCount), 0);
   }
 
+  function parseTimeInputToMinutes(value) {
+    if (!value) return null;
+    const [hh, mm] = value.split(":").map(Number);
+    return hh * 60 + mm;
+  }
+
+  function formatMinutesAsClock(totalMinutes) {
+    const m = ((totalMinutes % 1440) + 1440) % 1440;
+    const hh24 = Math.floor(m / 60);
+    const period = hh24 < 12 ? "AM" : "PM";
+    const hh12 = hh24 % 12 === 0 ? 12 : hh24 % 12;
+    return `${hh12}:${String(m % 60).padStart(2, "0")} ${period}`;
+  }
+
   function projectGroupSizes(teamCount, numGroups) {
     const base = Math.floor(teamCount / numGroups);
     const remainder = teamCount % numGroups;
@@ -3295,31 +3381,37 @@
     return schedule;
   }
 
-  function buildCourtScheduleHtml(tournament, schedule, items, roundLabel) {
-    return schedule.map((entry) => {
+  function buildCourtScheduleHtml(tournament, schedule, items, roundLabel, baseMinutes) {
+    const perRound = estimateMinutesForTarget(tournament.targetScore) + CHANGEOVER_MINUTES;
+    return schedule.map((entry, idx) => {
       const entryItems = items(entry);
-      const slots = entryItems.map((item, i) => {
+      const timeText = baseMinutes != null
+        ? ` <span class="court-schedule-round-time">· ${formatMinutesAsClock(baseMinutes + idx * perRound)}</span>`
+        : "";
+      const cards = entryItems.map((item, i) => {
         const courtLabel = tournament.courtLabels[i] || String(i + 1);
-        const nameA = tournamentTeamName(tournament, item.teamAId);
-        const nameB = tournamentTeamName(tournament, item.teamBId);
+        const cellNames = courtCardCellNames(tournament, item.teamAId, item.teamBId);
+        const cells = cellNames.map((name) => `<div class="team-cell">${name}</div>`).join("");
         const hasScore = item.scoreA !== "" && item.scoreB !== "";
-        const scoreText = hasScore ? ` <span class="court-schedule-score">(${item.scoreA}-${item.scoreB})</span>` : "";
-        return `<div class="court-schedule-slot"><span class="court-schedule-court">Court ${courtLabel}</span><span class="court-schedule-match">${nameA} vs ${nameB}${scoreText}</span></div>`;
+        const scoreHtml = hasScore
+          ? `<div class="court-schedule-card-score">${item.scoreA} – ${item.scoreB}</div>`
+          : "";
+        return `<div class="court-card court-card-compact"><div class="court-title">Court ${courtLabel}</div><div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
       }).join("");
-      return `<div class="court-schedule-round"><div class="court-schedule-round-title">${roundLabel(entry)}</div>${slots}</div>`;
+      return `<div class="court-schedule-round"><div class="court-schedule-round-title">${roundLabel(entry)}${timeText}</div><div class="court-cards-row">${cards}</div></div>`;
     }).join("");
   }
 
   function buildGroupStageCourtScheduleHtml(tournament) {
     const schedule = buildGroupStageCourtSchedule(tournament);
     if (schedule.length === 0) return `<div class="empty-note">No fixtures yet.</div>`;
-    return buildCourtScheduleHtml(tournament, schedule, (e) => e.fixtures, (e) => `Round ${e.roundNumber}`);
+    return buildCourtScheduleHtml(tournament, schedule, (e) => e.fixtures, (e) => `Round ${e.roundNumber}`, tournament.startMinutes);
   }
 
   function buildKnockoutCourtScheduleHtml(tournament) {
     const schedule = buildKnockoutCourtSchedule(tournament);
     if (schedule.length === 0) return `<div class="empty-note">No matches need a court yet.</div>`;
-    return buildCourtScheduleHtml(tournament, schedule, (e) => e.matches, (e) => e.label);
+    return buildCourtScheduleHtml(tournament, schedule, (e) => e.matches, (e) => e.label, tournament.knockoutStartMinutes);
   }
 
   function computeTournamentLiveEstimate(tournament) {
@@ -4366,6 +4458,9 @@
     sessionView.style.display = "none";
     tournamentView.style.display = "block";
     tournamentActiveTab = currentTournament && currentTournament.status !== "groups" ? "knockout" : "groups";
+    if (!tournamentKnockoutStartTimeInput.value) {
+      tournamentKnockoutStartTimeInput.value = new Date().toTimeString().slice(0, 5);
+    }
     renderTournamentView();
   }
 
@@ -4849,6 +4944,7 @@
 
   startKnockoutBtn.addEventListener("click", () => {
     if (!currentTournament || startKnockoutBtn.disabled) return;
+    currentTournament.knockoutStartMinutes = parseTimeInputToMinutes(tournamentKnockoutStartTimeInput.value);
     generateKnockoutBracket(currentTournament);
     updateTournamentInStorage(currentTournament);
     tournamentActiveTab = "knockout";
@@ -5079,7 +5175,7 @@
     }
   });
 
-  const PRINT_MODE_CLASSES = ["printing-court-sheets", "printing-score-sheet", "printing-leaderboard", "printing-session-stats", "printing-ladder-standings", "printing-tournament-groups", "printing-tournament-bracket"];
+  const PRINT_MODE_CLASSES = ["printing-court-sheets", "printing-score-sheet", "printing-leaderboard", "printing-session-stats", "printing-ladder-standings", "printing-tournament-groups", "printing-tournament-schedule", "printing-tournament-bracket", "printing-tournament-medal-games"];
 
   printBtn.addEventListener("click", () => {
     document.body.classList.remove(...PRINT_MODE_CLASSES);
@@ -5188,21 +5284,22 @@
     printWithClass("printing-session-stats");
   });
 
-  function buildPrintFixtureCardHtml(tournament, match, waitingLabel) {
+  function buildPrintFixtureCardHtml(tournament, match, waitingLabel, courtLabel) {
     const kind = knockoutMatchKind ? knockoutMatchKind(match) : match.teamAId && match.teamBId ? "real" : match.byeAdvance ? "bye" : "pending";
     const nameA = tournamentTeamName(tournament, match.teamAId);
+    const courtTag = courtLabel ? `<div class="print-fixture-court">Court ${courtLabel}</div>` : "";
     if (kind === "pending") {
-      return `<div class="print-fixture"><div class="print-fixture-bye">${waitingLabel || "TBD"}</div></div>`;
+      return `<div class="print-fixture">${courtTag}<div class="print-fixture-bye">${waitingLabel || "TBD"}</div></div>`;
     }
     if (kind === "bye") {
-      return `<div class="print-fixture"><div class="print-fixture-teams"><span>${nameA}</span></div><div class="print-fixture-bye">Walkover</div></div>`;
+      return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams"><span>${nameA}</span></div><div class="print-fixture-bye">Walkover</div></div>`;
     }
     const nameB = tournamentTeamName(tournament, match.teamBId);
     const hasScore = match.scoreA !== "" && match.scoreB !== "";
     const sideA = hasScore ? `<span class="print-score-filled">${match.scoreA}</span>` : `<span class="print-score-box"></span>`;
     const sideB = hasScore ? `<span class="print-score-filled">${match.scoreB}</span>` : `<span class="print-score-box"></span>`;
     const scoreLine = `<div class="print-score-line">${sideA}<span class="print-score-dash">–</span>${sideB}</div>`;
-    return `<div class="print-fixture"><div class="print-fixture-teams"><span>${nameA}</span><span>${nameB}</span></div>${scoreLine}</div>`;
+    return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams"><span>${nameA}</span><span>${nameB}</span></div>${scoreLine}</div>`;
   }
 
   function buildPrintTournamentGroupsHtml() {
@@ -5225,17 +5322,68 @@
     printWithClass("printing-tournament-groups");
   });
 
-  function buildPrintTournamentBracketHtml() {
+  function buildPrintTournamentScheduleHtml() {
     const t = currentTournament;
-    const ko = t.knockout;
-    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
-    ko.rounds.forEach((round) => {
-      html += `<div class="print-round"><div class="print-round-top">${round.name}</div><div class="print-courts-row">`;
-      round.matches.forEach((match) => {
-        html += buildPrintFixtureCardHtml(t, match, "Waiting on earlier results...");
+    const schedule = buildGroupStageCourtSchedule(t);
+    const perRound = estimateMinutesForTarget(t.targetScore) + CHANGEOVER_MINUTES;
+    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Court Schedule</div>`;
+    schedule.forEach((entry, idx) => {
+      const timeText = t.startMinutes != null ? ` · ${formatMinutesAsClock(t.startMinutes + idx * perRound)}` : "";
+      html += `<div class="print-round"><div class="print-round-top">Round ${entry.roundNumber}${timeText}</div><div class="print-courts-row">`;
+      entry.fixtures.forEach((fixture, i) => {
+        const courtLabel = t.courtLabels[i] || String(i + 1);
+        html += buildPrintFixtureCardHtml(t, fixture, "", courtLabel);
       });
       html += `</div></div>`;
     });
+    return html;
+  }
+
+  printTournamentScheduleBtn.addEventListener("click", () => {
+    printTournamentScheduleView.innerHTML = buildPrintTournamentScheduleHtml();
+    printWithClass("printing-tournament-schedule");
+  });
+
+  function buildPrintTournamentBracketHtml() {
+    const t = currentTournament;
+    const ko = t.knockout;
+    const schedule = buildKnockoutCourtSchedule(t);
+    const perRound = estimateMinutesForTarget(t.targetScore) + CHANGEOVER_MINUTES;
+    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
+    schedule.forEach((entry, idx) => {
+      const timeText = t.knockoutStartMinutes != null ? ` · ${formatMinutesAsClock(t.knockoutStartMinutes + idx * perRound)}` : "";
+      html += `<div class="print-round"><div class="print-round-top">${entry.label}${timeText}</div><div class="print-courts-row">`;
+      entry.matches.forEach((match, i) => {
+        const courtLabel = t.courtLabels[i] || String(i + 1);
+        html += buildPrintFixtureCardHtml(t, match, "Waiting on earlier results...", courtLabel);
+      });
+      html += `</div></div>`;
+    });
+    if (t.medals) {
+      html += `<div class="print-medals-summary">`;
+      if (t.medals.gold) html += `<div>🥇 Gold: ${tournamentTeamName(t, t.medals.gold)}</div>`;
+      if (t.medals.silver) html += `<div>🥈 Silver: ${tournamentTeamName(t, t.medals.silver)}</div>`;
+      if (t.medals.bronze) html += `<div>🥉 Bronze: ${tournamentTeamName(t, t.medals.bronze)}</div>`;
+      html += `</div>`;
+    }
+    return html;
+  }
+
+  printTournamentBracketBtn.addEventListener("click", () => {
+    if (!currentTournament.knockout) { alert("Start the Knockout Stage before printing the bracket."); return; }
+    printTournamentBracketView.innerHTML = buildPrintTournamentBracketHtml();
+    printWithClass("printing-tournament-bracket");
+  });
+
+  function buildPrintTournamentMedalGamesHtml() {
+    const t = currentTournament;
+    const ko = t.knockout;
+    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Medal Games</div>`;
+    const finalRound = ko.rounds[ko.rounds.length - 1];
+    const finalMatch = finalRound.matches[0];
+    html += `<div class="print-round"><div class="print-round-top">Final</div><div class="print-courts-row">`;
+    html += buildPrintFixtureCardHtml(t, finalMatch, "Waiting on the semi-finals...");
+    html += `</div></div>`;
     if (ko.thirdPlaceMatch) {
       html += `<div class="print-round"><div class="print-round-top">3rd Place Match</div><div class="print-courts-row">`;
       html += buildPrintFixtureCardHtml(t, ko.thirdPlaceMatch, "Waiting on the semi-finals...");
@@ -5251,9 +5399,10 @@
     return html;
   }
 
-  printTournamentBracketBtn.addEventListener("click", () => {
-    printTournamentBracketView.innerHTML = buildPrintTournamentBracketHtml();
-    printWithClass("printing-tournament-bracket");
+  printTournamentMedalGamesBtn.addEventListener("click", () => {
+    if (!currentTournament.knockout) { alert("Start the Knockout Stage before printing the medal games."); return; }
+    printTournamentMedalGamesView.innerHTML = buildPrintTournamentMedalGamesHtml();
+    printWithClass("printing-tournament-medal-games");
   });
 
   function buildShareUrl() {
@@ -5506,6 +5655,8 @@
       winByTwo: tournamentWinByTwo,
       courts,
       courtLabels: config.tournamentCourtLabels.slice(0, courts),
+      startMinutes: parseTimeInputToMinutes(tournamentStartTimeInput.value),
+      knockoutStartMinutes: null,
       teams,
       groups,
       advancePerGroup,
