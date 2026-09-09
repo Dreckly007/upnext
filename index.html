@@ -1136,6 +1136,15 @@
   .court-schedule-court { font-weight: 700; color: var(--muted); min-width: 72px; flex-shrink: 0; }
   .court-schedule-match { color: var(--text); }
   .court-schedule-score { color: var(--green-dark); font-weight: 700; }
+  .court-schedule-match-label {
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: -2px;
+    margin-bottom: 6px;
+  }
 
   .court-cards-row {
     display: grid;
@@ -3452,13 +3461,20 @@
     return schedule;
   }
 
-  function buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange) {
+  function buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange, matchLabel) {
     const card = document.createElement("div");
     card.className = "court-card court-card-compact";
     const title = document.createElement("div");
     title.className = "court-title";
     title.textContent = `Court ${courtLabel}`;
     card.appendChild(title);
+
+    if (matchLabel) {
+      const matchLabelEl = document.createElement("div");
+      matchLabelEl.className = "court-schedule-match-label";
+      matchLabelEl.textContent = matchLabel;
+      card.appendChild(matchLabelEl);
+    }
 
     if (kind !== "real") {
       const pending = document.createElement("div");
@@ -3518,7 +3534,11 @@
     return card;
   }
 
-  function buildCourtScheduleEl(tournament, schedule, items, roundLabel, baseMinutes, kindOf, onScoreChange, onCardBuilt) {
+  function knockoutMatchLabel(match) {
+    return match.id === "ko-3rd" ? "3rd Place Match" : null;
+  }
+
+  function buildCourtScheduleEl(tournament, schedule, items, roundLabel, baseMinutes, kindOf, onScoreChange, onCardBuilt, matchLabelOf) {
     const wrap = document.createElement("div");
     if (schedule.length === 0) {
       wrap.className = "empty-note";
@@ -3544,7 +3564,7 @@
       items(entry).forEach((item, i) => {
         const courtLabel = tournament.courtLabels[i] || String(i + 1);
         const kind = kindOf(item);
-        const card = buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange);
+        const card = buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange, matchLabelOf(item));
         cardsRow.appendChild(card);
         if (onCardBuilt) onCardBuilt(item, card, kind);
       });
@@ -3558,7 +3578,8 @@
     const schedule = buildGroupStageCourtSchedule(tournament);
     return buildCourtScheduleEl(
       tournament, schedule, (e) => e.fixtures, (e) => `Round ${e.roundNumber}`,
-      tournament.startMinutes, () => "real", onTournamentGroupScoreChange
+      tournament.startMinutes, () => "real", onTournamentGroupScoreChange,
+      null, () => null
     );
   }
 
@@ -3567,7 +3588,8 @@
     return buildCourtScheduleEl(
       tournament, schedule, (e) => e.matches, (e) => e.label,
       tournament.knockoutStartMinutes, knockoutMatchKind, onTournamentKnockoutScoreChange,
-      (match, card, kind) => { knockoutScheduleCards[match.id] = { kind, el: card }; }
+      (match, card, kind) => { knockoutScheduleCards[match.id] = { kind, el: card }; },
+      knockoutMatchLabel
     );
   }
 
@@ -3579,7 +3601,7 @@
         const kind = knockoutMatchKind(match);
         if (!existing || existing.kind !== kind) {
           const courtLabel = tournament.courtLabels[i] || String(i + 1);
-          const newCard = buildCourtScheduleCard(tournament, match, courtLabel, kind, onTournamentKnockoutScoreChange);
+          const newCard = buildCourtScheduleCard(tournament, match, courtLabel, kind, onTournamentKnockoutScoreChange, knockoutMatchLabel(match));
           if (existing && existing.el.parentNode) existing.el.parentNode.replaceChild(newCard, existing.el);
           knockoutScheduleCards[match.id] = { kind, el: newCard };
         }
@@ -5501,8 +5523,10 @@
   function buildPrintCourtCardHtml(tournament, item, courtLabel) {
     const kind = knockoutMatchKind(item);
     const title = `<div class="court-title">Court ${courtLabel}</div>`;
+    const matchLabel = knockoutMatchLabel(item);
+    const matchLabelHtml = matchLabel ? `<div class="court-schedule-match-label">${matchLabel}</div>` : "";
     if (kind !== "real") {
-      return `<div class="court-card court-card-compact">${title}<div class="print-fixture-bye">Waiting on earlier results...</div></div>`;
+      return `<div class="court-card court-card-compact">${title}${matchLabelHtml}<div class="print-fixture-bye">Waiting on earlier results...</div></div>`;
     }
     const cells = courtCardCellNames(tournament, item.teamAId, item.teamBId)
       .map((name) => `<div class="team-cell">${name}</div>`).join("");
@@ -5510,7 +5534,7 @@
     const scoreHtml = hasScore
       ? `<div class="court-schedule-card-score">${item.scoreA} – ${item.scoreB}</div>`
       : `<div class="court-schedule-card-score"><span class="print-score-box"></span><span class="print-score-dash">–</span><span class="print-score-box"></span></div>`;
-    return `<div class="court-card court-card-compact">${title}<div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
+    return `<div class="court-card court-card-compact">${title}${matchLabelHtml}<div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
   }
 
   function buildPrintTournamentGroupsHtml() {
