@@ -1112,6 +1112,7 @@
   .qualifiers-box .qgroup:not(:last-child) { border-bottom: 1px solid #a9d8b1; }
   .qualifiers-box .qname { font-weight: 800; min-width: 64px; color: var(--text); }
   .qualifiers-box .qteams { color: var(--text); }
+  .qualifiers-box .qteams-pending { color: var(--muted); font-style: italic; }
 
   .resting-bar {
     background: #f5ecd9;
@@ -3029,13 +3030,15 @@
   }
 
   function buildGroupStandingsTableHtml(tournament, groupIndex) {
+    const group = tournament.groups[groupIndex];
+    const complete = groupFixturesComplete(group);
     const { stats, ranked } = computeGroupStandings(tournament, groupIndex);
     let html = "<thead><tr><th>#</th><th>Team</th><th>Won</th><th>Lost</th><th>+/-</th></tr></thead><tbody>";
     ranked.forEach((id, i) => {
       const st = stats[id];
       const diff = st.pointsFor - st.pointsAgainst;
       const diffText = diff > 0 ? `+${diff}` : String(diff);
-      const isAdvancing = i < tournament.advancePerGroup;
+      const isAdvancing = complete && i < tournament.advancePerGroup;
       const chip = isAdvancing ? ` <span class="advance-chip">Advancing</span>` : "";
       html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${diffText}</td></tr>`;
     });
@@ -3045,8 +3048,16 @@
 
   function buildQualifiersBoxHtml(tournament) {
     const rows = tournament.groups.map((group) => {
-      const { ranked } = computeGroupStandings(tournament, group.index);
-      const advancing = ranked.slice(0, tournament.advancePerGroup).map((id) => tournamentTeamName(tournament, id));
+      if (!groupFixturesComplete(group)) {
+        return `<div class="qgroup"><span class="qname">Group ${group.name}</span><span class="qteams qteams-pending">Not yet decided</span></div>`;
+      }
+      const { stats, ranked } = computeGroupStandings(tournament, group.index);
+      const advancing = ranked.slice(0, tournament.advancePerGroup).map((id) => {
+        const st = stats[id];
+        const diff = st.pointsFor - st.pointsAgainst;
+        const diffText = diff > 0 ? `+${diff}` : String(diff);
+        return `${tournamentTeamName(tournament, id)} (${st.wins}-${st.losses}, ${diffText})`;
+      });
       return `<div class="qgroup"><span class="qname">Group ${group.name}</span><span class="qteams">${advancing.join(", ")}</span></div>`;
     });
     return `<h3>Qualifiers</h3>${rows.join("")}`;
