@@ -557,9 +557,19 @@
   .number-stepper-sm input[type="number"] { padding: 12px 2px; }
   .estimate-field { margin-top: 14px; }
   .estimate-box {
-    background: #fff;
     border: 1px solid var(--card-border);
     border-radius: 10px;
+    overflow: hidden;
+  }
+  .estimate-box-header {
+    background: var(--green-pale);
+    color: var(--green-dark);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 12px 16px;
+  }
+  .estimate-box-panel {
+    background: #fff;
     padding: 12px 16px;
     display: flex;
     align-items: baseline;
@@ -1695,10 +1705,12 @@
           </div>
 
           <div class="field estimate-field" id="tournamentEstimateField" style="display:none;">
-            <label>Estimated tournament duration</label>
             <div class="estimate-box">
-              <span class="estimate-number" id="tournamentEstimateNumber"></span>
-              <span class="estimate-reason" id="tournamentEstimateReason"></span>
+              <div class="estimate-box-header">Estimated tournament duration</div>
+              <div class="estimate-box-panel">
+                <span class="estimate-number" id="tournamentEstimateNumber"></span>
+                <span class="estimate-reason" id="tournamentEstimateReason"></span>
+              </div>
             </div>
           </div>
 
@@ -1839,10 +1851,12 @@
       </div>
 
       <div class="field estimate-field" id="roundsEstimateField" style="display:none;">
-        <label>Estimated games to play</label>
         <div class="estimate-box">
-          <span class="estimate-number" id="roundsEstimateNumber"></span>
-          <span class="estimate-reason" id="roundsEstimateReason"></span>
+          <div class="estimate-box-header">Estimated games to play</div>
+          <div class="estimate-box-panel">
+            <span class="estimate-number" id="roundsEstimateNumber"></span>
+            <span class="estimate-reason" id="roundsEstimateReason"></span>
+          </div>
         </div>
       </div>
 
@@ -1865,10 +1879,12 @@
         </div>
 
         <div class="field estimate-field" id="targetScoreEstimateField" style="display:none;">
-          <label>Estimated playing time needed</label>
           <div class="estimate-box">
-            <span class="estimate-number" id="targetScoreEstimateNumber"></span>
-            <span class="estimate-reason" id="targetScoreEstimateReason"></span>
+            <div class="estimate-box-header">Estimated playing time needed</div>
+            <div class="estimate-box-panel">
+              <span class="estimate-number" id="targetScoreEstimateNumber"></span>
+              <span class="estimate-reason" id="targetScoreEstimateReason"></span>
+            </div>
           </div>
         </div>
       </div>
@@ -2038,8 +2054,11 @@
 
       <div class="field estimate-field no-print" id="tournamentViewEstimateField" style="display:none;">
         <div class="estimate-box">
-          <span class="estimate-number" id="tournamentViewEstimateNumber"></span>
-          <span class="estimate-reason" id="tournamentViewEstimateReason"></span>
+          <div class="estimate-box-header">Estimated tournament duration</div>
+          <div class="estimate-box-panel">
+            <span class="estimate-number" id="tournamentViewEstimateNumber"></span>
+            <span class="estimate-reason" id="tournamentViewEstimateReason"></span>
+          </div>
         </div>
       </div>
 
