@@ -1691,10 +1691,30 @@
             <button type="button" class="format-btn" data-format="singles">Singles</button>
           </div>
 
+          <label class="section-label">Competition Type</label>
+          <div class="format-toggle" id="tournamentCompetitionTypeToggle">
+            <button type="button" class="format-btn active" data-competition-type="standard">Standard Tournament</button>
+            <button type="button" class="format-btn" data-competition-type="clubs">Club Championship</button>
+            <button type="button" class="format-btn" data-competition-type="clubGroups">Inter-Club Groups</button>
+          </div>
+
+          <div id="tournamentClubsSection" style="display:none;">
+            <label class="section-label">Clubs</label>
+            <div class="inline-form" id="tournamentClubEntry">
+              <input type="text" id="tournamentClubNameInput" placeholder="Club name" />
+              <button class="small-btn add" id="tournamentAddClubBtn">Add club</button>
+            </div>
+            <div class="chips" id="tournamentClubChips"></div>
+          </div>
+
           <label class="section-label">Teams</label>
           <div class="format-toggle" id="tournamentDoublesEntryModeToggle">
             <button type="button" class="format-btn active" data-entry-mode="players">Player names</button>
             <button type="button" class="format-btn" data-entry-mode="teamnames">Team names</button>
+          </div>
+          <div class="field" id="tournamentTeamClubField" style="display:none;">
+            <label for="tournamentTeamClubSelect">Club for next team</label>
+            <select id="tournamentTeamClubSelect"></select>
           </div>
           <div class="inline-form" id="tournamentTeamEntryDoubles">
             <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" />
@@ -2121,14 +2141,17 @@
 
       <div id="tournamentGroupStageView">
         <div id="tournamentGroupsContainer"></div>
+        <div id="tournamentClubStandingsBox" class="qualifiers-box" style="display:none;"></div>
         <div id="tournamentQualifiersBox" class="qualifiers-box"></div>
-        <div class="field no-print" style="margin-top:16px;">
-          <label for="tournamentKnockoutStartTimeInput">Knockout start time</label>
-          <input type="time" id="tournamentKnockoutStartTimeInput" />
-        </div>
-        <div class="field" style="margin-top:16px;">
-          <button class="generate-btn" id="startKnockoutBtn" disabled>Start Knockout Stage</button>
-          <div class="hint" id="startKnockoutHint"></div>
+        <div id="tournamentKnockoutStartSection">
+          <div class="field no-print" style="margin-top:16px;">
+            <label for="tournamentKnockoutStartTimeInput">Knockout start time</label>
+            <input type="time" id="tournamentKnockoutStartTimeInput" />
+          </div>
+          <div class="field" style="margin-top:16px;">
+            <button class="generate-btn" id="startKnockoutBtn" disabled>Start Knockout Stage</button>
+            <div class="hint" id="startKnockoutHint"></div>
+          </div>
         </div>
       </div>
 
@@ -2321,6 +2344,9 @@
   config.tournamentCourts = config.tournamentCourts ?? 2;
   if (!Array.isArray(config.tournamentCourtLabels)) config.tournamentCourtLabels = ["1", "2"];
   config.tournamentRoundMinutes = config.tournamentRoundMinutes ?? 0;
+  config.tournamentCompetitionType = ["clubs", "clubGroups"].includes(config.tournamentCompetitionType)
+    ? config.tournamentCompetitionType
+    : "standard";
   if ((config.schemaVersion || 1) < CONFIG_SCHEMA_VERSION) {
     // One-time migration: browsers with settings saved before the
     // "games to play" mode existed get bumped onto the new defaults.
@@ -2335,6 +2361,7 @@
   let currentSession = null;
   let currentTournament = null;
   let tournamentTeams = [];
+  let tournamentClubs = [];
   let currentRoundIndex = 0;
   let courtTapMode = null; // null | "swap" | "remove"
   let swapSelection = [];
@@ -2389,6 +2416,14 @@
   const tournamentsListPanel = document.getElementById("tournamentsListPanel");
   const tournamentNameInput = document.getElementById("tournamentNameInput");
   const tournamentFormatButtons = document.querySelectorAll("#tournamentFormatToggle .format-btn");
+  const tournamentCompetitionTypeToggle = document.getElementById("tournamentCompetitionTypeToggle");
+  const tournamentCompetitionTypeButtons = document.querySelectorAll("#tournamentCompetitionTypeToggle .format-btn");
+  const tournamentClubsSection = document.getElementById("tournamentClubsSection");
+  const tournamentClubNameInput = document.getElementById("tournamentClubNameInput");
+  const tournamentAddClubBtn = document.getElementById("tournamentAddClubBtn");
+  const tournamentClubChips = document.getElementById("tournamentClubChips");
+  const tournamentTeamClubField = document.getElementById("tournamentTeamClubField");
+  const tournamentTeamClubSelect = document.getElementById("tournamentTeamClubSelect");
   const tournamentDoublesEntryModeToggle = document.getElementById("tournamentDoublesEntryModeToggle");
   const tournamentDoublesEntryModeButtons = document.querySelectorAll("#tournamentDoublesEntryModeToggle .format-btn");
   const tournamentTeamEntryDoubles = document.getElementById("tournamentTeamEntryDoubles");
@@ -2404,6 +2439,8 @@
   const tournamentTeamChips = document.getElementById("tournamentTeamChips");
   const tournamentGroupsInput = document.getElementById("tournamentGroupsInput");
   const tournamentAdvanceInput = document.getElementById("tournamentAdvanceInput");
+  const tournamentGroupsField = tournamentGroupsInput.closest(".field");
+  const tournamentAdvanceField = tournamentAdvanceInput.closest(".field");
   const tournamentCourtsInput = document.getElementById("tournamentCourtsInput");
   const tournamentCourtLabelsRow = document.getElementById("tournamentCourtLabelsRow");
   const tournamentRoundMinutesInput = document.getElementById("tournamentRoundMinutesInput");
@@ -2428,7 +2465,9 @@
   const tournamentViewEstimateReason = document.getElementById("tournamentViewEstimateReason");
   const tournamentGroupStageView = document.getElementById("tournamentGroupStageView");
   const tournamentGroupsContainer = document.getElementById("tournamentGroupsContainer");
+  const tournamentClubStandingsBox = document.getElementById("tournamentClubStandingsBox");
   const tournamentQualifiersBox = document.getElementById("tournamentQualifiersBox");
+  const tournamentKnockoutStartSection = document.getElementById("tournamentKnockoutStartSection");
   const startKnockoutBtn = document.getElementById("startKnockoutBtn");
   const startKnockoutHint = document.getElementById("startKnockoutHint");
   const tournamentKnockoutView = document.getElementById("tournamentKnockoutView");
@@ -2734,13 +2773,25 @@
     return team.teamName || team.players.join(" & ");
   }
 
+  function isClubCompetitionType() {
+    return config.tournamentCompetitionType !== "standard";
+  }
+
+  function tournamentClubName(clubId) {
+    const club = tournamentClubs.find((c) => c.id === clubId);
+    return club ? club.name : "";
+  }
+
   function renderTournamentTeamChips() {
     tournamentTeamChips.innerHTML = "";
     tournamentTeams.forEach((team, idx) => {
       const chip = document.createElement("div");
       chip.className = "chip";
       const span = document.createElement("span");
-      span.textContent = tournamentTeamDisplayName(team);
+      const clubName = isClubCompetitionType() ? tournamentClubName(team.clubId) : "";
+      span.textContent = clubName
+        ? `${tournamentTeamDisplayName(team)} (${clubName})`
+        : tournamentTeamDisplayName(team);
       const btn = document.createElement("button");
       btn.textContent = "×";
       btn.title = "Remove";
@@ -2763,11 +2814,29 @@
     renderTournamentTeamChips();
   }
 
+  function ensureClubSelectedOrWarn() {
+    if (!isClubCompetitionType()) return true;
+    if (tournamentClubs.length === 0) {
+      alert("Add at least one club first.");
+      return false;
+    }
+    if (!tournamentTeamClubSelect.value) {
+      alert("Choose a club for this team.");
+      return false;
+    }
+    return true;
+  }
+
+  function clubIdForNextTeam() {
+    return isClubCompetitionType() ? tournamentTeamClubSelect.value || null : null;
+  }
+
   tournamentAddTeamBtn.addEventListener("click", () => {
     const p1 = tournamentPlayer1Input.value.trim();
     const p2 = tournamentPlayer2Input.value.trim();
     if (!p1 || !p2) return;
-    addTournamentTeam({ players: [p1, p2] });
+    if (!ensureClubSelectedOrWarn()) return;
+    addTournamentTeam({ players: [p1, p2], clubId: clubIdForNextTeam() });
     tournamentPlayer1Input.value = "";
     tournamentPlayer2Input.value = "";
     tournamentPlayer1Input.focus();
@@ -2781,12 +2850,87 @@
   tournamentAddNamedTeamBtn.addEventListener("click", () => {
     const name = tournamentTeamNameInput.value.trim();
     if (!name) return;
-    addTournamentTeam({ players: [], teamName: name });
+    if (!ensureClubSelectedOrWarn()) return;
+    addTournamentTeam({ players: [], teamName: name, clubId: clubIdForNextTeam() });
     tournamentTeamNameInput.value = "";
     tournamentTeamNameInput.focus();
   });
   tournamentTeamNameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") tournamentAddNamedTeamBtn.click();
+  });
+
+  function addTournamentClub(name) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (tournamentClubs.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) return;
+    tournamentClubs.push({ id: `club-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: trimmed });
+    renderTournamentClubChips();
+  }
+
+  function renderTournamentClubChips() {
+    tournamentClubChips.innerHTML = "";
+    tournamentClubs.forEach((club, idx) => {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      const span = document.createElement("span");
+      span.textContent = club.name;
+      const btn = document.createElement("button");
+      btn.textContent = "×";
+      btn.title = "Remove";
+      btn.addEventListener("click", () => {
+        if (tournamentTeams.some((t) => t.clubId === club.id)) {
+          alert("Remove or reassign this club's teams before removing it.");
+          return;
+        }
+        tournamentClubs.splice(idx, 1);
+        renderTournamentClubChips();
+      });
+      chip.appendChild(span);
+      chip.appendChild(btn);
+      tournamentClubChips.appendChild(chip);
+    });
+    const previousValue = tournamentTeamClubSelect.value;
+    tournamentTeamClubSelect.innerHTML = "";
+    tournamentClubs.forEach((club) => {
+      const opt = document.createElement("option");
+      opt.value = club.id;
+      opt.textContent = club.name;
+      tournamentTeamClubSelect.appendChild(opt);
+    });
+    if (tournamentClubs.some((c) => c.id === previousValue)) tournamentTeamClubSelect.value = previousValue;
+  }
+
+  tournamentAddClubBtn.addEventListener("click", () => {
+    addTournamentClub(tournamentClubNameInput.value);
+    tournamentClubNameInput.value = "";
+    tournamentClubNameInput.focus();
+  });
+  tournamentClubNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") tournamentAddClubBtn.click();
+  });
+
+  function syncTournamentCompetitionType() {
+    tournamentCompetitionTypeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.competitionType === config.tournamentCompetitionType);
+    });
+    const clubMode = isClubCompetitionType();
+    tournamentClubsSection.style.display = clubMode ? "block" : "none";
+    tournamentTeamClubField.style.display = clubMode ? "block" : "none";
+    tournamentGroupsField.style.display = config.tournamentCompetitionType === "clubs" ? "none" : "block";
+    tournamentAdvanceField.style.display = clubMode ? "none" : "block";
+    renderTournamentTeamChips();
+    syncTournamentDebugBtn();
+  }
+
+  tournamentCompetitionTypeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.competitionType === config.tournamentCompetitionType) return;
+      config.tournamentCompetitionType = btn.dataset.competitionType;
+      save(STORAGE.config, config);
+      tournamentTeams = [];
+      renderTournamentTeamChips();
+      syncTournamentCompetitionType();
+    });
   });
 
   function syncTournamentDoublesEntryMode() {
@@ -2840,13 +2984,18 @@
   tournamentDebugBtn.addEventListener("click", () => {
     const isSingles = config.format === "singles";
     const isTeamNames = !isSingles && config.tournamentDoublesEntryMode === "teamnames";
+    if (isClubCompetitionType() && tournamentClubs.length === 0) {
+      addTournamentClub("Club A");
+      addTournamentClub("Club B");
+    }
+    const nextClubId = (i) => (isClubCompetitionType() ? tournamentClubs[i % tournamentClubs.length].id : undefined);
     if (isSingles) {
-      TOURNAMENT_DEBUG_NAMES.slice(0, 15).forEach((name) => addTournamentTeam({ players: [name] }));
+      TOURNAMENT_DEBUG_NAMES.slice(0, 15).forEach((name, i) => addTournamentTeam({ players: [name], clubId: nextClubId(i) }));
     } else if (isTeamNames) {
-      for (let i = 1; i <= 15; i++) addTournamentTeam({ players: [], teamName: `Team ${i}` });
+      for (let i = 1; i <= 15; i++) addTournamentTeam({ players: [], teamName: `Team ${i}`, clubId: nextClubId(i) });
     } else {
       for (let i = 0; i < 15; i++) {
-        addTournamentTeam({ players: [TOURNAMENT_DEBUG_NAMES[2 * i], TOURNAMENT_DEBUG_NAMES[2 * i + 1]] });
+        addTournamentTeam({ players: [TOURNAMENT_DEBUG_NAMES[2 * i], TOURNAMENT_DEBUG_NAMES[2 * i + 1]], clubId: nextClubId(i) });
       }
     }
   });
@@ -3349,6 +3498,41 @@
     return fixtures;
   }
 
+  // Same circle-method structure as generateGroupFixtures, but skips a would-be
+  // fixture whenever both teams belong to the same club (analogous to how the
+  // existing method already skips a null bye-slot) -- used by Club Championship
+  // (one call across the whole team pool) and Inter-Club Groups (one call per group).
+  function generateInterClubFixtures(teamIds, clubIdOf) {
+    const ids = teamIds.slice();
+    if (ids.length % 2 !== 0) ids.push(null);
+    const n = ids.length;
+    const numRounds = n - 1;
+    const half = n / 2;
+    const fixtures = [];
+    let arr = ids.slice();
+    for (let round = 0; round < numRounds; round++) {
+      for (let i = 0; i < half; i++) {
+        const a = arr[i];
+        const b = arr[n - 1 - i];
+        if (a !== null && b !== null && clubIdOf(a) !== clubIdOf(b)) {
+          fixtures.push({
+            id: `f${fixtures.length}`,
+            teamAId: a,
+            teamBId: b,
+            scoreA: "",
+            scoreB: "",
+            roundHint: round + 1,
+          });
+        }
+      }
+      const fixed = arr[0];
+      const rest = arr.slice(1);
+      const rotated = [rest[rest.length - 1], ...rest.slice(0, rest.length - 1)];
+      arr = [fixed, ...rotated];
+    }
+    return fixtures;
+  }
+
   function computeGroupStandings(tournament, groupIndex) {
     const group = tournament.groups[groupIndex];
     const stats = {};
@@ -3405,16 +3589,35 @@
     return { stats, ranked };
   }
 
+  function groupAdvancingTeamIds(tournament, groupIndex) {
+    const { ranked } = computeGroupStandings(tournament, groupIndex);
+    if (tournament.competitionType === "clubGroups") {
+      const seenClubs = new Set();
+      const advancing = [];
+      ranked.forEach((id) => {
+        const team = findTeamById(tournament, id);
+        const clubId = team ? team.clubId : null;
+        if (clubId && !seenClubs.has(clubId)) {
+          seenClubs.add(clubId);
+          advancing.push(id);
+        }
+      });
+      return advancing;
+    }
+    return ranked.slice(0, tournament.advancePerGroup);
+  }
+
   function buildGroupStandingsTableHtml(tournament, groupIndex) {
     const group = tournament.groups[groupIndex];
     const complete = groupFixturesComplete(group);
     const { stats, ranked } = computeGroupStandings(tournament, groupIndex);
+    const advancingIds = new Set(complete ? groupAdvancingTeamIds(tournament, groupIndex) : []);
     let html = "<thead><tr><th>#</th><th>Team</th><th>Won</th><th>Lost</th><th>For</th><th>Against</th><th>+/-</th></tr></thead><tbody>";
     ranked.forEach((id, i) => {
       const st = stats[id];
       const diff = st.pointsFor - st.pointsAgainst;
       const diffText = diff > 0 ? `+${diff}` : String(diff);
-      const isAdvancing = complete && i < tournament.advancePerGroup;
+      const isAdvancing = advancingIds.has(id);
       const chip = isAdvancing ? ` <span class="advance-chip">Advancing</span>` : "";
       html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
     });
@@ -3427,8 +3630,8 @@
       if (!groupFixturesComplete(group)) {
         return `<div class="qgroup"><span class="qname">Group ${group.name}</span><span class="qteams qteams-pending">Not yet decided</span></div>`;
       }
-      const { stats, ranked } = computeGroupStandings(tournament, group.index);
-      const advancing = ranked.slice(0, tournament.advancePerGroup).map((id) => {
+      const { stats } = computeGroupStandings(tournament, group.index);
+      const advancing = groupAdvancingTeamIds(tournament, group.index).map((id) => {
         const st = stats[id];
         const diff = st.pointsFor - st.pointsAgainst;
         const diffText = diff > 0 ? `+${diff}` : String(diff);
@@ -3437,6 +3640,48 @@
       return `<div class="qgroup"><span class="qname">Group ${group.name}</span><span class="qteams">${advancing.join(", ")}</span></div>`;
     });
     return `<div class="qualifiers-box-header">Qualifiers</div><div class="qualifiers-box-panel">${rows.join("")}</div>`;
+  }
+
+  function clubNameInTournament(tournament, clubId) {
+    const club = (tournament.clubs || []).find((c) => c.id === clubId);
+    return club ? club.name : "?";
+  }
+
+  function computeClubChampionshipStandings(tournament) {
+    const { stats } = computeGroupStandings(tournament, 0);
+    const clubStats = {};
+    tournament.clubs.forEach((club) => {
+      clubStats[club.id] = { pairs: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 };
+    });
+    tournament.teams.forEach((team) => {
+      const cs = clubStats[team.clubId];
+      if (!cs) return;
+      const st = stats[team.id];
+      cs.pairs += 1;
+      cs.wins += st.wins;
+      cs.losses += st.losses;
+      cs.pointsFor += st.pointsFor;
+      cs.pointsAgainst += st.pointsAgainst;
+    });
+    const avgFor = (id) => (clubStats[id].pairs > 0 ? clubStats[id].pointsFor / clubStats[id].pairs : 0);
+    const avgDiff = (id) => (clubStats[id].pairs > 0 ? (clubStats[id].pointsFor - clubStats[id].pointsAgainst) / clubStats[id].pairs : 0);
+    const ranked = tournament.clubs.map((c) => c.id).sort((a, b) => {
+      if (avgFor(b) !== avgFor(a)) return avgFor(b) - avgFor(a);
+      if (avgDiff(b) !== avgDiff(a)) return avgDiff(b) - avgDiff(a);
+      return clubNameInTournament(tournament, a).localeCompare(clubNameInTournament(tournament, b));
+    });
+    return { clubStats, ranked };
+  }
+
+  function buildClubStandingsTableHtml(tournament) {
+    const { clubStats, ranked } = computeClubChampionshipStandings(tournament);
+    const rows = ranked.map((clubId, i) => {
+      const cs = clubStats[clubId];
+      const avg = cs.pairs > 0 ? (cs.pointsFor / cs.pairs).toFixed(1) : "0.0";
+      return `<tr><td>${i + 1}</td><td>${clubNameInTournament(tournament, clubId)}</td><td>${cs.pairs}</td><td>${avg}</td><td>${cs.pointsFor}</td><td>${cs.pointsAgainst}</td></tr>`;
+    });
+    const table = `<table class="schedule-table"><thead><tr><th>#</th><th>Club</th><th>Pairs</th><th>Avg Points</th><th>Total For</th><th>Total Against</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    return `<div class="qualifiers-box-header">Club Standings</div><div class="qualifiers-box-panel">${table}</div>`;
   }
 
   function groupFixturesComplete(group) {
@@ -3466,6 +3711,69 @@
       tiers.push(tierTeams.map((t) => t.id));
     }
     return tiers.flat();
+  }
+
+  // Inter-Club Groups qualification: each club present in a group sends its
+  // top-ranked pair (a group with 3 clubs sends 3 qualifiers, not a fixed count),
+  // tiered/ordered the same way rankQualifiers already does so stronger
+  // qualifiers still get better seed numbers before club-spread seeding is applied.
+  function rankQualifiersInterClub(tournament) {
+    const perGroupQualifiers = tournament.groups.map((g) => groupAdvancingTeamIds(tournament, g.index));
+    const maxDepth = Math.max(0, ...perGroupQualifiers.map((q) => q.length));
+    const tiers = [];
+    for (let k = 0; k < maxDepth; k++) {
+      const tierTeams = [];
+      tournament.groups.forEach((g, gi) => {
+        const q = perGroupQualifiers[gi];
+        if (q.length > k) {
+          const id = q[k];
+          const { stats } = computeGroupStandings(tournament, g.index);
+          tierTeams.push({ id, wins: stats[id].wins, diff: stats[id].pointsFor - stats[id].pointsAgainst });
+        }
+      });
+      tierTeams.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.diff !== a.diff) return b.diff - a.diff;
+        return tournamentTeamName(tournament, a.id).localeCompare(tournamentTeamName(tournament, b.id));
+      });
+      tiers.push(tierTeams.map((t) => t.id));
+    }
+    return tiers.flat();
+  }
+
+  // Buckets qualifiers by club (each bucket already in strength order from
+  // rankQualifiersInterClub), then rotates through clubs -- ordered by descending
+  // qualifier count, then club name, each lap -- taking one club's next-strongest
+  // remaining qualifier per rotation step, skipping exhausted clubs. Feeding this
+  // reordered list into the existing seedOrder() placement guarantees every Round 1
+  // knockout match is cross-club; later rounds get a materially better-than-chance
+  // spread but (like any seeding scheme) can't be guaranteed, since that depends on
+  // unknown match outcomes.
+  function applyClubSpreadSeeding(tournament, qualifierIds) {
+    const buckets = new Map();
+    qualifierIds.forEach((id) => {
+      const clubId = (findTeamById(tournament, id) || {}).clubId ?? null;
+      if (!buckets.has(clubId)) buckets.set(clubId, []);
+      buckets.get(clubId).push(id);
+    });
+    const clubOrder = Array.from(buckets.keys()).sort((a, b) => {
+      const countDiff = buckets.get(b).length - buckets.get(a).length;
+      if (countDiff !== 0) return countDiff;
+      return clubNameInTournament(tournament, a).localeCompare(clubNameInTournament(tournament, b));
+    });
+    const result = [];
+    while (result.length < qualifierIds.length) {
+      let placedAny = false;
+      clubOrder.forEach((clubId) => {
+        const bucket = buckets.get(clubId);
+        if (bucket.length > 0) {
+          result.push(bucket.shift());
+          placedAny = true;
+        }
+      });
+      if (!placedAny) break;
+    }
+    return result;
   }
 
   function nextPowerOfTwo(n) {
@@ -3866,6 +4174,38 @@
     }
 
     const totalRounds = ko.rounds.length;
+
+    // 2-club safeguard: if both semifinal winners turn out to be from the same
+    // club, the semifinal with the smaller winning margin is overridden -- its
+    // loser advances to the Final instead of its winner, and its winner takes the
+    // 3rd-place-match slot instead of that match's real loser. Each semifinal's own
+    // recorded score/winner is untouched; only what advances differs. This always
+    // recomputes fresh (not gated by a "still null" check) so it stays correct if
+    // scores are edited after the fact and self-corrects if the clash goes away.
+    if (totalRounds >= 2 && tournament.clubs && tournament.clubs.length === 2) {
+      const semiRound = ko.rounds[totalRounds - 2];
+      const [semiA, semiB] = semiRound.matches;
+      if (semiA && semiB && semiA.winnerTeamId && semiB.winnerTeamId) {
+        const clubOf = (teamId) => {
+          const team = findTeamById(tournament, teamId);
+          return team ? team.clubId : null;
+        };
+        if (clubOf(semiA.winnerTeamId) === clubOf(semiB.winnerTeamId)) {
+          const marginOf = (m) => Math.abs((parseInt(m.scoreA, 10) || 0) - (parseInt(m.scoreB, 10) || 0));
+          const swapMatch = marginOf(semiA) <= marginOf(semiB) ? semiA : semiB;
+          const finalMatch = ko.rounds[totalRounds - 1].matches[0];
+          finalMatch.teamAId = semiA === swapMatch ? resolveMatchLoser(semiA) : semiA.winnerTeamId;
+          finalMatch.teamBId = semiB === swapMatch ? resolveMatchLoser(semiB) : semiB.winnerTeamId;
+          finalMatch.winnerTeamId = resolveMatchWinner(finalMatch);
+          if (ko.thirdPlaceMatch) {
+            ko.thirdPlaceMatch.teamAId = semiA === swapMatch ? semiA.winnerTeamId : resolveMatchLoser(semiA);
+            ko.thirdPlaceMatch.teamBId = semiB === swapMatch ? semiB.winnerTeamId : resolveMatchLoser(semiB);
+            ko.thirdPlaceMatch.winnerTeamId = resolveMatchWinner(ko.thirdPlaceMatch);
+          }
+        }
+      }
+    }
+
     const final = ko.rounds[totalRounds - 1].matches[0];
     if (final.winnerTeamId && (!ko.thirdPlaceMatch || ko.thirdPlaceMatch.winnerTeamId)) {
       const silver = final.teamAId === final.winnerTeamId ? final.teamBId : final.teamAId;
@@ -3879,7 +4219,9 @@
   }
 
   function generateKnockoutBracket(tournament) {
-    const qualifiers = rankQualifiers(tournament);
+    const qualifiers = tournament.competitionType === "clubGroups"
+      ? applyClubSpreadSeeding(tournament, rankQualifiersInterClub(tournament))
+      : rankQualifiers(tournament);
     const Q = qualifiers.length;
     const bracketSize = nextPowerOfTwo(Q);
     const order = seedOrder(bracketSize);
@@ -3988,6 +4330,7 @@
     tournamentDoublesEntryModeToggle.style.display = isSingles ? "none" : "flex";
     tournamentTeamEntrySingles.style.display = isSingles ? "flex" : "none";
     syncTournamentDoublesEntryMode();
+    syncTournamentCompetitionType();
   }
   tournamentFormatButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -5272,8 +5615,16 @@
       const table = groupStandingsTableEls[group.index];
       if (table) table.innerHTML = buildGroupStandingsTableHtml(tournament, group.index);
     });
-    tournamentQualifiersBox.innerHTML = buildQualifiersBoxHtml(tournament);
     updateTournamentViewEstimate(tournament);
+    const isClubChampionship = tournament.competitionType === "clubs";
+    tournamentClubStandingsBox.style.display = isClubChampionship ? "block" : "none";
+    tournamentQualifiersBox.style.display = isClubChampionship ? "none" : "block";
+    tournamentKnockoutStartSection.style.display = isClubChampionship ? "none" : "block";
+    if (isClubChampionship) {
+      tournamentClubStandingsBox.innerHTML = buildClubStandingsTableHtml(tournament);
+      return;
+    }
+    tournamentQualifiersBox.innerHTML = buildQualifiersBoxHtml(tournament);
     const remaining = tournament.groups.reduce(
       (sum, g) => sum + g.fixtures.filter((f) => f.scoreA === "" || f.scoreB === "").length,
       0
@@ -6151,11 +6502,40 @@
     return groups;
   }
 
+  // Like dealIntoGroups, but shuffles and distributes each club's own teams across
+  // the groups independently, so every club's pairs spread as evenly as possible
+  // across groups instead of clumping together by chance.
+  function dealIntoGroupsByClub(teams, numGroups) {
+    const byClub = new Map();
+    teams.forEach((t) => {
+      if (!byClub.has(t.clubId)) byClub.set(t.clubId, []);
+      byClub.get(t.clubId).push(t.id);
+    });
+    const groups = [];
+    for (let i = 0; i < numGroups; i++) groups.push([]);
+    byClub.forEach((ids) => {
+      shuffle(ids).forEach((id, idx) => groups[idx % numGroups].push(id));
+    });
+    return groups;
+  }
+
   function buildAndShowTournament() {
-    const numGroups = Math.max(1, parseInt(tournamentGroupsInput.value, 10) || 1);
+    const competitionType = config.tournamentCompetitionType;
+    const isClubMode = competitionType !== "standard";
+    let numGroups = Math.max(1, parseInt(tournamentGroupsInput.value, 10) || 1);
     const advancePerGroup = Math.max(1, parseInt(tournamentAdvanceInput.value, 10) || 1);
+    if (competitionType === "clubs") numGroups = 1;
+
+    if (isClubMode && tournamentClubs.length < 2) {
+      alert("Add at least 2 clubs before generating this competition.");
+      return false;
+    }
     if (tournamentTeams.length < numGroups * 2) {
       alert(`Add at least ${numGroups * 2} teams for ${numGroups} group${numGroups === 1 ? "" : "s"} (2 per group minimum).`);
+      return false;
+    }
+    if (isClubMode && new Set(tournamentTeams.map((t) => t.clubId)).size < 2) {
+      alert("Add teams from at least 2 different clubs.");
       return false;
     }
     config.tournamentGroups = numGroups;
@@ -6167,19 +6547,49 @@
       players: t.players.slice(),
       name: tournamentTeamDisplayName(t),
       groupIndex: 0,
+      clubId: isClubMode ? t.clubId : null,
     }));
-    const dealt = dealIntoGroups(teams.map((t) => t.id), numGroups);
-    const groups = dealt.map((teamIds, index) => {
-      teamIds.forEach((id) => {
-        teams.find((t) => t.id === id).groupIndex = index;
+    const clubIdOf = (id) => {
+      const team = teams.find((t) => t.id === id);
+      return team ? team.clubId : null;
+    };
+
+    let groups;
+    if (competitionType === "clubs") {
+      const allIds = teams.map((t) => t.id);
+      groups = [{
+        index: 0,
+        name: "Championship",
+        teamIds: allIds,
+        fixtures: generateInterClubFixtures(allIds, clubIdOf),
+      }];
+    } else if (competitionType === "clubGroups") {
+      const dealt = dealIntoGroupsByClub(teams, numGroups);
+      groups = dealt.map((teamIds, index) => {
+        teamIds.forEach((id) => {
+          teams.find((t) => t.id === id).groupIndex = index;
+        });
+        return {
+          index,
+          name: String.fromCharCode(65 + index),
+          teamIds,
+          fixtures: generateInterClubFixtures(teamIds, clubIdOf),
+        };
       });
-      return {
-        index,
-        name: String.fromCharCode(65 + index),
-        teamIds,
-        fixtures: generateGroupFixtures(teamIds),
-      };
-    });
+    } else {
+      const dealt = dealIntoGroups(teams.map((t) => t.id), numGroups);
+      groups = dealt.map((teamIds, index) => {
+        teamIds.forEach((id) => {
+          teams.find((t) => t.id === id).groupIndex = index;
+        });
+        return {
+          index,
+          name: String.fromCharCode(65 + index),
+          teamIds,
+          fixtures: generateGroupFixtures(teamIds),
+        };
+      });
+    }
 
     const targetScore = Math.max(1, Math.min(21, parseInt(tournamentTargetScoreInput.value, 10) || 11));
     const courts = Math.max(1, parseInt(tournamentCourtsInput.value, 10) || 1);
@@ -6189,6 +6599,8 @@
       date: new Date().toLocaleString(),
       status: "groups",
       format: config.format,
+      competitionType,
+      clubs: isClubMode ? tournamentClubs.map((c) => ({ id: c.id, name: c.name })) : [],
       targetScore,
       winByTwo: tournamentWinByTwo,
       courts,
@@ -6198,7 +6610,7 @@
       roundMinutes: Math.max(0, parseInt(tournamentRoundMinutesInput.value, 10) || 0),
       teams,
       groups,
-      advancePerGroup,
+      advancePerGroup: competitionType === "clubs" ? 0 : advancePerGroup,
       knockout: null,
       medals: null,
     };
@@ -6208,6 +6620,10 @@
     tournamentTeams = [];
     renderTournamentTeamChips();
     tournamentNameInput.value = "";
+    if (isClubMode) {
+      tournamentClubs = [];
+      renderTournamentClubChips();
+    }
     showTournamentView();
     return true;
   }
