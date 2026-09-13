@@ -4000,10 +4000,14 @@
       cs.pointsFor += st.pointsFor;
       cs.pointsAgainst += st.pointsAgainst;
     });
-    const avgFor = (id) => (clubStats[id].pairs > 0 ? clubStats[id].pointsFor / clubStats[id].pairs : 0);
+    // Ranked by average games won per pair first (rewards actually winning matches,
+    // unaffected by squad-size differences between clubs), tie-broken by average
+    // points differential per pair, then club name -- mirrors the wins-then-diff
+    // tiebreak convention computeGroupStandings already uses.
+    const avgWins = (id) => (clubStats[id].pairs > 0 ? clubStats[id].wins / clubStats[id].pairs : 0);
     const avgDiff = (id) => (clubStats[id].pairs > 0 ? (clubStats[id].pointsFor - clubStats[id].pointsAgainst) / clubStats[id].pairs : 0);
     const ranked = tournament.clubs.map((c) => c.id).sort((a, b) => {
-      if (avgFor(b) !== avgFor(a)) return avgFor(b) - avgFor(a);
+      if (avgWins(b) !== avgWins(a)) return avgWins(b) - avgWins(a);
       if (avgDiff(b) !== avgDiff(a)) return avgDiff(b) - avgDiff(a);
       return clubNameInTournament(tournament, a).localeCompare(clubNameInTournament(tournament, b));
     });
@@ -4014,10 +4018,11 @@
     const { clubStats, ranked } = computeClubChampionshipStandings(tournament);
     const rows = ranked.map((clubId, i) => {
       const cs = clubStats[clubId];
+      const avgWins = cs.pairs > 0 ? (cs.wins / cs.pairs).toFixed(1) : "0.0";
       const avg = cs.pairs > 0 ? (cs.pointsFor / cs.pairs).toFixed(1) : "0.0";
-      return `<tr><td>${i + 1}</td><td>${clubNameInTournament(tournament, clubId)}</td><td>${cs.pairs}</td><td>${cs.wins}</td><td>${cs.losses}</td><td>${avg}</td><td>${cs.pointsFor}</td><td>${cs.pointsAgainst}</td></tr>`;
+      return `<tr><td>${i + 1}</td><td>${clubNameInTournament(tournament, clubId)}</td><td>${cs.pairs}</td><td>${cs.wins}</td><td>${cs.losses}</td><td>${avgWins}</td><td>${avg}</td><td>${cs.pointsFor}</td><td>${cs.pointsAgainst}</td></tr>`;
     });
-    const table = `<table class="schedule-table"><thead><tr><th>#</th><th>Club</th><th>Pairs</th><th>Games Won</th><th>Games Lost</th><th>Avg Points</th><th>Total For</th><th>Total Against</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    const table = `<table class="schedule-table"><thead><tr><th>#</th><th>Club</th><th>Pairs</th><th>Games Won</th><th>Games Lost</th><th>Avg Wins</th><th>Avg Points</th><th>Total For</th><th>Total Against</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
     return `<div class="qualifiers-box-header">Club Standings</div><div class="qualifiers-box-panel">${table}</div>`;
   }
 
