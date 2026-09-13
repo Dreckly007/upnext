@@ -4207,7 +4207,7 @@
     return buildCourtScheduleEl(
       tournament, schedule, (e) => e.matches, (e) => e.label,
       tournament.knockoutStartMinutes, knockoutMatchKind, onTournamentKnockoutScoreChange,
-      (match, card, kind) => { knockoutScheduleCards[match.id] = { kind, el: card }; },
+      (match, card, kind) => { knockoutScheduleCards[match.id] = { kind, el: card, teamAId: match.teamAId, teamBId: match.teamBId }; },
       knockoutMatchLabel
     );
   }
@@ -4218,13 +4218,14 @@
       entry.matches.forEach((match, i) => {
         const existing = knockoutScheduleCards[match.id];
         const kind = knockoutMatchKind(match);
-        if (!existing || existing.kind !== kind) {
+        const teamsChanged = existing && (existing.teamAId !== match.teamAId || existing.teamBId !== match.teamBId);
+        if (!existing || existing.kind !== kind || teamsChanged) {
           const courtLabel = tournament.courtLabels[i] || String(i + 1);
           const newCard = buildCourtScheduleCard(tournament, match, courtLabel, kind, onTournamentKnockoutScoreChange, knockoutMatchLabel(match));
           if (existing && existing.el.parentNode) existing.el.parentNode.replaceChild(newCard, existing.el);
-          knockoutScheduleCards[match.id] = { kind, el: newCard };
+          knockoutScheduleCards[match.id] = { kind, el: newCard, teamAId: match.teamAId, teamBId: match.teamBId };
         }
-        // kind unchanged (still "real"): leave the existing card untouched, values already stay
+        // kind and teams unchanged: leave the existing card untouched, values already stay
         // correct via syncFixtureScoreWidgets so focus/cursor position survive.
       });
     });
@@ -4341,60 +4342,73 @@
     const allMatches = {};
     ko.rounds.forEach((round) => round.matches.forEach((m) => { allMatches[m.id] = m; }));
     if (ko.thirdPlaceMatch) allMatches[ko.thirdPlaceMatch.id] = ko.thirdPlaceMatch;
+    const totalRounds = ko.rounds.length;
+
+    // 2-club safeguard: if both semifinal winners turn out to be from the same club,
+    // the semifinal with the smaller winning margin is overridden -- its loser advances
+    // to the Final instead of its winner, and its winner takes the 3rd-place-match slot
+    // instead of that match's real loser. Identifies which semifinal match (if any) is
+    // being swapped; resolveSlot below folds this straight into normal slot resolution
+    // so there is exactly one source of truth for "what does this slot resolve to" --
+    // recomputed fresh from the semifinal matches' *current* winnerTeamId every call, so
+    // a later score correction (to either semifinal, or one that removes the clash)
+    // is picked up automatically without fighting a separate override pass.
+    function semifinalSwapMatchId() {
+      if (!tournament.clubs || tournament.clubs.length !== 2 || totalRounds < 2) return null;
+      const semiRound = ko.rounds[totalRounds - 2];
+      const [semiA, semiB] = semiRound.matches;
+      if (!semiA || !semiB || !semiA.winnerTeamId || !semiB.winnerTeamId) return null;
+      const clubOf = (teamId) => {
+        const team = findTeamById(tournament, teamId);
+        return team ? team.clubId : null;
+      };
+      if (clubOf(semiA.winnerTeamId) !== clubOf(semiB.winnerTeamId)) return null;
+      const marginOf = (m) => Math.abs((parseInt(m.scoreA, 10) || 0) - (parseInt(m.scoreB, 10) || 0));
+      return marginOf(semiA) <= marginOf(semiB) ? semiA.id : semiB.id;
+    }
 
     function resolveSlot(slot) {
       if (!slot.fromMatchId) return null;
       const feeder = allMatches[slot.fromMatchId];
       if (!feeder) return null;
-      if (slot.winnerOf) return feeder.winnerTeamId;
-      if (slot.loserOf) return resolveMatchLoser(feeder);
+      const isSwapFeeder = feeder.id === semifinalSwapMatchId();
+      if (slot.winnerOf) return isSwapFeeder ? resolveMatchLoser(feeder) : feeder.winnerTeamId;
+      if (slot.loserOf) return isSwapFeeder ? feeder.winnerTeamId : resolveMatchLoser(feeder);
       return null;
     }
 
+    // Slots fed from another match (fromMatchId) always re-resolve from that match's
+    // current winner/loser -- never gated on "still null" -- so a later score
+    // correction upstream propagates forward instead of leaving a stale team downstream.
+    // seedSlot-based slots (fixed at bracket generation) are untouched. If the resolved
+    // team actually changes, this match's own score is cleared too, since it belonged
+    // to the old (now-wrong) pairing and would otherwise misleadingly show a result
+    // against an opponent it was never actually played.
+    function resolveFeederSlot(m, slotKey, teamKey) {
+      const slot = m[slotKey];
+      if (!slot.fromMatchId) return;
+      const resolved = resolveSlot(slot);
+      if (resolved !== m[teamKey]) {
+        m[teamKey] = resolved;
+        m.scoreA = "";
+        m.scoreB = "";
+      }
+    }
+
+    // Semifinal round is processed before the Final/3rd-place round below (rounds are
+    // in bracket order), so by the time resolveSlot is asked about a Final/3rd-place
+    // slot, the semifinal matches' winnerTeamId are already fresh for this same pass.
     ko.rounds.forEach((round) => {
       round.matches.forEach((m) => {
-        if (m.teamAId === null && m.slotA.fromMatchId) m.teamAId = resolveSlot(m.slotA);
-        if (m.teamBId === null && m.slotB.fromMatchId) m.teamBId = resolveSlot(m.slotB);
+        resolveFeederSlot(m, "slotA", "teamAId");
+        resolveFeederSlot(m, "slotB", "teamBId");
         m.winnerTeamId = resolveMatchWinner(m);
       });
     });
     if (ko.thirdPlaceMatch) {
-      if (ko.thirdPlaceMatch.teamAId === null) ko.thirdPlaceMatch.teamAId = resolveSlot(ko.thirdPlaceMatch.slotA);
-      if (ko.thirdPlaceMatch.teamBId === null) ko.thirdPlaceMatch.teamBId = resolveSlot(ko.thirdPlaceMatch.slotB);
+      resolveFeederSlot(ko.thirdPlaceMatch, "slotA", "teamAId");
+      resolveFeederSlot(ko.thirdPlaceMatch, "slotB", "teamBId");
       ko.thirdPlaceMatch.winnerTeamId = resolveMatchWinner(ko.thirdPlaceMatch);
-    }
-
-    const totalRounds = ko.rounds.length;
-
-    // 2-club safeguard: if both semifinal winners turn out to be from the same
-    // club, the semifinal with the smaller winning margin is overridden -- its
-    // loser advances to the Final instead of its winner, and its winner takes the
-    // 3rd-place-match slot instead of that match's real loser. Each semifinal's own
-    // recorded score/winner is untouched; only what advances differs. This always
-    // recomputes fresh (not gated by a "still null" check) so it stays correct if
-    // scores are edited after the fact and self-corrects if the clash goes away.
-    if (totalRounds >= 2 && tournament.clubs && tournament.clubs.length === 2) {
-      const semiRound = ko.rounds[totalRounds - 2];
-      const [semiA, semiB] = semiRound.matches;
-      if (semiA && semiB && semiA.winnerTeamId && semiB.winnerTeamId) {
-        const clubOf = (teamId) => {
-          const team = findTeamById(tournament, teamId);
-          return team ? team.clubId : null;
-        };
-        if (clubOf(semiA.winnerTeamId) === clubOf(semiB.winnerTeamId)) {
-          const marginOf = (m) => Math.abs((parseInt(m.scoreA, 10) || 0) - (parseInt(m.scoreB, 10) || 0));
-          const swapMatch = marginOf(semiA) <= marginOf(semiB) ? semiA : semiB;
-          const finalMatch = ko.rounds[totalRounds - 1].matches[0];
-          finalMatch.teamAId = semiA === swapMatch ? resolveMatchLoser(semiA) : semiA.winnerTeamId;
-          finalMatch.teamBId = semiB === swapMatch ? resolveMatchLoser(semiB) : semiB.winnerTeamId;
-          finalMatch.winnerTeamId = resolveMatchWinner(finalMatch);
-          if (ko.thirdPlaceMatch) {
-            ko.thirdPlaceMatch.teamAId = semiA === swapMatch ? semiA.winnerTeamId : resolveMatchLoser(semiA);
-            ko.thirdPlaceMatch.teamBId = semiB === swapMatch ? semiB.winnerTeamId : resolveMatchLoser(semiB);
-            ko.thirdPlaceMatch.winnerTeamId = resolveMatchWinner(ko.thirdPlaceMatch);
-          }
-        }
-      }
     }
 
     const final = ko.rounds[totalRounds - 1].matches[0];
@@ -5937,7 +5951,7 @@
         const content = document.createElement("div");
         round.matches.forEach((match) => {
           const rowInfo = buildKnockoutMatchRow(tournament, match, "Waiting on earlier results...");
-          knockoutRowEls[match.id] = rowInfo;
+          knockoutRowEls[match.id] = { ...rowInfo, teamAId: match.teamAId, teamBId: match.teamBId };
           content.appendChild(rowInfo.el);
         });
         tournamentBracketContainer.appendChild(buildCollapsibleSection(round.name, content, true));
@@ -5945,7 +5959,7 @@
       if (ko.thirdPlaceMatch) {
         const content = document.createElement("div");
         const rowInfo = buildKnockoutMatchRow(tournament, ko.thirdPlaceMatch, "Waiting on the semi-finals...");
-        knockoutRowEls[ko.thirdPlaceMatch.id] = rowInfo;
+        knockoutRowEls[ko.thirdPlaceMatch.id] = { ...rowInfo, teamAId: ko.thirdPlaceMatch.teamAId, teamBId: ko.thirdPlaceMatch.teamBId };
         content.appendChild(rowInfo.el);
         tournamentBracketContainer.appendChild(buildCollapsibleSection("3rd Place Match", content, true));
       }
@@ -5954,13 +5968,15 @@
       allMatches.forEach((match) => {
         const existing = knockoutRowEls[match.id];
         const newKind = knockoutMatchKind(match);
-        if (!existing || existing.kind !== newKind) {
+        const teamsChanged = existing && (existing.teamAId !== match.teamAId || existing.teamBId !== match.teamBId);
+        if (!existing || existing.kind !== newKind || teamsChanged) {
           const waitingLabel = match.id === "ko-3rd" ? "Waiting on the semi-finals..." : "Waiting on earlier results...";
           const rowInfo = buildKnockoutMatchRow(tournament, match, waitingLabel);
           if (existing && existing.el.parentNode) existing.el.parentNode.replaceChild(rowInfo.el, existing.el);
-          knockoutRowEls[match.id] = rowInfo;
+          knockoutRowEls[match.id] = { ...rowInfo, teamAId: match.teamAId, teamBId: match.teamBId };
         }
-        // kind unchanged (e.g. still "real"): leave the existing DOM node untouched so focus/scroll survive.
+        // kind and teams unchanged (e.g. still "real" with the same pairing): leave the
+        // existing DOM node untouched so focus/scroll survive.
       });
     }
 
