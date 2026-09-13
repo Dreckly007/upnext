@@ -938,6 +938,20 @@
     letter-spacing: 0.05em;
     margin-bottom: 12px;
   }
+  .team-box-clubs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    margin-bottom: 4px;
+  }
+  .team-club-tag {
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--green-dark);
+  }
   .team-box {
     position: relative;
     display: grid;
@@ -1045,6 +1059,20 @@
     font-size: 0.9rem;
     font-weight: 600;
   }
+  .fixture-team-club {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .team-club-suffix {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-left: 6px;
+  }
   .fixture-row .fixture-team:last-child { text-align: right; }
   .fixture-score-row {
     margin: 0;
@@ -1130,6 +1158,17 @@
 
   .court-schedule-round { padding: 8px 0; border-bottom: 1px solid var(--card-border); }
   .court-schedule-round:last-child { border-bottom: none; }
+  .court-schedule-day-header {
+    background: var(--green-pale);
+    border: 1px solid var(--green-pale-border);
+    color: var(--green-dark);
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 10px 16px;
+    border-radius: 8px;
+    margin: 18px 0 10px;
+  }
+  .court-schedule-day-header:first-child { margin-top: 0; }
   .court-schedule-round-title { font-weight: 700; color: var(--green-dark); font-size: 0.85rem; margin-bottom: 8px; }
   .court-schedule-round-time { color: var(--muted); font-weight: 600; }
   .court-schedule-slot { display: flex; gap: 8px; padding: 3px 0; font-size: 0.88rem; }
@@ -1779,6 +1818,26 @@
             </div>
           </div>
 
+          <div class="paired-grid">
+            <div class="field">
+              <label for="tournamentHoursPerDayInput">Hours available per day</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentHoursPerDayInput" data-step="-0.5" aria-label="Decrease hours available per day">−</button>
+                <input type="number" id="tournamentHoursPerDayInput" min="0" step="0.5" value="0" />
+                <button type="button" class="stepper-btn" data-target="tournamentHoursPerDayInput" data-step="0.5" aria-label="Increase hours available per day">+</button>
+              </div>
+              <div class="hint">0 = single day, no limit</div>
+            </div>
+            <div class="field">
+              <label for="tournamentDaysAvailableInput">Days available</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentDaysAvailableInput" data-step="-1" aria-label="Decrease days available">−</button>
+                <input type="number" id="tournamentDaysAvailableInput" min="1" value="1" />
+                <button type="button" class="stepper-btn" data-target="tournamentDaysAvailableInput" data-step="1" aria-label="Increase days available">+</button>
+              </div>
+            </div>
+          </div>
+
           <div class="field estimate-field" id="tournamentEstimateField" style="display:none;">
             <div class="estimate-box">
               <div class="estimate-box-header">Estimated tournament duration</div>
@@ -1787,6 +1846,10 @@
                 <span class="estimate-reason" id="tournamentEstimateReason"></span>
               </div>
             </div>
+          </div>
+          <div class="field hint" id="tournamentBudgetSuggestionField" style="display:none;">
+            <span id="tournamentBudgetSuggestionText"></span>
+            <button type="button" class="small-btn" id="tournamentBudgetApplyBtn">Apply suggestion</button>
           </div>
 
           <div class="paired-grid">
@@ -2347,6 +2410,8 @@
   config.tournamentCompetitionType = ["clubs", "clubGroups"].includes(config.tournamentCompetitionType)
     ? config.tournamentCompetitionType
     : "standard";
+  config.tournamentHoursPerDay = config.tournamentHoursPerDay ?? 0;
+  config.tournamentDaysAvailable = config.tournamentDaysAvailable ?? 1;
   if ((config.schemaVersion || 1) < CONFIG_SCHEMA_VERSION) {
     // One-time migration: browsers with settings saved before the
     // "games to play" mode existed get bumped onto the new defaults.
@@ -2445,9 +2510,14 @@
   const tournamentCourtLabelsRow = document.getElementById("tournamentCourtLabelsRow");
   const tournamentRoundMinutesInput = document.getElementById("tournamentRoundMinutesInput");
   const tournamentRoundMinutesHint = document.getElementById("tournamentRoundMinutesHint");
+  const tournamentHoursPerDayInput = document.getElementById("tournamentHoursPerDayInput");
+  const tournamentDaysAvailableInput = document.getElementById("tournamentDaysAvailableInput");
   const tournamentEstimateField = document.getElementById("tournamentEstimateField");
   const tournamentEstimateNumber = document.getElementById("tournamentEstimateNumber");
   const tournamentEstimateReason = document.getElementById("tournamentEstimateReason");
+  const tournamentBudgetSuggestionField = document.getElementById("tournamentBudgetSuggestionField");
+  const tournamentBudgetSuggestionText = document.getElementById("tournamentBudgetSuggestionText");
+  const tournamentBudgetApplyBtn = document.getElementById("tournamentBudgetApplyBtn");
   const tournamentStartTimeInput = document.getElementById("tournamentStartTimeInput");
   const tournamentKnockoutStartTimeInput = document.getElementById("tournamentKnockoutStartTimeInput");
   const tournamentTargetScoreInput = document.getElementById("tournamentTargetScoreInput");
@@ -2588,6 +2658,8 @@
   tournamentCourtsInput.value = config.tournamentCourts;
   tournamentStartTimeInput.value = new Date().toTimeString().slice(0, 5);
   tournamentRoundMinutesInput.value = config.tournamentRoundMinutes;
+  tournamentHoursPerDayInput.value = config.tournamentHoursPerDay;
+  tournamentDaysAvailableInput.value = config.tournamentDaysAvailable;
   gamesToPlayInput.value = config.gamesToPlay;
   gameLengthInput.value = config.gameLength;
   timeAvailableHoursInput.value = Math.floor(config.timeAvailable / 60);
@@ -2627,6 +2699,25 @@
 
   function tournamentPerRoundMinutes(targetScore, overrideMinutes) {
     return overrideMinutes > 0 ? overrideMinutes : estimateMinutesForTarget(targetScore) + CHANGEOVER_MINUTES;
+  }
+
+  // Inverse of estimateMinutesForTarget: given how long a round can afford to take,
+  // find the largest target score whose estimated game length (plus changeover) still
+  // fits -- falls back to 1 if even that doesn't fit, since it can't go any lower.
+  function suggestTargetScoreForBudget(perRoundBudgetMinutes) {
+    for (let target = 21; target >= 1; target--) {
+      if (estimateMinutesForTarget(target) + CHANGEOVER_MINUTES <= perRoundBudgetMinutes) return target;
+    }
+    return 1;
+  }
+
+  // Pure day-count math shared by the pre-generation setup estimate (given projected
+  // round counts) and splitScheduleIntoDays (given the real generated schedule length).
+  // hoursPerDay <= 0 means "no limit" -- everything fits in a single day.
+  function dayCountForRounds(rounds, perRoundMinutes, hoursPerDay) {
+    if (!hoursPerDay || hoursPerDay <= 0) return 1;
+    const perDayCapacity = Math.max(1, Math.floor((hoursPerDay * 60) / perRoundMinutes));
+    return Math.max(1, Math.ceil(rounds / perDayCapacity));
   }
 
   function isGamesMode() {
@@ -3063,6 +3154,16 @@
   });
   tournamentRoundMinutesInput.addEventListener("input", () => {
     config.tournamentRoundMinutes = Math.max(0, parseInt(tournamentRoundMinutesInput.value, 10) || 0);
+    save(STORAGE.config, config);
+    updateTournamentSetupEstimate();
+  });
+  tournamentHoursPerDayInput.addEventListener("input", () => {
+    config.tournamentHoursPerDay = Math.max(0, parseFloat(tournamentHoursPerDayInput.value) || 0);
+    save(STORAGE.config, config);
+    updateTournamentSetupEstimate();
+  });
+  tournamentDaysAvailableInput.addEventListener("input", () => {
+    config.tournamentDaysAvailable = Math.max(1, parseInt(tournamentDaysAvailableInput.value, 10) || 1);
     save(STORAGE.config, config);
     updateTournamentSetupEstimate();
   });
@@ -3619,7 +3720,8 @@
       const diffText = diff > 0 ? `+${diff}` : String(diff);
       const isAdvancing = advancingIds.has(id);
       const chip = isAdvancing ? ` <span class="advance-chip">Advancing</span>` : "";
-      html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
+      const clubSuffix = tournamentIsClubBased(tournament) ? ` <span class="team-club-suffix">${teamClubName(tournament, id)}</span>` : "";
+      html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${clubSuffix}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
     });
     html += "</tbody>";
     return html;
@@ -3645,6 +3747,15 @@
   function clubNameInTournament(tournament, clubId) {
     const club = (tournament.clubs || []).find((c) => c.id === clubId);
     return club ? club.name : "?";
+  }
+
+  function tournamentIsClubBased(tournament) {
+    return !!tournament.competitionType && tournament.competitionType !== "standard";
+  }
+
+  function teamClubName(tournament, teamId) {
+    const team = findTeamById(tournament, teamId);
+    return team ? clubNameInTournament(tournament, team.clubId) : "";
   }
 
   function computeClubChampionshipStandings(tournament) {
@@ -3912,6 +4023,24 @@
     return schedule;
   }
 
+  // Pure presentational grouping over an already-built flat wave schedule (group-stage
+  // or knockout) -- no change to fixture/wave generation itself. hoursPerDay <= 0 means
+  // "no limit", so everything stays on one day (today's behavior, unchanged). Otherwise
+  // buckets waves into as many days as the per-day capacity requires; each entry keeps
+  // track of its wave index *within its day* so clock times can reset every day.
+  function splitScheduleIntoDays(schedule, perRoundMinutes, hoursPerDay) {
+    if (!hoursPerDay || hoursPerDay <= 0) {
+      return [{ day: 1, entries: schedule.map((entry, waveInDay) => ({ entry, waveInDay })) }];
+    }
+    const perDayCapacity = Math.max(1, Math.floor((hoursPerDay * 60) / perRoundMinutes));
+    const days = [];
+    for (let i = 0; i < schedule.length; i += perDayCapacity) {
+      const entries = schedule.slice(i, i + perDayCapacity).map((entry, waveInDay) => ({ entry, waveInDay }));
+      days.push({ day: days.length + 1, entries });
+    }
+    return days;
+  }
+
   function buildKnockoutCourtSchedule(tournament) {
     const ko = tournament.knockout;
     if (!ko) return [];
@@ -3951,6 +4080,18 @@
       pending.textContent = "Waiting on earlier results...";
       card.appendChild(pending);
       return card;
+    }
+
+    if (tournamentIsClubBased(tournament)) {
+      const clubsRow = document.createElement("div");
+      clubsRow.className = "team-box-clubs";
+      [item.teamAId, item.teamBId].forEach((teamId) => {
+        const tag = document.createElement("div");
+        tag.className = "team-club-tag";
+        tag.textContent = teamClubName(tournament, teamId);
+        clubsRow.appendChild(tag);
+      });
+      card.appendChild(clubsRow);
     }
 
     const teamBox = document.createElement("div");
@@ -4015,30 +4156,39 @@
       return wrap;
     }
     const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
-    schedule.forEach((entry, idx) => {
-      const roundEl = document.createElement("div");
-      roundEl.className = "court-schedule-round";
-      const titleEl = document.createElement("div");
-      titleEl.className = "court-schedule-round-title";
-      titleEl.textContent = roundLabel(entry);
-      if (baseMinutes != null) {
-        const timeEl = document.createElement("span");
-        timeEl.className = "court-schedule-round-time";
-        timeEl.textContent = ` · ${formatMinutesAsClock(baseMinutes + idx * perRound)}`;
-        titleEl.appendChild(timeEl);
+    const days = splitScheduleIntoDays(schedule, perRound, tournament.hoursPerDay);
+    days.forEach((dayGroup) => {
+      if (days.length > 1) {
+        const dayHeaderEl = document.createElement("div");
+        dayHeaderEl.className = "court-schedule-day-header";
+        dayHeaderEl.textContent = `Day ${dayGroup.day}`;
+        wrap.appendChild(dayHeaderEl);
       }
-      roundEl.appendChild(titleEl);
-      const cardsRow = document.createElement("div");
-      cardsRow.className = "court-cards-row";
-      items(entry).forEach((item, i) => {
-        const courtLabel = tournament.courtLabels[i] || String(i + 1);
-        const kind = kindOf(item);
-        const card = buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange, matchLabelOf(item));
-        cardsRow.appendChild(card);
-        if (onCardBuilt) onCardBuilt(item, card, kind);
+      dayGroup.entries.forEach(({ entry, waveInDay }) => {
+        const roundEl = document.createElement("div");
+        roundEl.className = "court-schedule-round";
+        const titleEl = document.createElement("div");
+        titleEl.className = "court-schedule-round-title";
+        titleEl.textContent = roundLabel(entry);
+        if (baseMinutes != null) {
+          const timeEl = document.createElement("span");
+          timeEl.className = "court-schedule-round-time";
+          timeEl.textContent = ` · ${formatMinutesAsClock(baseMinutes + waveInDay * perRound)}`;
+          titleEl.appendChild(timeEl);
+        }
+        roundEl.appendChild(titleEl);
+        const cardsRow = document.createElement("div");
+        cardsRow.className = "court-cards-row";
+        items(entry).forEach((item, i) => {
+          const courtLabel = tournament.courtLabels[i] || String(i + 1);
+          const kind = kindOf(item);
+          const card = buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange, matchLabelOf(item));
+          cardsRow.appendChild(card);
+          if (onCardBuilt) onCardBuilt(item, card, kind);
+        });
+        roundEl.appendChild(cardsRow);
+        wrap.appendChild(roundEl);
       });
-      roundEl.appendChild(cardsRow);
-      wrap.appendChild(roundEl);
     });
     return wrap;
   }
@@ -4095,8 +4245,15 @@
     }
     const groupMinutes = groupRounds * perRound;
     const knockoutMinutes = knockoutRounds * perRound;
-    return { groupMinutes, knockoutMinutes, totalMinutes: groupMinutes + knockoutMinutes };
+    return { groupMinutes, knockoutMinutes, totalMinutes: groupMinutes + knockoutMinutes, groupRounds, knockoutRounds };
   }
+
+  function dayCountSuffix(rounds, perRoundMinutes, hoursPerDay) {
+    const days = dayCountForRounds(rounds, perRoundMinutes, hoursPerDay);
+    return days > 1 ? ` (${days} days)` : "";
+  }
+
+  let lastBudgetSuggestion = null;
 
   function updateTournamentSetupEstimate() {
     const numGroups = Math.max(1, parseInt(tournamentGroupsInput.value, 10) || 1);
@@ -4106,9 +4263,12 @@
     const roundOverride = Math.max(0, parseInt(tournamentRoundMinutesInput.value, 10) || 0);
     const perRoundMinutes = tournamentPerRoundMinutes(targetScore, roundOverride);
     tournamentRoundMinutesHint.textContent = roundOverride > 0 ? "" : `Auto: ${perRoundMinutes} min`;
+    const hoursPerDay = Math.max(0, parseFloat(tournamentHoursPerDayInput.value) || 0);
+    const daysAvailable = Math.max(1, parseInt(tournamentDaysAvailableInput.value, 10) || 1);
     const groupEst = estimateGroupStageMinutes(tournamentTeams.length, numGroups, courts, perRoundMinutes);
     if (!groupEst) {
       tournamentEstimateField.style.display = "none";
+      tournamentBudgetSuggestionField.style.display = "none";
       return;
     }
     const qualifierCount = projectQualifierCount(tournamentTeams.length, numGroups, advancePerGroup);
@@ -4116,18 +4276,49 @@
     const totalMinutes = groupEst.minutes + (knockoutEst ? knockoutEst.minutes : 0);
     tournamentEstimateField.style.display = "block";
     tournamentEstimateNumber.textContent = `${totalMinutes} min`;
+    const groupDaysSuffix = dayCountSuffix(groupEst.rounds, perRoundMinutes, hoursPerDay);
+    const knockoutDaysSuffix = knockoutEst ? dayCountSuffix(knockoutEst.rounds, perRoundMinutes, hoursPerDay) : "";
     tournamentEstimateReason.textContent = knockoutEst
-      ? `Group stage ~${groupEst.minutes} min + Knockout ~${knockoutEst.minutes} min (projected)`
-      : `Group stage ~${groupEst.minutes} min (projected)`;
+      ? `Group stage ~${groupEst.minutes} min${groupDaysSuffix} + Knockout ~${knockoutEst.minutes} min${knockoutDaysSuffix} (projected)`
+      : `Group stage ~${groupEst.minutes} min${groupDaysSuffix} (projected)`;
+
+    if (hoursPerDay > 0) {
+      const budgetMinutes = hoursPerDay * daysAvailable * 60;
+      const totalRoundsNeeded = groupEst.rounds + (knockoutEst ? knockoutEst.rounds : 0);
+      if (totalMinutes > budgetMinutes && totalRoundsNeeded > 0) {
+        const perRoundBudget = budgetMinutes / totalRoundsNeeded;
+        const suggestedTarget = suggestTargetScoreForBudget(perRoundBudget);
+        lastBudgetSuggestion = suggestedTarget;
+        const suggestedPerRound = estimateMinutesForTarget(suggestedTarget) + CHANGEOVER_MINUTES;
+        tournamentBudgetSuggestionField.style.display = "block";
+        tournamentBudgetSuggestionText.textContent =
+          `This will take ~${totalMinutes} min — try ${suggestedTarget} points (~${suggestedPerRound} min/game) to fit your ${daysAvailable}-day, ${hoursPerDay}h/day budget.`;
+      } else {
+        tournamentBudgetSuggestionField.style.display = "none";
+        lastBudgetSuggestion = null;
+      }
+    } else {
+      tournamentBudgetSuggestionField.style.display = "none";
+      lastBudgetSuggestion = null;
+    }
   }
+
+  tournamentBudgetApplyBtn.addEventListener("click", () => {
+    if (lastBudgetSuggestion == null) return;
+    tournamentTargetScoreInput.value = lastBudgetSuggestion;
+    updateTournamentSetupEstimate();
+  });
 
   function updateTournamentViewEstimate(tournament) {
     const est = computeTournamentLiveEstimate(tournament);
     tournamentViewEstimateField.style.display = "block";
     tournamentViewEstimateNumber.textContent = `${est.totalMinutes} min`;
+    const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
+    const groupDaysSuffix = dayCountSuffix(est.groupRounds, perRound, tournament.hoursPerDay);
+    const knockoutDaysSuffix = dayCountSuffix(est.knockoutRounds, perRound, tournament.hoursPerDay);
     tournamentViewEstimateReason.textContent = tournament.knockout
-      ? `Group stage ~${est.groupMinutes} min + Knockout ~${est.knockoutMinutes} min`
-      : `Group stage ~${est.groupMinutes} min + Knockout ~${est.knockoutMinutes} min (projected)`;
+      ? `Group stage ~${est.groupMinutes} min${groupDaysSuffix} + Knockout ~${est.knockoutMinutes} min${knockoutDaysSuffix}`
+      : `Group stage ~${est.groupMinutes} min${groupDaysSuffix} + Knockout ~${est.knockoutMinutes} min${knockoutDaysSuffix} (projected)`;
   }
 
   function resolveMatchWinner(match) {
@@ -5528,12 +5719,22 @@
     });
   }
 
+  function fillFixtureTeamCell(el, tournament, teamId) {
+    el.textContent = tournamentTeamName(tournament, teamId);
+    if (tournamentIsClubBased(tournament)) {
+      const clubTag = document.createElement("span");
+      clubTag.className = "fixture-team-club";
+      clubTag.textContent = teamClubName(tournament, teamId);
+      el.appendChild(clubTag);
+    }
+  }
+
   function buildFixtureRow(tournament, fixture, onScoreChange) {
     const row = document.createElement("div");
     row.className = "fixture-row";
     const nameA = document.createElement("div");
     nameA.className = "fixture-team";
-    nameA.textContent = tournamentTeamName(tournament, fixture.teamAId);
+    fillFixtureTeamCell(nameA, tournament, fixture.teamAId);
 
     const scoreRow = document.createElement("div");
     scoreRow.className = "score-row fixture-score-row";
@@ -5570,7 +5771,7 @@
 
     const nameB = document.createElement("div");
     nameB.className = "fixture-team";
-    nameB.textContent = tournamentTeamName(tournament, fixture.teamBId);
+    fillFixtureTeamCell(nameB, tournament, fixture.teamBId);
 
     row.appendChild(nameA);
     row.appendChild(scoreRow);
@@ -5584,7 +5785,7 @@
     row.className = "fixture-row fixture-row-bye";
     const nameA = document.createElement("div");
     nameA.className = "fixture-team";
-    nameA.textContent = tournamentTeamName(tournament, match.winnerTeamId);
+    fillFixtureTeamCell(nameA, tournament, match.winnerTeamId);
     const label = document.createElement("div");
     label.className = "fixture-bye-label";
     label.textContent = "walkover";
@@ -6156,22 +6357,27 @@
     printWithClass("printing-session-stats");
   });
 
+  function printFixtureTeamSpan(tournament, teamId) {
+    const clubHtml = tournamentIsClubBased(tournament)
+      ? `<span class="fixture-team-club">${teamClubName(tournament, teamId)}</span>`
+      : "";
+    return `<span>${tournamentTeamName(tournament, teamId)}${clubHtml}</span>`;
+  }
+
   function buildPrintFixtureCardHtml(tournament, match, waitingLabel, courtLabel) {
     const kind = knockoutMatchKind ? knockoutMatchKind(match) : match.teamAId && match.teamBId ? "real" : match.byeAdvance ? "bye" : "pending";
-    const nameA = tournamentTeamName(tournament, match.teamAId);
     const courtTag = courtLabel ? `<div class="print-fixture-court">Court ${courtLabel}</div>` : "";
     if (kind === "pending") {
       return `<div class="print-fixture">${courtTag}<div class="print-fixture-bye">${waitingLabel || "TBD"}</div></div>`;
     }
     if (kind === "bye") {
-      return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams"><span>${nameA}</span></div><div class="print-fixture-bye">Walkover</div></div>`;
+      return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams">${printFixtureTeamSpan(tournament, match.teamAId)}</div><div class="print-fixture-bye">Walkover</div></div>`;
     }
-    const nameB = tournamentTeamName(tournament, match.teamBId);
     const hasScore = match.scoreA !== "" && match.scoreB !== "";
     const sideA = hasScore ? `<span class="print-score-filled">${match.scoreA}</span>` : `<span class="print-score-box"></span>`;
     const sideB = hasScore ? `<span class="print-score-filled">${match.scoreB}</span>` : `<span class="print-score-box"></span>`;
     const scoreLine = `<div class="print-score-line">${sideA}<span class="print-score-dash">–</span>${sideB}</div>`;
-    return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams"><span>${nameA}</span><span>${nameB}</span></div>${scoreLine}</div>`;
+    return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams">${printFixtureTeamSpan(tournament, match.teamAId)}${printFixtureTeamSpan(tournament, match.teamBId)}</div>${scoreLine}</div>`;
   }
 
   function buildPrintCourtCardHtml(tournament, item, courtLabel) {
@@ -6184,11 +6390,14 @@
     }
     const cells = courtCardCellNames(tournament, item.teamAId, item.teamBId)
       .map((name) => `<div class="team-cell">${name}</div>`).join("");
+    const clubsHtml = tournamentIsClubBased(tournament)
+      ? `<div class="team-box-clubs"><div class="team-club-tag">${teamClubName(tournament, item.teamAId)}</div><div class="team-club-tag">${teamClubName(tournament, item.teamBId)}</div></div>`
+      : "";
     const hasScore = item.scoreA !== "" && item.scoreB !== "";
     const scoreHtml = hasScore
       ? `<div class="court-schedule-card-score">${item.scoreA} – ${item.scoreB}</div>`
       : `<div class="court-schedule-card-score"><span class="print-score-box"></span><span class="print-score-dash">–</span><span class="print-score-box"></span></div>`;
-    return `<div class="court-card court-card-compact">${title}${matchLabelHtml}<div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
+    return `<div class="court-card court-card-compact">${title}${matchLabelHtml}${clubsHtml}<div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
   }
 
   function buildPrintTournamentGroupsHtml() {
@@ -6215,15 +6424,19 @@
     const t = currentTournament;
     const schedule = buildGroupStageCourtSchedule(t);
     const perRound = tournamentPerRoundMinutes(t.targetScore, t.roundMinutes);
+    const days = splitScheduleIntoDays(schedule, perRound, t.hoursPerDay);
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Court Schedule</div>`;
-    schedule.forEach((entry, idx) => {
-      const timeText = t.startMinutes != null ? ` · ${formatMinutesAsClock(t.startMinutes + idx * perRound)}` : "";
-      html += `<div class="print-round"><div class="print-round-top">Round ${entry.roundNumber}${timeText}</div><div class="court-cards-row">`;
-      entry.fixtures.forEach((fixture, i) => {
-        const courtLabel = t.courtLabels[i] || String(i + 1);
-        html += buildPrintCourtCardHtml(t, fixture, courtLabel);
+    days.forEach((dayGroup) => {
+      if (days.length > 1) html += `<div class="court-schedule-day-header">Day ${dayGroup.day}</div>`;
+      dayGroup.entries.forEach(({ entry, waveInDay }) => {
+        const timeText = t.startMinutes != null ? ` · ${formatMinutesAsClock(t.startMinutes + waveInDay * perRound)}` : "";
+        html += `<div class="print-round"><div class="print-round-top">Round ${entry.roundNumber}${timeText}</div><div class="court-cards-row">`;
+        entry.fixtures.forEach((fixture, i) => {
+          const courtLabel = t.courtLabels[i] || String(i + 1);
+          html += buildPrintCourtCardHtml(t, fixture, courtLabel);
+        });
+        html += `</div></div>`;
       });
-      html += `</div></div>`;
     });
     return html;
   }
@@ -6238,15 +6451,19 @@
     const ko = t.knockout;
     const schedule = buildKnockoutCourtSchedule(t);
     const perRound = tournamentPerRoundMinutes(t.targetScore, t.roundMinutes);
+    const days = splitScheduleIntoDays(schedule, perRound, t.hoursPerDay);
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
-    schedule.forEach((entry, idx) => {
-      const timeText = t.knockoutStartMinutes != null ? ` · ${formatMinutesAsClock(t.knockoutStartMinutes + idx * perRound)}` : "";
-      html += `<div class="print-round"><div class="print-round-top">${entry.label}${timeText}</div><div class="court-cards-row">`;
-      entry.matches.forEach((match, i) => {
-        const courtLabel = t.courtLabels[i] || String(i + 1);
-        html += buildPrintCourtCardHtml(t, match, courtLabel);
+    days.forEach((dayGroup) => {
+      if (days.length > 1) html += `<div class="court-schedule-day-header">Day ${dayGroup.day}</div>`;
+      dayGroup.entries.forEach(({ entry, waveInDay }) => {
+        const timeText = t.knockoutStartMinutes != null ? ` · ${formatMinutesAsClock(t.knockoutStartMinutes + waveInDay * perRound)}` : "";
+        html += `<div class="print-round"><div class="print-round-top">${entry.label}${timeText}</div><div class="court-cards-row">`;
+        entry.matches.forEach((match, i) => {
+          const courtLabel = t.courtLabels[i] || String(i + 1);
+          html += buildPrintCourtCardHtml(t, match, courtLabel);
+        });
+        html += `</div></div>`;
       });
-      html += `</div></div>`;
     });
     if (t.medals) {
       html += `<div class="print-medals-summary">`;
@@ -6608,6 +6825,7 @@
       startMinutes: parseTimeInputToMinutes(tournamentStartTimeInput.value),
       knockoutStartMinutes: null,
       roundMinutes: Math.max(0, parseInt(tournamentRoundMinutesInput.value, 10) || 0),
+      hoursPerDay: Math.max(0, parseFloat(tournamentHoursPerDayInput.value) || 0),
       teams,
       groups,
       advancePerGroup: competitionType === "clubs" ? 0 : advancePerGroup,
