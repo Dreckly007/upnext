@@ -1391,6 +1391,11 @@
   .share-qr-container canvas { max-width: 100%; height: auto; border: 1px solid var(--card-border); border-radius: 8px; }
   .share-field-label { display: block; font-weight: 700; font-size: 0.85rem; color: var(--green-dark); margin: 10px 0 4px; }
   .share-code-textarea { font-family: monospace; font-size: 0.78rem; resize: vertical; }
+  .share-code-details { margin-top: 10px; }
+  .share-code-details summary { cursor: pointer; }
+  .share-code-details summary.share-field-label { margin: 0 0 4px; }
+  .share-code-details[open] summary.share-field-label { margin-bottom: 4px; }
+  .share-code-details .inline-form { margin-top: 6px; }
   .modal-actions { display: flex; flex-direction: column; gap: 10px; }
   .modal-btn { padding: 14px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; cursor: pointer; border: none; }
   .modal-btn.primary { background: var(--green); color: var(--on-accent); }
@@ -2441,11 +2446,13 @@
             <input type="text" id="shareLinkInput" readonly />
             <button type="button" class="small-btn" id="shareCopyLinkBtn">Copy</button>
           </div>
-          <label class="share-field-label" for="shareCodeInput">Code</label>
-          <div class="inline-form">
-            <textarea id="shareCodeInput" class="share-code-textarea" readonly rows="3"></textarea>
-            <button type="button" class="small-btn" id="shareCopyCodeBtn">Copy</button>
-          </div>
+          <details class="share-code-details">
+            <summary class="share-field-label">Or paste this code</summary>
+            <div class="inline-form">
+              <textarea id="shareCodeInput" class="share-code-textarea" readonly rows="3"></textarea>
+              <button type="button" class="small-btn" id="shareCopyCodeBtn">Copy</button>
+            </div>
+          </details>
         </div>
         <div class="modal-actions">
           <button class="modal-btn outline" id="shareViaBtn" style="display:none;">Share via…</button>
@@ -7137,8 +7144,45 @@
     };
   }
 
+  // Short-key remaps for the repeated per-team/per-fixture/per-match structures in a
+  // shared tournament payload -- gzip already compresses repeated key names well, but
+  // shrinking them before compression still meaningfully cuts the resulting code length.
+  function compactTeam(team) {
+    return { i: team.id, n: team.name, p: team.players, g: team.groupIndex, c: team.clubId };
+  }
+  function expandTeam(t) {
+    return { id: t.i, name: t.n, players: t.p, groupIndex: t.g, clubId: t.c };
+  }
+
+  function compactFixture(f) {
+    return { a: f.teamAId, b: f.teamBId, sa: f.scoreA, sb: f.scoreB, r: f.roundHint };
+  }
+  function expandFixture(f, index) {
+    return { id: `f${index}`, teamAId: f.a, teamBId: f.b, scoreA: f.sa, scoreB: f.sb, roundHint: f.r };
+  }
+
+  function compactKnockoutMatch(m) {
+    const out = { id: m.id, slotA: m.slotA, slotB: m.slotB, a: m.teamAId, b: m.teamBId, w: m.winnerTeamId, y: m.byeAdvance };
+    if (Array.isArray(m.games)) out.g = m.games.map((game) => [game.scoreA, game.scoreB]);
+    return out;
+  }
+  function expandKnockoutMatch(m) {
+    const out = { id: m.id, slotA: m.slotA, slotB: m.slotB, teamAId: m.a, teamBId: m.b, winnerTeamId: m.w, byeAdvance: m.y };
+    if (Array.isArray(m.g)) out.games = m.g.map(([scoreA, scoreB]) => ({ scoreA, scoreB }));
+    return out;
+  }
+
   function serializeTournamentForShare(tournament, includeSchedulingMeta) {
     const data = JSON.parse(JSON.stringify(tournament));
+    data.teams = data.teams.map(compactTeam);
+    data.groups = data.groups.map((g) => ({ ...g, fixtures: g.fixtures.map(compactFixture) }));
+    if (data.knockout) {
+      data.knockout = {
+        ...data.knockout,
+        rounds: data.knockout.rounds.map((r) => ({ ...r, matches: r.matches.map(compactKnockoutMatch) })),
+        thirdPlaceMatch: data.knockout.thirdPlaceMatch ? compactKnockoutMatch(data.knockout.thirdPlaceMatch) : null,
+      };
+    }
     if (!includeSchedulingMeta) {
       delete data.courtLabels;
       delete data.roundMinutes;
@@ -7148,8 +7192,21 @@
   }
 
   function deserializeSharedTournament(data) {
+    const teams = data.teams.map(expandTeam);
+    const groups = data.groups.map((g) => ({ ...g, fixtures: g.fixtures.map(expandFixture) }));
+    let knockout = null;
+    if (data.knockout) {
+      knockout = {
+        ...data.knockout,
+        rounds: data.knockout.rounds.map((r) => ({ ...r, matches: r.matches.map(expandKnockoutMatch) })),
+        thirdPlaceMatch: data.knockout.thirdPlaceMatch ? expandKnockoutMatch(data.knockout.thirdPlaceMatch) : null,
+      };
+    }
     return {
       ...data,
+      teams,
+      groups,
+      knockout,
       courtLabels: data.courtLabels || Array.from({ length: data.courts || 1 }, (_, i) => String(i + 1)),
       roundMinutes: data.roundMinutes || 0,
       hoursPerDay: data.hoursPerDay || 0,
