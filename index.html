@@ -341,6 +341,7 @@
   }
   #tournamentTeamClubField label {
     margin-bottom: 10px;
+    text-align: left;
   }
   .chips {
     display: flex;
@@ -1774,7 +1775,9 @@
           </div>
           <div class="field" id="tournamentTeamClubField" style="display:none;">
             <label for="tournamentTeamClubSelect">Club</label>
-            <select id="tournamentTeamClubSelect"></select>
+            <select id="tournamentTeamClubSelect">
+              <option value="" disabled selected>Add a club above first</option>
+            </select>
           </div>
           <div class="inline-form" id="tournamentTeamEntryDoubles">
             <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" />
@@ -3121,6 +3124,14 @@
     });
     const previousValue = tournamentTeamClubSelect.value;
     tournamentTeamClubSelect.innerHTML = "";
+    if (tournamentClubs.length === 0) {
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Add a club above first";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      tournamentTeamClubSelect.appendChild(placeholder);
+    }
     tournamentClubs.forEach((club) => {
       const opt = document.createElement("option");
       opt.value = club.id;
