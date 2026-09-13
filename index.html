@@ -336,9 +336,6 @@
     outline: 2px solid var(--green);
     outline-offset: 1px;
   }
-  #tournamentTeamClubField {
-    margin-top: 16px;
-  }
   #tournamentTeamClubField label {
     margin-bottom: 10px;
     text-align: left;
@@ -495,6 +492,9 @@
     font-size: 0.85rem;
     padding: 0;
   }
+  .field {
+    margin-top: 16px;
+  }
   .field label {
     display: block;
     font-weight: 700;
@@ -644,7 +644,8 @@
   }
   .paired-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
   .paired-grid .field,
-  .paired-grid .estimate-field {
+  .paired-grid .estimate-field,
+  .config-grid .field {
     margin-top: 0;
   }
 
@@ -2292,11 +2293,11 @@
               </div>
             </div>
           </div>
-          <div class="field no-print" style="margin-top:16px;">
+          <div class="field no-print">
             <label for="tournamentKnockoutStartTimeInput">Knockout start time</label>
             <input type="time" id="tournamentKnockoutStartTimeInput" />
           </div>
-          <div class="field" style="margin-top:16px;">
+          <div class="field">
             <button class="generate-btn" id="startKnockoutBtn" disabled>Start Knockout Stage</button>
             <div class="hint" id="startKnockoutHint"></div>
           </div>
