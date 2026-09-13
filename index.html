@@ -1870,6 +1870,37 @@
             </div>
           </div>
 
+          <label class="section-label">Knockout Scoring</label>
+          <div class="format-toggle" id="tournamentKoSetupModeToggle">
+            <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
+            <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
+          </div>
+          <div class="paired-grid">
+            <div class="field">
+              <label for="tournamentKoSetupTargetScoreInput">Points to win</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentKoSetupTargetScoreInput" data-step="-1" aria-label="Decrease knockout points to win">−</button>
+                <input type="number" id="tournamentKoSetupTargetScoreInput" min="1" max="21" value="11" />
+                <button type="button" class="stepper-btn" data-target="tournamentKoSetupTargetScoreInput" data-step="1" aria-label="Increase knockout points to win">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Win by 2 clear points</label>
+              <div class="yesno-toggle">
+                <button type="button" class="yesno-btn" id="tournamentKoSetupWinByTwoYesBtn">Yes</button>
+                <button type="button" class="yesno-btn active" id="tournamentKoSetupWinByTwoNoBtn">No</button>
+              </div>
+            </div>
+          </div>
+          <div class="field" id="tournamentKoSetupBestOfField" style="display:none;">
+            <label for="tournamentKoSetupBestOfInput">Best of (games)</label>
+            <div class="number-stepper">
+              <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
+              <input type="number" id="tournamentKoSetupBestOfInput" min="1" max="9" value="3" />
+              <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+            </div>
+          </div>
+
           <button class="generate-btn" id="generateTournamentBtn">Generate Groups</button>
           <button class="debug-btn" id="tournamentDebugBtn">Debug: fill 30 names</button>
         </div>
@@ -2207,6 +2238,36 @@
         <div id="tournamentClubStandingsBox" class="qualifiers-box" style="display:none;"></div>
         <div id="tournamentQualifiersBox" class="qualifiers-box"></div>
         <div id="tournamentKnockoutStartSection">
+          <label class="section-label no-print">Knockout Scoring</label>
+          <div class="format-toggle no-print" id="tournamentKoLiveModeToggle">
+            <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
+            <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
+          </div>
+          <div class="paired-grid no-print">
+            <div class="field">
+              <label for="tournamentKoLiveTargetScoreInput">Points to win</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentKoLiveTargetScoreInput" data-step="-1" aria-label="Decrease knockout points to win">−</button>
+                <input type="number" id="tournamentKoLiveTargetScoreInput" min="1" max="21" value="11" />
+                <button type="button" class="stepper-btn" data-target="tournamentKoLiveTargetScoreInput" data-step="1" aria-label="Increase knockout points to win">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Win by 2 clear points</label>
+              <div class="yesno-toggle">
+                <button type="button" class="yesno-btn" id="tournamentKoLiveWinByTwoYesBtn">Yes</button>
+                <button type="button" class="yesno-btn active" id="tournamentKoLiveWinByTwoNoBtn">No</button>
+              </div>
+            </div>
+          </div>
+          <div class="field no-print" id="tournamentKoLiveBestOfField" style="display:none;">
+            <label for="tournamentKoLiveBestOfInput">Best of (games)</label>
+            <div class="number-stepper">
+              <button type="button" class="stepper-btn" data-target="tournamentKoLiveBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
+              <input type="number" id="tournamentKoLiveBestOfInput" min="1" max="9" value="3" />
+              <button type="button" class="stepper-btn" data-target="tournamentKoLiveBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+            </div>
+          </div>
           <div class="field no-print" style="margin-top:16px;">
             <label for="tournamentKnockoutStartTimeInput">Knockout start time</label>
             <input type="time" id="tournamentKnockoutStartTimeInput" />
@@ -2219,6 +2280,38 @@
       </div>
 
       <div id="tournamentKnockoutView" style="display:none;">
+        <div id="tournamentFinalFormatSection" class="no-print">
+          <label class="section-label">Final &amp; 3rd Place Format</label>
+          <div class="format-toggle" id="tournamentFinalModeToggle">
+            <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
+            <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
+          </div>
+          <div class="paired-grid">
+            <div class="field">
+              <label for="tournamentFinalTargetScoreInput">Points to win</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentFinalTargetScoreInput" data-step="-1" aria-label="Decrease final points to win">−</button>
+                <input type="number" id="tournamentFinalTargetScoreInput" min="1" max="21" value="11" />
+                <button type="button" class="stepper-btn" data-target="tournamentFinalTargetScoreInput" data-step="1" aria-label="Increase final points to win">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Win by 2 clear points</label>
+              <div class="yesno-toggle">
+                <button type="button" class="yesno-btn" id="tournamentFinalWinByTwoYesBtn">Yes</button>
+                <button type="button" class="yesno-btn active" id="tournamentFinalWinByTwoNoBtn">No</button>
+              </div>
+            </div>
+          </div>
+          <div class="field" id="tournamentFinalBestOfField" style="display:none;">
+            <label for="tournamentFinalBestOfInput">Best of (games)</label>
+            <div class="number-stepper">
+              <button type="button" class="stepper-btn" data-target="tournamentFinalBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
+              <input type="number" id="tournamentFinalBestOfInput" min="1" max="9" value="3" />
+              <button type="button" class="stepper-btn" data-target="tournamentFinalBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+            </div>
+          </div>
+        </div>
         <div id="tournamentBracketContainer"></div>
         <div id="tournamentMedalsPanel" style="display:none;"></div>
       </div>
@@ -2523,6 +2616,21 @@
   const tournamentTargetScoreInput = document.getElementById("tournamentTargetScoreInput");
   const tournamentWinByTwoYesBtn = document.getElementById("tournamentWinByTwoYesBtn");
   const tournamentWinByTwoNoBtn = document.getElementById("tournamentWinByTwoNoBtn");
+  function formatControlRefs(prefix) {
+    return {
+      modeToggle: document.getElementById(`${prefix}ModeToggle`),
+      modeButtons: document.querySelectorAll(`#${prefix}ModeToggle .format-btn`),
+      targetScoreInput: document.getElementById(`${prefix}TargetScoreInput`),
+      winByTwoYesBtn: document.getElementById(`${prefix}WinByTwoYesBtn`),
+      winByTwoNoBtn: document.getElementById(`${prefix}WinByTwoNoBtn`),
+      bestOfField: document.getElementById(`${prefix}BestOfField`),
+      bestOfInput: document.getElementById(`${prefix}BestOfInput`),
+    };
+  }
+  const tournamentKoSetupRefs = formatControlRefs("tournamentKoSetup");
+  const tournamentKoLiveRefs = formatControlRefs("tournamentKoLive");
+  const tournamentFinalFormatRefs = formatControlRefs("tournamentFinal");
+  const tournamentFinalFormatSection = document.getElementById("tournamentFinalFormatSection");
   const generateTournamentBtn = document.getElementById("generateTournamentBtn");
   const tournamentDebugBtn = document.getElementById("tournamentDebugBtn");
   const tournamentDebugScoresBtn = document.getElementById("tournamentDebugScoresBtn");
@@ -2699,6 +2807,15 @@
 
   function tournamentPerRoundMinutes(targetScore, overrideMinutes) {
     return overrideMinutes > 0 ? overrideMinutes : estimateMinutesForTarget(targetScore) + CHANGEOVER_MINUTES;
+  }
+
+  // Per-wave time for a knockout format tier: one game's time (auto-estimated from its
+  // own points-to-win, or the manual round-length override) times the *optimistic*
+  // number of games needed to decide a best-of-N match (gamesToWin, not the full
+  // bestOf count) -- an approximation, same "(projected)" convention used elsewhere.
+  function formatPerRoundMinutes(format, overrideMinutes) {
+    const perGame = tournamentPerRoundMinutes(format.targetScore, overrideMinutes);
+    return perGame * formatGamesToWin(format);
   }
 
   // Inverse of estimateMinutesForTarget: given how long a round can afford to take,
@@ -3110,8 +3227,14 @@
       changed = false;
       const allMatches = ko.rounds.flatMap((r) => r.matches).concat(ko.thirdPlaceMatch ? [ko.thirdPlaceMatch] : []);
       allMatches.forEach((match) => {
-        if (knockoutMatchKind(match) === "real" && (match.scoreA === "" || match.scoreB === "")) {
-          [match.scoreA, match.scoreB] = debugRandomScore(tournamentMaxScore(tournament), tournament.targetScore);
+        if (knockoutMatchKind(match) !== "real") return;
+        const format = formatForMatch(tournament, match);
+        if (resolveMatchWinner(match, format) !== null) return;
+        const gamesToPlay = format.mode === "bestOf" ? format.bestOf : 1;
+        while (match.games.length < gamesToPlay) match.games.push({ scoreA: "", scoreB: "" });
+        const nextGame = match.games.find((g) => g.scoreA === "" || g.scoreB === "");
+        if (nextGame) {
+          [nextGame.scoreA, nextGame.scoreB] = debugRandomScore(formatMaxScore(format), format.targetScore);
           changed = true;
         }
       });
@@ -3141,6 +3264,105 @@
     tournamentWinByTwo = false;
     syncTournamentWinByTwoButtons();
     updateTournamentSetupEstimate();
+  });
+
+  // A "format" describes how a single knockout match is won: either one game to
+  // targetScore (optionally win-by-two), or the best of a number of such games.
+  // Reused for the Knockout stage as a whole (tournament.knockoutFormat) and,
+  // independently, for just the Final + 3rd Place Match (tournament.finalFormat).
+  function defaultKnockoutFormat() {
+    return { mode: "single", targetScore: 11, winByTwo: false, bestOf: 3 };
+  }
+  function formatMaxScore(format) {
+    return format.winByTwo ? null : format.targetScore;
+  }
+  function formatGamesToWin(format) {
+    return format.mode === "bestOf" ? Math.ceil(format.bestOf / 2) : 1;
+  }
+  function formatForMatch(tournament, match) {
+    const ko = tournament.knockout;
+    if (!ko) return tournament.knockoutFormat;
+    const finalMatch = ko.rounds[ko.rounds.length - 1].matches[0];
+    const isFinalTier = match.id === finalMatch.id || (ko.thirdPlaceMatch && match.id === ko.thirdPlaceMatch.id);
+    return isFinalTier ? tournament.finalFormat : tournament.knockoutFormat;
+  }
+
+  function syncFormatControls(refs, format) {
+    refs.modeButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.koMode === format.mode));
+    refs.bestOfField.style.display = format.mode === "bestOf" ? "block" : "none";
+    refs.targetScoreInput.value = format.targetScore;
+    refs.winByTwoYesBtn.classList.toggle("active", format.winByTwo);
+    refs.winByTwoNoBtn.classList.toggle("active", !format.winByTwo);
+    refs.bestOfInput.value = format.bestOf;
+  }
+
+  // getFormat/setFormat abstract over where a format lives (a plain draft variable
+  // before a tournament exists, or tournament.knockoutFormat/finalFormat once it
+  // does). setFormat decides whether to accept a proposed new format (finalFormat's
+  // setter can refuse/reset), so handlers always build a new object rather than
+  // mutating the one getFormat() returned.
+  function wireFormatControls(refs, getFormat, setFormat) {
+    refs.modeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const current = getFormat();
+        if (current.mode === btn.dataset.koMode) return;
+        setFormat({ ...current, mode: btn.dataset.koMode });
+      });
+    });
+    refs.targetScoreInput.addEventListener("input", () => {
+      const current = getFormat();
+      const targetScore = Math.max(1, Math.min(21, parseInt(refs.targetScoreInput.value, 10) || 11));
+      setFormat({ ...current, targetScore });
+    });
+    refs.winByTwoYesBtn.addEventListener("click", () => setFormat({ ...getFormat(), winByTwo: true }));
+    refs.winByTwoNoBtn.addEventListener("click", () => setFormat({ ...getFormat(), winByTwo: false }));
+    refs.bestOfInput.addEventListener("input", () => {
+      const current = getFormat();
+      let n = Math.max(1, Math.min(9, parseInt(refs.bestOfInput.value, 10) || 3));
+      if (n % 2 === 0) n += 1;
+      setFormat({ ...current, bestOf: n });
+    });
+  }
+
+  let tournamentKnockoutFormatDraft = defaultKnockoutFormat();
+  syncFormatControls(tournamentKoSetupRefs, tournamentKnockoutFormatDraft);
+  wireFormatControls(tournamentKoSetupRefs, () => tournamentKnockoutFormatDraft, (newFormat) => {
+    tournamentKnockoutFormatDraft = newFormat;
+    syncFormatControls(tournamentKoSetupRefs, newFormat);
+    updateTournamentSetupEstimate();
+  });
+
+  wireFormatControls(tournamentKoLiveRefs, () => currentTournament.knockoutFormat, (newFormat) => {
+    currentTournament.knockoutFormat = newFormat;
+    syncFormatControls(tournamentKoLiveRefs, newFormat);
+    updateTournamentInStorage(currentTournament);
+    updateTournamentViewEstimate(currentTournament);
+  });
+
+  function resetFinalTierGames(tournament) {
+    const ko = tournament.knockout;
+    const finalMatch = ko.rounds[ko.rounds.length - 1].matches[0];
+    [finalMatch, ko.thirdPlaceMatch].filter(Boolean).forEach((m) => { m.games = [{ scoreA: "", scoreB: "" }]; });
+  }
+  function finalTierHasAnyScore(tournament) {
+    const ko = tournament.knockout;
+    const finalMatch = ko.rounds[ko.rounds.length - 1].matches[0];
+    return [finalMatch, ko.thirdPlaceMatch].filter(Boolean)
+      .some((m) => m.games.some((g) => g.scoreA !== "" || g.scoreB !== ""));
+  }
+  wireFormatControls(tournamentFinalFormatRefs, () => currentTournament.finalFormat, (newFormat) => {
+    if (finalTierHasAnyScore(currentTournament)) {
+      if (!confirm("Changing the Final & 3rd Place format will reset their recorded scores. Continue?")) {
+        syncFormatControls(tournamentFinalFormatRefs, currentTournament.finalFormat);
+        return;
+      }
+      resetFinalTierGames(currentTournament);
+    }
+    currentTournament.finalFormat = newFormat;
+    propagateKnockoutWinner(currentTournament);
+    updateTournamentInStorage(currentTournament);
+    syncFormatControls(tournamentFinalFormatRefs, newFormat);
+    renderTournamentKnockout(currentTournament, true);
   });
 
   tournamentCourtsInput.addEventListener("input", () => {
@@ -4060,6 +4282,59 @@
     return schedule;
   }
 
+  // Renders one score-row per game a knockout match's format requires (just one,
+  // unlabeled, for a "single" format -- identical in shape to the group-fixture score
+  // row) into `fixture.games`, wiring each to sanitize/persist/sync/notify like the
+  // existing single-score inputs. Shared by buildCourtScheduleCard and buildFixtureRow;
+  // group fixtures never call this (they have no `.games` array).
+  function buildMatchGameRows(tournament, fixture, format, onScoreChange, rowClassName, singleGameLabel) {
+    const maxVal = formatMaxScore(format);
+    const gamesToPlay = format.mode === "bestOf" ? format.bestOf : 1;
+    while (fixture.games.length < gamesToPlay) fixture.games.push({ scoreA: "", scoreB: "" });
+    const teamAName = tournamentTeamName(tournament, fixture.teamAId);
+    const teamBName = tournamentTeamName(tournament, fixture.teamBId);
+    const otherWidgets = () =>
+      rowClassName === "score-row" ? fixtureRowWidgets.get(fixture) : courtScheduleWidgets.get(fixture);
+
+    const rowsEl = document.createElement("div");
+    const gameWidgets = [];
+    fixture.games.slice(0, gamesToPlay).forEach((game, i) => {
+      const scoreRow = document.createElement("div");
+      scoreRow.className = rowClassName;
+      const scoreA = document.createElement("input");
+      scoreA.type = "number";
+      scoreA.min = "0";
+      if (maxVal != null) scoreA.max = String(maxVal);
+      scoreA.value = game.scoreA;
+      scoreA.addEventListener("input", () => {
+        sanitizeScoreInput(scoreA, maxVal);
+        game.scoreA = scoreA.value;
+        syncFixtureScoreWidgets(fixture, otherWidgets());
+        onScoreChange();
+      });
+      const scoreB = document.createElement("input");
+      scoreB.type = "number";
+      scoreB.min = "0";
+      if (maxVal != null) scoreB.max = String(maxVal);
+      scoreB.value = game.scoreB;
+      scoreB.addEventListener("input", () => {
+        sanitizeScoreInput(scoreB, maxVal);
+        game.scoreB = scoreB.value;
+        syncFixtureScoreWidgets(fixture, otherWidgets());
+        onScoreChange();
+      });
+      const label = document.createElement("div");
+      label.className = "score-label";
+      label.textContent = gamesToPlay > 1 ? `Game ${i + 1}` : (singleGameLabel || "Score");
+      scoreRow.appendChild(buildScoreStepperGroup(scoreA, teamAName, maxVal));
+      scoreRow.appendChild(label);
+      scoreRow.appendChild(buildScoreStepperGroup(scoreB, teamBName, maxVal));
+      rowsEl.appendChild(scoreRow);
+      gameWidgets.push({ scoreA, scoreB });
+    });
+    return { rowsEl, widget: { games: gameWidgets } };
+  }
+
   function buildCourtScheduleCard(tournament, item, courtLabel, kind, onScoreChange, matchLabel) {
     const card = document.createElement("div");
     card.className = "court-card court-card-compact";
@@ -4108,6 +4383,14 @@
     teamBox.appendChild(netDivider);
     card.appendChild(teamBox);
 
+    if (Array.isArray(item.games)) {
+      const format = formatForMatch(tournament, item);
+      const { rowsEl, widget } = buildMatchGameRows(tournament, item, format, onScoreChange, "score-row");
+      card.appendChild(rowsEl);
+      courtScheduleWidgets.set(item, widget);
+      return card;
+    }
+
     const maxVal = tournamentMaxScore(tournament);
     const scoreRow = document.createElement("div");
     scoreRow.className = "score-row";
@@ -4149,14 +4432,13 @@
     return match.id === "ko-3rd" ? "3rd Place Match" : null;
   }
 
-  function buildCourtScheduleEl(tournament, schedule, items, roundLabel, baseMinutes, kindOf, onScoreChange, onCardBuilt, matchLabelOf) {
+  function buildCourtScheduleEl(tournament, schedule, items, roundLabel, baseMinutes, kindOf, onScoreChange, onCardBuilt, matchLabelOf, perRound) {
     const wrap = document.createElement("div");
     if (schedule.length === 0) {
       wrap.className = "empty-note";
       wrap.textContent = "No fixtures yet.";
       return wrap;
     }
-    const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
     const days = splitScheduleIntoDays(schedule, perRound, tournament.hoursPerDay);
     days.forEach((dayGroup) => {
       if (days.length > 1) {
@@ -4196,20 +4478,22 @@
 
   function buildGroupStageCourtScheduleEl(tournament) {
     const schedule = buildGroupStageCourtSchedule(tournament);
+    const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
     return buildCourtScheduleEl(
       tournament, schedule, (e) => e.fixtures, (e) => `Round ${e.roundNumber}`,
       tournament.startMinutes, () => "real", onTournamentGroupScoreChange,
-      null, () => null
+      null, () => null, perRound
     );
   }
 
   function buildKnockoutCourtScheduleEl(tournament) {
     const schedule = buildKnockoutCourtSchedule(tournament);
+    const perRound = formatPerRoundMinutes(tournament.knockoutFormat, tournament.roundMinutes);
     return buildCourtScheduleEl(
       tournament, schedule, (e) => e.matches, (e) => e.label,
       tournament.knockoutStartMinutes, knockoutMatchKind, onTournamentKnockoutScoreChange,
       (match, card, kind) => { knockoutScheduleCards[match.id] = { kind, el: card, teamAId: match.teamAId, teamBId: match.teamBId }; },
-      knockoutMatchLabel
+      knockoutMatchLabel, perRound
     );
   }
 
@@ -4233,7 +4517,8 @@
   }
 
   function computeTournamentLiveEstimate(tournament) {
-    const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
+    const groupPerRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
+    const knockoutPerRound = formatPerRoundMinutes(tournament.knockoutFormat, tournament.roundMinutes);
     const groupRounds = buildGroupStageCourtSchedule(tournament).length;
     let knockoutRounds;
     if (tournament.knockout) {
@@ -4245,9 +4530,9 @@
       const shape = knockoutBracketShape(qualifierCount);
       knockoutRounds = shape ? courtRoundsNeeded(shape.roundMatchCounts, tournament.courts) : 0;
     }
-    const groupMinutes = groupRounds * perRound;
-    const knockoutMinutes = knockoutRounds * perRound;
-    return { groupMinutes, knockoutMinutes, totalMinutes: groupMinutes + knockoutMinutes, groupRounds, knockoutRounds };
+    const groupMinutes = groupRounds * groupPerRound;
+    const knockoutMinutes = knockoutRounds * knockoutPerRound;
+    return { groupMinutes, knockoutMinutes, totalMinutes: groupMinutes + knockoutMinutes, groupRounds, knockoutRounds, knockoutPerRound };
   }
 
   function dayCountSuffix(rounds, perRoundMinutes, hoursPerDay) {
@@ -4274,12 +4559,13 @@
       return;
     }
     const qualifierCount = projectQualifierCount(tournamentTeams.length, numGroups, advancePerGroup);
-    const knockoutEst = estimateKnockoutMinutes(qualifierCount, courts, perRoundMinutes);
+    const knockoutPerRoundMinutes = formatPerRoundMinutes(tournamentKnockoutFormatDraft, roundOverride);
+    const knockoutEst = estimateKnockoutMinutes(qualifierCount, courts, knockoutPerRoundMinutes);
     const totalMinutes = groupEst.minutes + (knockoutEst ? knockoutEst.minutes : 0);
     tournamentEstimateField.style.display = "block";
     tournamentEstimateNumber.textContent = `${totalMinutes} min`;
     const groupDaysSuffix = dayCountSuffix(groupEst.rounds, perRoundMinutes, hoursPerDay);
-    const knockoutDaysSuffix = knockoutEst ? dayCountSuffix(knockoutEst.rounds, perRoundMinutes, hoursPerDay) : "";
+    const knockoutDaysSuffix = knockoutEst ? dayCountSuffix(knockoutEst.rounds, knockoutPerRoundMinutes, hoursPerDay) : "";
     tournamentEstimateReason.textContent = knockoutEst
       ? `Group stage ~${groupEst.minutes} min${groupDaysSuffix} + Knockout ~${knockoutEst.minutes} min${knockoutDaysSuffix} (projected)`
       : `Group stage ~${groupEst.minutes} min${groupDaysSuffix} (projected)`;
@@ -4317,19 +4603,40 @@
     tournamentViewEstimateNumber.textContent = `${est.totalMinutes} min`;
     const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
     const groupDaysSuffix = dayCountSuffix(est.groupRounds, perRound, tournament.hoursPerDay);
-    const knockoutDaysSuffix = dayCountSuffix(est.knockoutRounds, perRound, tournament.hoursPerDay);
+    const knockoutDaysSuffix = dayCountSuffix(est.knockoutRounds, est.knockoutPerRound, tournament.hoursPerDay);
     tournamentViewEstimateReason.textContent = tournament.knockout
       ? `Group stage ~${est.groupMinutes} min${groupDaysSuffix} + Knockout ~${est.knockoutMinutes} min${knockoutDaysSuffix}`
       : `Group stage ~${est.groupMinutes} min${groupDaysSuffix} + Knockout ~${est.knockoutMinutes} min${knockoutDaysSuffix} (projected)`;
   }
 
-  function resolveMatchWinner(match) {
+  // Tallies a knockout match's games (one game for a "single" format, up to
+  // `bestOf` for a "bestOf" one) and returns whichever side has reached the
+  // required number of game-wins, or null if undecided. Collapses to today's
+  // exact single-game behavior when format.mode === "single".
+  function tallyMatchGames(match, format) {
+    let winsA = 0;
+    let winsB = 0;
+    let pointsA = 0;
+    let pointsB = 0;
+    match.games.forEach((g) => {
+      if (g.scoreA === "" || g.scoreB === "") return;
+      const a = parseInt(g.scoreA, 10);
+      const b = parseInt(g.scoreB, 10);
+      if (isNaN(a) || isNaN(b) || a === b) return;
+      pointsA += a;
+      pointsB += b;
+      if (a > b) winsA += 1; else winsB += 1;
+    });
+    return { winsA, winsB, pointsA, pointsB };
+  }
+
+  function resolveMatchWinner(match, format) {
     if (match.byeAdvance) return match.winnerTeamId;
-    if (match.scoreA === "" || match.scoreB === "") return null;
-    const scoreA = parseInt(match.scoreA, 10);
-    const scoreB = parseInt(match.scoreB, 10);
-    if (isNaN(scoreA) || isNaN(scoreB) || scoreA === scoreB) return null;
-    return scoreA > scoreB ? match.teamAId : match.teamBId;
+    const gamesToWin = formatGamesToWin(format);
+    const { winsA, winsB } = tallyMatchGames(match, format);
+    if (winsA >= gamesToWin) return match.teamAId;
+    if (winsB >= gamesToWin) return match.teamBId;
+    return null;
   }
 
   function resolveMatchLoser(match) {
@@ -4364,8 +4671,16 @@
         return team ? team.clubId : null;
       };
       if (clubOf(semiA.winnerTeamId) !== clubOf(semiB.winnerTeamId)) return null;
-      const marginOf = (m) => Math.abs((parseInt(m.scoreA, 10) || 0) - (parseInt(m.scoreB, 10) || 0));
-      return marginOf(semiA) <= marginOf(semiB) ? semiA.id : semiB.id;
+      // "Margin" generalizes to best-of-N matches as [games-won gap, total points gap]
+      // -- a 2-0 sweep is more decisive than a 2-1 win, points gap only breaks ties
+      // between two matches with the same games-won gap. Collapses to the plain
+      // |scoreA-scoreB| point margin for a single-game format.
+      const marginOf = (m) => {
+        const { winsA, winsB, pointsA, pointsB } = tallyMatchGames(m, formatForMatch(tournament, m));
+        return [Math.abs(winsA - winsB), Math.abs(pointsA - pointsB)];
+      };
+      const cmp = (a, b) => a[0] - b[0] || a[1] - b[1];
+      return cmp(marginOf(semiA), marginOf(semiB)) <= 0 ? semiA.id : semiB.id;
     }
 
     function resolveSlot(slot) {
@@ -4391,8 +4706,7 @@
       const resolved = resolveSlot(slot);
       if (resolved !== m[teamKey]) {
         m[teamKey] = resolved;
-        m.scoreA = "";
-        m.scoreB = "";
+        m.games = [{ scoreA: "", scoreB: "" }];
       }
     }
 
@@ -4403,13 +4717,13 @@
       round.matches.forEach((m) => {
         resolveFeederSlot(m, "slotA", "teamAId");
         resolveFeederSlot(m, "slotB", "teamBId");
-        m.winnerTeamId = resolveMatchWinner(m);
+        m.winnerTeamId = resolveMatchWinner(m, formatForMatch(tournament, m));
       });
     });
     if (ko.thirdPlaceMatch) {
       resolveFeederSlot(ko.thirdPlaceMatch, "slotA", "teamAId");
       resolveFeederSlot(ko.thirdPlaceMatch, "slotB", "teamBId");
-      ko.thirdPlaceMatch.winnerTeamId = resolveMatchWinner(ko.thirdPlaceMatch);
+      ko.thirdPlaceMatch.winnerTeamId = resolveMatchWinner(ko.thirdPlaceMatch, formatForMatch(tournament, ko.thirdPlaceMatch));
     }
 
     const final = ko.rounds[totalRounds - 1].matches[0];
@@ -4444,8 +4758,7 @@
         slotB: { seedSlot: 2 * i + 1 },
         teamAId: a,
         teamBId: b,
-        scoreA: "",
-        scoreB: "",
+        games: [{ scoreA: "", scoreB: "" }],
         winnerTeamId: null,
         byeAdvance: false,
       };
@@ -4469,8 +4782,7 @@
           slotB: { fromMatchId: feederB.id, winnerOf: true },
           teamAId: null,
           teamBId: null,
-          scoreA: "",
-          scoreB: "",
+          games: [{ scoreA: "", scoreB: "" }],
           winnerTeamId: null,
           byeAdvance: false,
         });
@@ -4488,14 +4800,14 @@
         slotB: { fromMatchId: semiRound.matches[1].id, loserOf: true },
         teamAId: null,
         teamBId: null,
-        scoreA: "",
-        scoreB: "",
+        games: [{ scoreA: "", scoreB: "" }],
         winnerTeamId: null,
         byeAdvance: false,
       };
     }
 
     tournament.knockout = { size: bracketSize, rounds, thirdPlaceMatch };
+    tournament.finalFormat = { ...tournament.knockoutFormat };
     tournament.status = "knockout";
     propagateKnockoutWinner(tournament);
   }
@@ -5729,6 +6041,15 @@
   function syncFixtureScoreWidgets(fixture, ...widgets) {
     widgets.forEach((w) => {
       if (!w) return;
+      if (w.games) {
+        w.games.forEach((widgetGame, i) => {
+          const g = fixture.games[i];
+          if (!g) return;
+          if (document.activeElement !== widgetGame.scoreA) widgetGame.scoreA.value = g.scoreA;
+          if (document.activeElement !== widgetGame.scoreB) widgetGame.scoreB.value = g.scoreB;
+        });
+        return;
+      }
       if (document.activeElement !== w.scoreA) w.scoreA.value = fixture.scoreA;
       if (document.activeElement !== w.scoreB) w.scoreB.value = fixture.scoreB;
     });
@@ -5750,6 +6071,20 @@
     const nameA = document.createElement("div");
     nameA.className = "fixture-team";
     fillFixtureTeamCell(nameA, tournament, fixture.teamAId);
+
+    const nameB = document.createElement("div");
+    nameB.className = "fixture-team";
+    fillFixtureTeamCell(nameB, tournament, fixture.teamBId);
+
+    if (Array.isArray(fixture.games)) {
+      const format = formatForMatch(tournament, fixture);
+      const { rowsEl, widget } = buildMatchGameRows(tournament, fixture, format, onScoreChange, "score-row fixture-score-row", "vs");
+      row.appendChild(nameA);
+      row.appendChild(rowsEl);
+      row.appendChild(nameB);
+      fixtureRowWidgets.set(fixture, widget);
+      return row;
+    }
 
     const scoreRow = document.createElement("div");
     scoreRow.className = "score-row fixture-score-row";
@@ -5783,10 +6118,6 @@
     scoreRow.appendChild(buildScoreStepperGroup(scoreA, tournamentTeamName(tournament, fixture.teamAId), maxVal));
     scoreRow.appendChild(dash);
     scoreRow.appendChild(buildScoreStepperGroup(scoreB, tournamentTeamName(tournament, fixture.teamBId), maxVal));
-
-    const nameB = document.createElement("div");
-    nameB.className = "fixture-team";
-    fillFixtureTeamCell(nameB, tournament, fixture.teamBId);
 
     row.appendChild(nameA);
     row.appendChild(scoreRow);
@@ -5831,6 +6162,7 @@
       const table = groupStandingsTableEls[group.index];
       if (table) table.innerHTML = buildGroupStandingsTableHtml(tournament, group.index);
     });
+    syncFormatControls(tournamentKoLiveRefs, tournament.knockoutFormat);
     updateTournamentViewEstimate(tournament);
     const isClubChampionship = tournament.competitionType === "clubs";
     tournamentClubStandingsBox.style.display = isClubChampionship ? "block" : "none";
@@ -5936,6 +6268,7 @@
 
   function renderTournamentKnockout(tournament, forceFullRebuild) {
     const ko = tournament.knockout;
+    syncFormatControls(tournamentFinalFormatRefs, tournament.finalFormat);
     const isNewTournament = knockoutRenderedTournamentId !== tournament.id;
     const fullRebuild = forceFullRebuild || isNewTournament;
 
@@ -6381,6 +6714,21 @@
     return `<span>${tournamentTeamName(tournament, teamId)}${clubHtml}</span>`;
   }
 
+  // Prints one score line per game a knockout match's format requires (just one for
+  // "single") -- reuses the existing .print-score-line/.print-score-filled/
+  // .print-score-box classes, stacked, so no new print CSS is needed.
+  function printGamesScoreHtml(fixture, format) {
+    const gamesToPlay = format.mode === "bestOf" ? format.bestOf : 1;
+    const games = fixture.games.slice(0, gamesToPlay);
+    while (games.length < gamesToPlay) games.push({ scoreA: "", scoreB: "" });
+    return games.map((g) => {
+      const hasScore = g.scoreA !== "" && g.scoreB !== "";
+      const sideA = hasScore ? `<span class="print-score-filled">${g.scoreA}</span>` : `<span class="print-score-box"></span>`;
+      const sideB = hasScore ? `<span class="print-score-filled">${g.scoreB}</span>` : `<span class="print-score-box"></span>`;
+      return `<div class="print-score-line">${sideA}<span class="print-score-dash">–</span>${sideB}</div>`;
+    }).join("");
+  }
+
   function buildPrintFixtureCardHtml(tournament, match, waitingLabel, courtLabel) {
     const kind = knockoutMatchKind ? knockoutMatchKind(match) : match.teamAId && match.teamBId ? "real" : match.byeAdvance ? "bye" : "pending";
     const courtTag = courtLabel ? `<div class="print-fixture-court">Court ${courtLabel}</div>` : "";
@@ -6390,11 +6738,16 @@
     if (kind === "bye") {
       return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams">${printFixtureTeamSpan(tournament, match.teamAId)}</div><div class="print-fixture-bye">Walkover</div></div>`;
     }
+    const teamsHtml = `<div class="print-fixture-teams">${printFixtureTeamSpan(tournament, match.teamAId)}${printFixtureTeamSpan(tournament, match.teamBId)}</div>`;
+    if (Array.isArray(match.games)) {
+      const scoreLine = printGamesScoreHtml(match, formatForMatch(tournament, match));
+      return `<div class="print-fixture">${courtTag}${teamsHtml}${scoreLine}</div>`;
+    }
     const hasScore = match.scoreA !== "" && match.scoreB !== "";
     const sideA = hasScore ? `<span class="print-score-filled">${match.scoreA}</span>` : `<span class="print-score-box"></span>`;
     const sideB = hasScore ? `<span class="print-score-filled">${match.scoreB}</span>` : `<span class="print-score-box"></span>`;
     const scoreLine = `<div class="print-score-line">${sideA}<span class="print-score-dash">–</span>${sideB}</div>`;
-    return `<div class="print-fixture">${courtTag}<div class="print-fixture-teams">${printFixtureTeamSpan(tournament, match.teamAId)}${printFixtureTeamSpan(tournament, match.teamBId)}</div>${scoreLine}</div>`;
+    return `<div class="print-fixture">${courtTag}${teamsHtml}${scoreLine}</div>`;
   }
 
   function buildPrintCourtCardHtml(tournament, item, courtLabel) {
@@ -6410,10 +6763,15 @@
     const clubsHtml = tournamentIsClubBased(tournament)
       ? `<div class="team-box-clubs"><div class="team-club-tag">${teamClubName(tournament, item.teamAId)}</div><div class="team-club-tag">${teamClubName(tournament, item.teamBId)}</div></div>`
       : "";
-    const hasScore = item.scoreA !== "" && item.scoreB !== "";
-    const scoreHtml = hasScore
-      ? `<div class="court-schedule-card-score">${item.scoreA} – ${item.scoreB}</div>`
-      : `<div class="court-schedule-card-score"><span class="print-score-box"></span><span class="print-score-dash">–</span><span class="print-score-box"></span></div>`;
+    let scoreHtml;
+    if (Array.isArray(item.games)) {
+      scoreHtml = printGamesScoreHtml(item, formatForMatch(tournament, item));
+    } else {
+      const hasScore = item.scoreA !== "" && item.scoreB !== "";
+      scoreHtml = hasScore
+        ? `<div class="court-schedule-card-score">${item.scoreA} – ${item.scoreB}</div>`
+        : `<div class="court-schedule-card-score"><span class="print-score-box"></span><span class="print-score-dash">–</span><span class="print-score-box"></span></div>`;
+    }
     return `<div class="court-card court-card-compact">${title}${matchLabelHtml}${clubsHtml}<div class="team-box">${cells}<div class="net-divider"></div></div>${scoreHtml}</div>`;
   }
 
@@ -6467,7 +6825,7 @@
     const t = currentTournament;
     const ko = t.knockout;
     const schedule = buildKnockoutCourtSchedule(t);
-    const perRound = tournamentPerRoundMinutes(t.targetScore, t.roundMinutes);
+    const perRound = formatPerRoundMinutes(t.knockoutFormat, t.roundMinutes);
     const days = splitScheduleIntoDays(schedule, perRound, t.hoursPerDay);
     let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
     days.forEach((dayGroup) => {
@@ -6846,6 +7204,8 @@
       teams,
       groups,
       advancePerGroup: competitionType === "clubs" ? 0 : advancePerGroup,
+      knockoutFormat: { ...tournamentKnockoutFormatDraft },
+      finalFormat: null,
       knockout: null,
       medals: null,
     };
