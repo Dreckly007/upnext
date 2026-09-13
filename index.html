@@ -322,6 +322,20 @@
     outline: 2px solid var(--green);
     outline-offset: 1px;
   }
+  #tournamentTeamClubSelect {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--green-dark);
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    background: #fff;
+    color: var(--green-dark);
+  }
+  #tournamentTeamClubSelect:focus {
+    outline: 2px solid var(--green);
+    outline-offset: 1px;
+  }
   .chips {
     display: flex;
     flex-wrap: wrap;
@@ -1722,6 +1736,13 @@
         </div>
 
         <div id="tournamentNewForm">
+          <label class="section-label">Competition Type</label>
+          <div class="format-toggle" id="tournamentCompetitionTypeToggle">
+            <button type="button" class="format-btn active" data-competition-type="standard">Standard Tournament</button>
+            <button type="button" class="format-btn" data-competition-type="clubs">Club Championship</button>
+            <button type="button" class="format-btn" data-competition-type="clubGroups">Inter-Club Groups</button>
+          </div>
+
           <label class="section-label">Tournament name</label>
           <input type="text" id="tournamentNameInput" placeholder="e.g. Spring Doubles" />
 
@@ -1729,13 +1750,6 @@
           <div class="format-toggle" id="tournamentFormatToggle">
             <button type="button" class="format-btn active" data-format="doubles">Doubles</button>
             <button type="button" class="format-btn" data-format="singles">Singles</button>
-          </div>
-
-          <label class="section-label">Competition Type</label>
-          <div class="format-toggle" id="tournamentCompetitionTypeToggle">
-            <button type="button" class="format-btn active" data-competition-type="standard">Standard Tournament</button>
-            <button type="button" class="format-btn" data-competition-type="clubs">Club Championship</button>
-            <button type="button" class="format-btn" data-competition-type="clubGroups">Inter-Club Groups</button>
           </div>
 
           <div id="tournamentClubsSection" style="display:none;">
@@ -1750,10 +1764,10 @@
           <label class="section-label">Teams</label>
           <div class="format-toggle" id="tournamentDoublesEntryModeToggle">
             <button type="button" class="format-btn active" data-entry-mode="players">Player names</button>
-            <button type="button" class="format-btn" data-entry-mode="teamnames">Team names</button>
+            <button type="button" class="format-btn" data-entry-mode="teamnames">Pair names</button>
           </div>
           <div class="field" id="tournamentTeamClubField" style="display:none;">
-            <label for="tournamentTeamClubSelect">Club for next team</label>
+            <label for="tournamentTeamClubSelect">Club</label>
             <select id="tournamentTeamClubSelect"></select>
           </div>
           <div class="inline-form" id="tournamentTeamEntryDoubles">
