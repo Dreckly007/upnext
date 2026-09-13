@@ -4012,9 +4012,9 @@
     const rows = ranked.map((clubId, i) => {
       const cs = clubStats[clubId];
       const avg = cs.pairs > 0 ? (cs.pointsFor / cs.pairs).toFixed(1) : "0.0";
-      return `<tr><td>${i + 1}</td><td>${clubNameInTournament(tournament, clubId)}</td><td>${cs.pairs}</td><td>${avg}</td><td>${cs.pointsFor}</td><td>${cs.pointsAgainst}</td></tr>`;
+      return `<tr><td>${i + 1}</td><td>${clubNameInTournament(tournament, clubId)}</td><td>${cs.pairs}</td><td>${cs.wins}</td><td>${cs.losses}</td><td>${avg}</td><td>${cs.pointsFor}</td><td>${cs.pointsAgainst}</td></tr>`;
     });
-    const table = `<table class="schedule-table"><thead><tr><th>#</th><th>Club</th><th>Pairs</th><th>Avg Points</th><th>Total For</th><th>Total Against</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    const table = `<table class="schedule-table"><thead><tr><th>#</th><th>Club</th><th>Pairs</th><th>Games Won</th><th>Games Lost</th><th>Avg Points</th><th>Total For</th><th>Total Against</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
     return `<div class="qualifiers-box-header">Club Standings</div><div class="qualifiers-box-panel">${table}</div>`;
   }
 
