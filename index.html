@@ -3737,7 +3737,8 @@
         const st = stats[id];
         const diff = st.pointsFor - st.pointsAgainst;
         const diffText = diff > 0 ? `+${diff}` : String(diff);
-        return `${tournamentTeamName(tournament, id)} (${st.wins}-${st.losses}, ${diffText})`;
+        const clubSuffix = tournamentIsClubBased(tournament) ? ` <span class="team-club-suffix">${teamClubName(tournament, id)}</span>` : "";
+        return `${tournamentTeamName(tournament, id)}${clubSuffix} (${st.wins}-${st.losses}, ${diffText})`;
       });
       return `<div class="qgroup"><span class="qname">Group ${group.name}</span><span class="qteams">${advancing.join(", ")}</span></div>`;
     });
