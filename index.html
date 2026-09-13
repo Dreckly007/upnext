@@ -463,6 +463,9 @@
     font-size: 0.92rem;
   }
   .saved-row:last-child, .session-row:last-child { border-bottom: none; }
+  .saved-row span { flex: 1; }
+  .saved-row-dupr { width: 64px; padding: 6px 8px; text-align: center; margin: 0 8px; }
+  .tournament-dupr-input { flex: 0 0 76px; width: 76px; text-align: center; }
   .small-btn {
     border: 1px solid var(--card-border);
     background: #fff;
@@ -1799,14 +1802,17 @@
           <div class="inline-form" id="tournamentTeamEntryDoubles">
             <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" />
             <input type="text" id="tournamentPlayer2Input" placeholder="Player 2" />
+            <input type="number" id="tournamentDuprDoublesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to auto-average the two players' saved DUPR ratings" />
             <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
           </div>
           <div class="inline-form" id="tournamentTeamEntryDoublesByName" style="display:none;">
             <input type="text" id="tournamentTeamNameInput" placeholder="Team name" />
+            <input type="number" id="tournamentDuprTeamNameInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional pair DUPR rating" />
             <button class="small-btn add" id="tournamentAddNamedTeamBtn">Add team</button>
           </div>
           <div class="inline-form" id="tournamentTeamEntrySingles" style="display:none;">
             <input type="text" id="tournamentSinglesInput" placeholder="Player name" />
+            <input type="number" id="tournamentDuprSinglesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to use this player's saved DUPR rating" />
             <button class="small-btn add" id="tournamentAddSinglesBtn">Add</button>
           </div>
           <div class="chips" id="tournamentTeamChips"></div>
@@ -1962,6 +1968,17 @@
           <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="-0.1" aria-label="Decrease starting rating">−</button>
           <input type="number" id="ladderCustomRatingInput" min="1" max="8" step="0.1" value="3.0" />
           <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="0.1" aria-label="Increase starting rating">+</button>
+        </div>
+      </div>
+      <div class="ladder-rating-row" id="duprRatingRow">
+        <label class="checkbox-row">
+          <input type="checkbox" id="duprRatingToggle" />
+          Set a DUPR rating for this player
+        </label>
+        <div class="number-stepper number-stepper-sm" id="duprRatingStepper" style="display:none;">
+          <button type="button" class="stepper-btn" data-target="duprRatingInput" data-step="-0.01" aria-label="Decrease DUPR rating">−</button>
+          <input type="number" id="duprRatingInput" min="2" max="8" step="0.01" value="3.50" />
+          <button type="button" class="stepper-btn" data-target="duprRatingInput" data-step="0.01" aria-label="Increase DUPR rating">+</button>
         </div>
       </div>
       <div class="chips" id="todayChips"></div>
@@ -2483,6 +2500,7 @@
     ladderStartingRatings: "pbs_ladderStartingRatings",
     tournaments: "pbs_tournaments",
     ladders: "pbs_ladders",
+    duprRatings: "pbs_duprRatings",
   };
 
   const LADDER_DEFAULT_RATING = 3.0;
@@ -2506,6 +2524,23 @@
   let savedPlayers = load(STORAGE.saved, []);
   let pastSessions = load(STORAGE.sessions, []);
   let ladderStartingRatings = load(STORAGE.ladderStartingRatings, {});
+  let duprRatings = load(STORAGE.duprRatings, {});
+
+  function duprRatingFor(name) {
+    const val = duprRatings[(name || "").toLowerCase()];
+    return typeof val === "number" && !isNaN(val) ? val : null;
+  }
+  function setDuprRating(name, rating) {
+    const key = (name || "").toLowerCase();
+    if (!key) return;
+    if (rating == null || isNaN(rating)) delete duprRatings[key];
+    else duprRatings[key] = rating;
+    save(STORAGE.duprRatings, duprRatings);
+  }
+  function duprSuffix(name) {
+    const rating = duprRatingFor(name);
+    return rating == null ? "" : ` (${rating.toFixed(2)})`;
+  }
   let pastTournaments = load(STORAGE.tournaments, []);
   let ladders = load(STORAGE.ladders, []);
   let currentLadder = null;
@@ -2626,6 +2661,9 @@
   const ladderCustomRatingToggle = document.getElementById("ladderCustomRatingToggle");
   const ladderCustomRatingStepper = document.getElementById("ladderCustomRatingStepper");
   const ladderCustomRatingInput = document.getElementById("ladderCustomRatingInput");
+  const duprRatingToggle = document.getElementById("duprRatingToggle");
+  const duprRatingStepper = document.getElementById("duprRatingStepper");
+  const duprRatingInput = document.getElementById("duprRatingInput");
   const laddersListPanel = document.getElementById("laddersListPanel");
   const ladderNewForm = document.getElementById("ladderNewForm");
   const ladderNameInput = document.getElementById("ladderNameInput");
@@ -2664,6 +2702,9 @@
   const tournamentAddNamedTeamBtn = document.getElementById("tournamentAddNamedTeamBtn");
   const tournamentSinglesInput = document.getElementById("tournamentSinglesInput");
   const tournamentAddSinglesBtn = document.getElementById("tournamentAddSinglesBtn");
+  const tournamentDuprDoublesInput = document.getElementById("tournamentDuprDoublesInput");
+  const tournamentDuprTeamNameInput = document.getElementById("tournamentDuprTeamNameInput");
+  const tournamentDuprSinglesInput = document.getElementById("tournamentDuprSinglesInput");
   const tournamentTeamChips = document.getElementById("tournamentTeamChips");
   const tournamentGroupsInput = document.getElementById("tournamentGroupsInput");
   const tournamentAdvanceInput = document.getElementById("tournamentAdvanceInput");
@@ -3049,7 +3090,7 @@
       const chip = document.createElement("div");
       chip.className = "chip";
       const span = document.createElement("span");
-      span.textContent = name;
+      span.textContent = name + duprSuffix(name);
       const btn = document.createElement("button");
       btn.textContent = "×";
       btn.title = "Remove";
@@ -3073,6 +3114,14 @@
     return club ? club.name : "";
   }
 
+  function effectiveTeamDupr(team) {
+    if (typeof team.duprOverride === "number" && !isNaN(team.duprOverride)) return team.duprOverride;
+    if (!team.players || team.players.length === 0) return null;
+    const ratings = team.players.map((p) => duprRatingFor(p));
+    if (ratings.some((r) => r == null)) return null;
+    return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+  }
+
   function renderTournamentTeamChips() {
     tournamentTeamChips.innerHTML = "";
     tournamentTeams.forEach((team, idx) => {
@@ -3080,8 +3129,10 @@
       chip.className = "chip";
       const span = document.createElement("span");
       const clubName = isClubCompetitionType() ? tournamentClubName(team.clubId) : "";
-      span.textContent = clubName
-        ? `${tournamentTeamDisplayName(team)} (${clubName})`
+      const dupr = effectiveTeamDupr(team);
+      const tags = [clubName, dupr == null ? null : `DUPR ${dupr.toFixed(2)}`].filter(Boolean).join(", ");
+      span.textContent = tags
+        ? `${tournamentTeamDisplayName(team)} (${tags})`
         : tournamentTeamDisplayName(team);
       const btn = document.createElement("button");
       btn.textContent = "×";
@@ -3127,9 +3178,11 @@
     const p2 = tournamentPlayer2Input.value.trim();
     if (!p1 || !p2) return;
     if (!ensureClubSelectedOrWarn()) return;
-    addTournamentTeam({ players: [p1, p2], clubId: clubIdForNextTeam() });
+    const duprOverride = tournamentDuprDoublesInput.value.trim() === "" ? undefined : parseFloat(tournamentDuprDoublesInput.value);
+    addTournamentTeam({ players: [p1, p2], clubId: clubIdForNextTeam(), duprOverride });
     tournamentPlayer1Input.value = "";
     tournamentPlayer2Input.value = "";
+    tournamentDuprDoublesInput.value = "";
     tournamentPlayer1Input.focus();
   });
   [tournamentPlayer1Input, tournamentPlayer2Input].forEach((input) => {
@@ -3142,8 +3195,10 @@
     const name = tournamentTeamNameInput.value.trim();
     if (!name) return;
     if (!ensureClubSelectedOrWarn()) return;
-    addTournamentTeam({ players: [], teamName: name, clubId: clubIdForNextTeam() });
+    const duprOverride = tournamentDuprTeamNameInput.value.trim() === "" ? undefined : parseFloat(tournamentDuprTeamNameInput.value);
+    addTournamentTeam({ players: [], teamName: name, clubId: clubIdForNextTeam(), duprOverride });
     tournamentTeamNameInput.value = "";
+    tournamentDuprTeamNameInput.value = "";
     tournamentTeamNameInput.focus();
   });
   tournamentTeamNameInput.addEventListener("keydown", (e) => {
@@ -3255,8 +3310,10 @@
   tournamentAddSinglesBtn.addEventListener("click", () => {
     const name = tournamentSinglesInput.value.trim();
     if (!name) return;
-    addTournamentTeam({ players: [name] });
+    const duprOverride = tournamentDuprSinglesInput.value.trim() === "" ? undefined : parseFloat(tournamentDuprSinglesInput.value);
+    addTournamentTeam({ players: [name], duprOverride });
     tournamentSinglesInput.value = "";
+    tournamentDuprSinglesInput.value = "";
     tournamentSinglesInput.focus();
   });
   tournamentSinglesInput.addEventListener("keydown", (e) => {
@@ -3526,6 +3583,14 @@
       ladderCustomRatingStepper.style.display = "none";
       renderLadderStandingsTable();
     }
+    if (name && duprRatingToggle.checked) {
+      setDuprRating(name, parseFloat(duprRatingInput.value));
+      duprRatingToggle.checked = false;
+      duprRatingStepper.style.display = "none";
+      renderManagePanel();
+      renderTodayChips();
+      renderPickPanel();
+    }
   }
   playerInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitPlayerAdd();
@@ -3548,7 +3613,7 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pick-chip" + (selected ? " selected" : "");
-      btn.textContent = name;
+      btn.textContent = name + duprSuffix(name);
       btn.setAttribute("aria-pressed", String(selected));
       btn.addEventListener("click", () => {
         if (selected) removeTodayPlayer(name);
@@ -3573,6 +3638,21 @@
       row.className = "saved-row";
       const span = document.createElement("span");
       span.textContent = name;
+      const duprInput = document.createElement("input");
+      duprInput.type = "number";
+      duprInput.className = "saved-row-dupr";
+      duprInput.min = "2";
+      duprInput.max = "8";
+      duprInput.step = "0.01";
+      duprInput.placeholder = "DUPR";
+      const existing = duprRatingFor(name);
+      if (existing != null) duprInput.value = existing.toFixed(2);
+      duprInput.addEventListener("change", () => {
+        const val = duprInput.value.trim() === "" ? null : parseFloat(duprInput.value);
+        setDuprRating(name, val);
+        renderTodayChips();
+        renderPickPanel();
+      });
       const btn = document.createElement("button");
       btn.className = "small-btn remove";
       btn.textContent = "Remove";
@@ -3583,6 +3663,7 @@
         renderPickPanel();
       });
       row.appendChild(span);
+      row.appendChild(duprInput);
       row.appendChild(btn);
       managePanel.appendChild(row);
     });
@@ -4035,7 +4116,9 @@
       const isAdvancing = advancingIds.has(id);
       const chip = isAdvancing ? ` <span class="advance-chip">Advancing</span>` : "";
       const clubSuffix = tournamentIsClubBased(tournament) ? ` <span class="team-club-suffix">${teamClubName(tournament, id)}</span>` : "";
-      html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${clubSuffix}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
+      const team = findTeamById(tournament, id);
+      const duprSuffixHtml = team && typeof team.duprRating === "number" ? ` <span class="team-club-suffix">DUPR ${team.duprRating.toFixed(2)}</span>` : "";
+      html += `<tr class="${isAdvancing ? "advancing" : ""}"><td>${i + 1}</td><td>${tournamentTeamName(tournament, id)}${clubSuffix}${duprSuffixHtml}${chip}</td><td>${st.wins}</td><td>${st.losses}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
     });
     html += "</tbody>";
     return html;
@@ -5054,6 +5137,10 @@
 
   ladderCustomRatingToggle.addEventListener("change", () => {
     ladderCustomRatingStepper.style.display = ladderCustomRatingToggle.checked ? "flex" : "none";
+  });
+
+  duprRatingToggle.addEventListener("change", () => {
+    duprRatingStepper.style.display = duprRatingToggle.checked ? "flex" : "none";
   });
 
   let ladderNewFormat = "doubles";
@@ -7497,27 +7584,45 @@
     showSetupView();
   });
 
-  function dealIntoGroups(teamIds, numGroups) {
-    const shuffled = shuffle(teamIds);
+  // Orders teams by DUPR rating descending (so distributing them round-robin across
+  // groups spreads strong/weak pairs evenly instead of leaving it to chance), shuffling
+  // only *within* an exact-tie/unrated cluster so the order isn't fully deterministic
+  // when ratings are equal or absent. With no ratings set at all this is a no-op tie
+  // break equivalent to a plain shuffle -- unchanged behavior for organizers who don't use DUPR.
+  function ratingSortedWithTieShuffle(teams) {
+    const rated = teams.filter((t) => typeof t.duprRating === "number");
+    const unrated = shuffle(teams.filter((t) => typeof t.duprRating !== "number"));
+    const byRating = new Map();
+    rated.forEach((t) => {
+      if (!byRating.has(t.duprRating)) byRating.set(t.duprRating, []);
+      byRating.get(t.duprRating).push(t);
+    });
+    const sortedRatings = [...byRating.keys()].sort((a, b) => b - a);
+    const sortedRated = sortedRatings.flatMap((r) => shuffle(byRating.get(r)));
+    return [...sortedRated, ...unrated];
+  }
+
+  function dealIntoGroups(teams, numGroups) {
+    const ordered = ratingSortedWithTieShuffle(teams);
     const groups = [];
     for (let i = 0; i < numGroups; i++) groups.push([]);
-    shuffled.forEach((id, idx) => groups[idx % numGroups].push(id));
+    ordered.forEach((t, idx) => groups[idx % numGroups].push(t.id));
     return groups;
   }
 
-  // Like dealIntoGroups, but shuffles and distributes each club's own teams across
-  // the groups independently, so every club's pairs spread as evenly as possible
-  // across groups instead of clumping together by chance.
+  // Like dealIntoGroups, but distributes each club's own teams across the groups
+  // independently, so every club's pairs spread as evenly as possible across groups
+  // instead of clumping together by chance -- rating-balanced within each club's bucket.
   function dealIntoGroupsByClub(teams, numGroups) {
     const byClub = new Map();
     teams.forEach((t) => {
       if (!byClub.has(t.clubId)) byClub.set(t.clubId, []);
-      byClub.get(t.clubId).push(t.id);
+      byClub.get(t.clubId).push(t);
     });
     const groups = [];
     for (let i = 0; i < numGroups; i++) groups.push([]);
-    byClub.forEach((ids) => {
-      shuffle(ids).forEach((id, idx) => groups[idx % numGroups].push(id));
+    byClub.forEach((clubTeams) => {
+      ratingSortedWithTieShuffle(clubTeams).forEach((t, idx) => groups[idx % numGroups].push(t.id));
     });
     return groups;
   }
@@ -7551,6 +7656,7 @@
       name: tournamentTeamDisplayName(t),
       groupIndex: 0,
       clubId: isClubMode ? t.clubId : null,
+      duprRating: effectiveTeamDupr(t),
     }));
     const clubIdOf = (id) => {
       const team = teams.find((t) => t.id === id);
@@ -7580,7 +7686,7 @@
         };
       });
     } else {
-      const dealt = dealIntoGroups(teams.map((t) => t.id), numGroups);
+      const dealt = dealIntoGroups(teams, numGroups);
       groups = dealt.map((teamIds, index) => {
         teamIds.forEach((id) => {
           teams.find((t) => t.id === id).groupIndex = index;
