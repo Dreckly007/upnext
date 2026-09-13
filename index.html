@@ -621,6 +621,7 @@
     gap: 14px;
     margin-top: 14px;
   }
+  .paired-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
   .paired-grid .field,
   .paired-grid .estimate-field {
     margin-top: 0;
@@ -1373,7 +1374,7 @@
     .config-grid { grid-template-columns: 1fr 1fr; }
     .config-grid .or-divider { grid-column: 1 / -1; }
     .config-grid .field-wide-mobile { grid-column: 1 / -1; }
-    .paired-grid { grid-template-columns: 1fr; }
+    .paired-grid, .paired-grid.cols-3 { grid-template-columns: 1fr; }
     .medal-boxes { grid-template-columns: 1fr; }
     .dropdown-row .dropdown-toggle { font-size: 0.78rem; padding: 12px 8px; }
     .dropdown-row .dropdown-toggle .arrow { flex-shrink: 0; margin-left: 4px; }
@@ -1875,7 +1876,7 @@
             <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
             <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
           </div>
-          <div class="paired-grid">
+          <div class="paired-grid" id="tournamentKoSetupGrid">
             <div class="field">
               <label for="tournamentKoSetupTargetScoreInput">Points to win</label>
               <div class="number-stepper">
@@ -1891,13 +1892,13 @@
                 <button type="button" class="yesno-btn active" id="tournamentKoSetupWinByTwoNoBtn">No</button>
               </div>
             </div>
-          </div>
-          <div class="field" id="tournamentKoSetupBestOfField" style="display:none;">
-            <label for="tournamentKoSetupBestOfInput">Best of (games)</label>
-            <div class="number-stepper">
-              <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
-              <input type="number" id="tournamentKoSetupBestOfInput" min="1" max="9" value="3" />
-              <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+            <div class="field" id="tournamentKoSetupBestOfField" style="display:none;">
+              <label for="tournamentKoSetupBestOfInput">Best of (games)</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
+                <input type="number" id="tournamentKoSetupBestOfInput" min="1" max="9" value="3" />
+                <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+              </div>
             </div>
           </div>
 
@@ -2243,7 +2244,7 @@
             <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
             <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
           </div>
-          <div class="paired-grid no-print">
+          <div class="paired-grid no-print" id="tournamentKoLiveGrid">
             <div class="field">
               <label for="tournamentKoLiveTargetScoreInput">Points to win</label>
               <div class="number-stepper">
@@ -2259,13 +2260,13 @@
                 <button type="button" class="yesno-btn active" id="tournamentKoLiveWinByTwoNoBtn">No</button>
               </div>
             </div>
-          </div>
-          <div class="field no-print" id="tournamentKoLiveBestOfField" style="display:none;">
-            <label for="tournamentKoLiveBestOfInput">Best of (games)</label>
-            <div class="number-stepper">
-              <button type="button" class="stepper-btn" data-target="tournamentKoLiveBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
-              <input type="number" id="tournamentKoLiveBestOfInput" min="1" max="9" value="3" />
-              <button type="button" class="stepper-btn" data-target="tournamentKoLiveBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+            <div class="field no-print" id="tournamentKoLiveBestOfField" style="display:none;">
+              <label for="tournamentKoLiveBestOfInput">Best of (games)</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentKoLiveBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
+                <input type="number" id="tournamentKoLiveBestOfInput" min="1" max="9" value="3" />
+                <button type="button" class="stepper-btn" data-target="tournamentKoLiveBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+              </div>
             </div>
           </div>
           <div class="field no-print" style="margin-top:16px;">
@@ -2286,7 +2287,7 @@
             <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
             <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
           </div>
-          <div class="paired-grid">
+          <div class="paired-grid" id="tournamentFinalGrid">
             <div class="field">
               <label for="tournamentFinalTargetScoreInput">Points to win</label>
               <div class="number-stepper">
@@ -2302,13 +2303,13 @@
                 <button type="button" class="yesno-btn active" id="tournamentFinalWinByTwoNoBtn">No</button>
               </div>
             </div>
-          </div>
-          <div class="field" id="tournamentFinalBestOfField" style="display:none;">
-            <label for="tournamentFinalBestOfInput">Best of (games)</label>
-            <div class="number-stepper">
-              <button type="button" class="stepper-btn" data-target="tournamentFinalBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
-              <input type="number" id="tournamentFinalBestOfInput" min="1" max="9" value="3" />
-              <button type="button" class="stepper-btn" data-target="tournamentFinalBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+            <div class="field" id="tournamentFinalBestOfField" style="display:none;">
+              <label for="tournamentFinalBestOfInput">Best of (games)</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="tournamentFinalBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
+                <input type="number" id="tournamentFinalBestOfInput" min="1" max="9" value="3" />
+                <button type="button" class="stepper-btn" data-target="tournamentFinalBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+              </div>
             </div>
           </div>
         </div>
@@ -2620,6 +2621,7 @@
     return {
       modeToggle: document.getElementById(`${prefix}ModeToggle`),
       modeButtons: document.querySelectorAll(`#${prefix}ModeToggle .format-btn`),
+      grid: document.getElementById(`${prefix}Grid`),
       targetScoreInput: document.getElementById(`${prefix}TargetScoreInput`),
       winByTwoYesBtn: document.getElementById(`${prefix}WinByTwoYesBtn`),
       winByTwoNoBtn: document.getElementById(`${prefix}WinByTwoNoBtn`),
@@ -3290,6 +3292,7 @@
   function syncFormatControls(refs, format) {
     refs.modeButtons.forEach((btn) => btn.classList.toggle("active", btn.dataset.koMode === format.mode));
     refs.bestOfField.style.display = format.mode === "bestOf" ? "block" : "none";
+    refs.grid.classList.toggle("cols-3", format.mode === "bestOf");
     refs.targetScoreInput.value = format.targetScore;
     refs.winByTwoYesBtn.classList.toggle("active", format.winByTwo);
     refs.winByTwoNoBtn.classList.toggle("active", !format.winByTwo);
