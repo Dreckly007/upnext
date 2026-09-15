@@ -4414,6 +4414,14 @@
     return `${hh12}:${String(m % 60).padStart(2, "0")} ${period}`;
   }
 
+  function formatDurationHm(totalMinutes) {
+    const mins = Math.round(totalMinutes);
+    if (mins < 60) return `${mins} min`;
+    const hours = Math.floor(mins / 60);
+    const remainder = mins % 60;
+    return remainder === 0 ? `${hours}h` : `${hours}h ${remainder}m`;
+  }
+
   function projectGroupSizes(teamCount, numGroups) {
     const base = Math.floor(teamCount / numGroups);
     const remainder = teamCount % numGroups;
@@ -4870,12 +4878,12 @@
     const knockoutEst = estimateKnockoutMinutes(qualifierCount, courts, knockoutPerRoundMinutes);
     const totalMinutes = groupEst.minutes + (knockoutEst ? knockoutEst.minutes : 0);
     tournamentEstimateField.style.display = "block";
-    tournamentEstimateNumber.textContent = `${totalMinutes} min`;
+    tournamentEstimateNumber.textContent = formatDurationHm(totalMinutes);
     const groupDaysSuffix = dayCountSuffix(groupEst.rounds, perRoundMinutes, hoursPerDay);
     const knockoutDaysSuffix = knockoutEst ? dayCountSuffix(knockoutEst.rounds, knockoutPerRoundMinutes, hoursPerDay) : "";
     tournamentEstimateReason.textContent = knockoutEst
-      ? `Group stage ~${groupEst.minutes} min${groupDaysSuffix} + Knockout ~${knockoutEst.minutes} min${knockoutDaysSuffix} (projected)`
-      : `Group stage ~${groupEst.minutes} min${groupDaysSuffix} (projected)`;
+      ? `Group stage ~${formatDurationHm(groupEst.minutes)}${groupDaysSuffix} + Knockout ~${formatDurationHm(knockoutEst.minutes)}${knockoutDaysSuffix} (projected)`
+      : `Group stage ~${formatDurationHm(groupEst.minutes)}${groupDaysSuffix} (projected)`;
 
     if (hoursPerDay > 0) {
       const budgetMinutes = hoursPerDay * daysAvailable * 60;
@@ -4887,7 +4895,7 @@
         const suggestedPerRound = estimateMinutesForTarget(suggestedTarget) + CHANGEOVER_MINUTES;
         tournamentBudgetSuggestionField.style.display = "block";
         tournamentBudgetSuggestionText.textContent =
-          `This will take ~${totalMinutes} min — try ${suggestedTarget} points (~${suggestedPerRound} min/game) to fit your ${daysAvailable}-day, ${hoursPerDay}h/day budget.`;
+          `This will take ~${formatDurationHm(totalMinutes)} — try ${suggestedTarget} points (~${suggestedPerRound} min/game) to fit your ${daysAvailable}-day, ${hoursPerDay}h/day budget.`;
       } else {
         tournamentBudgetSuggestionField.style.display = "none";
         lastBudgetSuggestion = null;
@@ -4907,13 +4915,13 @@
   function updateTournamentViewEstimate(tournament) {
     const est = computeTournamentLiveEstimate(tournament);
     tournamentViewEstimateField.style.display = "block";
-    tournamentViewEstimateNumber.textContent = `${est.totalMinutes} min`;
+    tournamentViewEstimateNumber.textContent = formatDurationHm(est.totalMinutes);
     const perRound = tournamentPerRoundMinutes(tournament.targetScore, tournament.roundMinutes);
     const groupDaysSuffix = dayCountSuffix(est.groupRounds, perRound, tournament.hoursPerDay);
     const knockoutDaysSuffix = dayCountSuffix(est.knockoutRounds, est.knockoutPerRound, tournament.hoursPerDay);
     tournamentViewEstimateReason.textContent = tournament.knockout
-      ? `Group stage ~${est.groupMinutes} min${groupDaysSuffix} + Knockout ~${est.knockoutMinutes} min${knockoutDaysSuffix}`
-      : `Group stage ~${est.groupMinutes} min${groupDaysSuffix} + Knockout ~${est.knockoutMinutes} min${knockoutDaysSuffix} (projected)`;
+      ? `Group stage ~${formatDurationHm(est.groupMinutes)}${groupDaysSuffix} + Knockout ~${formatDurationHm(est.knockoutMinutes)}${knockoutDaysSuffix}`
+      : `Group stage ~${formatDurationHm(est.groupMinutes)}${groupDaysSuffix} + Knockout ~${formatDurationHm(est.knockoutMinutes)}${knockoutDaysSuffix} (projected)`;
   }
 
   // Tallies a knockout match's games (one game for a "single" format, up to
