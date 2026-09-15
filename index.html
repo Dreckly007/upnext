@@ -1791,7 +1791,7 @@
           <label class="section-label">Teams</label>
           <div class="format-toggle" id="tournamentDoublesEntryModeToggle">
             <button type="button" class="format-btn active" data-entry-mode="players">Player names</button>
-            <button type="button" class="format-btn" data-entry-mode="teamnames">Pair names</button>
+            <button type="button" class="format-btn" data-entry-mode="teamnames">Pair Team Name</button>
           </div>
           <div class="field" id="tournamentTeamClubField" style="display:none;">
             <label for="tournamentTeamClubSelect">Club</label>
@@ -1800,10 +1800,16 @@
             </select>
           </div>
           <div class="inline-form" id="tournamentTeamEntryDoubles">
-            <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" />
-            <input type="text" id="tournamentPlayer2Input" placeholder="Player 2" />
+            <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" list="savedNamesDatalist" />
+            <input type="text" id="tournamentPlayer2Input" placeholder="Player 2" list="savedNamesDatalist" />
             <input type="number" id="tournamentDuprDoublesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to auto-average the two players' saved DUPR ratings" />
             <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
+          </div>
+          <div class="dropdown" id="tournamentPickDropdownDoubles">
+            <button type="button" class="dropdown-toggle" data-target="tournamentPickDropdownDoubles">
+              Pick from saved names <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel" id="tournamentPickPanelDoubles"></div>
           </div>
           <div class="inline-form" id="tournamentTeamEntryDoublesByName" style="display:none;">
             <input type="text" id="tournamentTeamNameInput" placeholder="Team name" />
@@ -1811,10 +1817,17 @@
             <button class="small-btn add" id="tournamentAddNamedTeamBtn">Add team</button>
           </div>
           <div class="inline-form" id="tournamentTeamEntrySingles" style="display:none;">
-            <input type="text" id="tournamentSinglesInput" placeholder="Player name" />
+            <input type="text" id="tournamentSinglesInput" placeholder="Player name" list="savedNamesDatalist" />
             <input type="number" id="tournamentDuprSinglesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to use this player's saved DUPR rating" />
             <button class="small-btn add" id="tournamentAddSinglesBtn">Add</button>
           </div>
+          <div class="dropdown" id="tournamentPickDropdownSingles" style="display:none;">
+            <button type="button" class="dropdown-toggle" data-target="tournamentPickDropdownSingles">
+              Pick from saved names <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel" id="tournamentPickPanelSingles"></div>
+          </div>
+          <datalist id="savedNamesDatalist"></datalist>
           <div class="chips" id="tournamentTeamChips"></div>
 
           <div class="paired-grid">
@@ -2705,6 +2718,11 @@
   const tournamentDuprDoublesInput = document.getElementById("tournamentDuprDoublesInput");
   const tournamentDuprTeamNameInput = document.getElementById("tournamentDuprTeamNameInput");
   const tournamentDuprSinglesInput = document.getElementById("tournamentDuprSinglesInput");
+  const tournamentPickPanelDoubles = document.getElementById("tournamentPickPanelDoubles");
+  const tournamentPickDropdownDoubles = document.getElementById("tournamentPickDropdownDoubles");
+  const tournamentPickPanelSingles = document.getElementById("tournamentPickPanelSingles");
+  const tournamentPickDropdownSingles = document.getElementById("tournamentPickDropdownSingles");
+  const savedNamesDatalist = document.getElementById("savedNamesDatalist");
   const tournamentTeamChips = document.getElementById("tournamentTeamChips");
   const tournamentGroupsInput = document.getElementById("tournamentGroupsInput");
   const tournamentAdvanceInput = document.getElementById("tournamentAdvanceInput");
@@ -3191,6 +3209,60 @@
     });
   });
 
+  let tournamentLastFocusedPlayerInput = tournamentPlayer1Input;
+  [tournamentPlayer1Input, tournamentPlayer2Input].forEach((input) => {
+    input.addEventListener("focus", () => { tournamentLastFocusedPlayerInput = input; });
+  });
+
+  function renderSavedNamesDatalist() {
+    savedNamesDatalist.innerHTML = "";
+    savedPlayers.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      savedNamesDatalist.appendChild(option);
+    });
+  }
+
+  function renderTournamentPickPanel(panelEl, onPick) {
+    panelEl.innerHTML = "";
+    if (savedPlayers.length === 0) {
+      const note = document.createElement("div");
+      note.className = "empty-note";
+      note.textContent = "No saved players yet. Add some in \"Manage saved names\".";
+      panelEl.appendChild(note);
+      return;
+    }
+    const list = document.createElement("div");
+    list.className = "pick-chip-list";
+    savedPlayers.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pick-chip";
+      btn.textContent = name + duprSuffix(name);
+      btn.addEventListener("click", () => onPick(name));
+      list.appendChild(btn);
+    });
+    panelEl.appendChild(list);
+  }
+
+  function renderTournamentPickPanels() {
+    renderTournamentPickPanel(tournamentPickPanelDoubles, (name) => {
+      const target = tournamentLastFocusedPlayerInput;
+      target.value = name;
+      const other = target === tournamentPlayer1Input ? tournamentPlayer2Input : tournamentPlayer1Input;
+      if (!other.value.trim()) {
+        tournamentLastFocusedPlayerInput = other;
+        other.focus();
+      } else {
+        target.focus();
+      }
+    });
+    renderTournamentPickPanel(tournamentPickPanelSingles, (name) => {
+      tournamentSinglesInput.value = name;
+      tournamentSinglesInput.focus();
+    });
+  }
+
   tournamentAddNamedTeamBtn.addEventListener("click", () => {
     const name = tournamentTeamNameInput.value.trim();
     if (!name) return;
@@ -3293,6 +3365,7 @@
     const showPlayers = !isSingles && !showNamed;
     tournamentTeamEntryDoubles.style.display = showPlayers ? "flex" : "none";
     tournamentTeamEntryDoublesByName.style.display = showNamed ? "flex" : "none";
+    tournamentPickDropdownDoubles.style.display = showPlayers ? "block" : "none";
     tournamentDoublesEntryModeButtons.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.entryMode === config.tournamentDoublesEntryMode);
     });
@@ -3549,6 +3622,7 @@
       savedPlayers.push(name);
       save(STORAGE.saved, savedPlayers);
       renderManagePanel();
+      renderSavedNamesDatalist();
     }
     if (config.mode === "ladder" && currentLadder && !currentLadder.roster.some((p) => p.toLowerCase() === name.toLowerCase())) {
       currentLadder.roster.push(name);
@@ -3558,6 +3632,7 @@
     }
     renderTodayChips();
     renderPickPanel();
+    renderTournamentPickPanels();
   }
 
   function removeTodayPlayer(name) {
@@ -3590,6 +3665,7 @@
       renderManagePanel();
       renderTodayChips();
       renderPickPanel();
+      renderTournamentPickPanels();
     }
   }
   playerInput.addEventListener("keydown", (e) => {
@@ -3652,6 +3728,7 @@
         setDuprRating(name, val);
         renderTodayChips();
         renderPickPanel();
+        renderTournamentPickPanels();
       });
       const btn = document.createElement("button");
       btn.className = "small-btn remove";
@@ -3661,6 +3738,8 @@
         save(STORAGE.saved, savedPlayers);
         renderManagePanel();
         renderPickPanel();
+        renderTournamentPickPanels();
+        renderSavedNamesDatalist();
       });
       row.appendChild(span);
       row.appendChild(duprInput);
@@ -3681,6 +3760,8 @@
     newSavedName.value = "";
     renderManagePanel();
     renderPickPanel();
+    renderTournamentPickPanels();
+    renderSavedNamesDatalist();
   });
   newSavedName.addEventListener("keydown", (e) => {
     if (e.key === "Enter") addSavedBtn.click();
@@ -5073,6 +5154,7 @@
     const isSingles = config.format === "singles";
     tournamentDoublesEntryModeToggle.style.display = isSingles ? "none" : "flex";
     tournamentTeamEntrySingles.style.display = isSingles ? "flex" : "none";
+    tournamentPickDropdownSingles.style.display = isSingles ? "block" : "none";
     syncTournamentDoublesEntryMode();
     syncTournamentCompetitionType();
   }
@@ -7862,6 +7944,8 @@
   renderTodayChips();
   renderPickPanel();
   renderManagePanel();
+  renderSavedNamesDatalist();
+  renderTournamentPickPanels();
   renderSessionsPanel();
   renderClubStatsPanel();
   renderCourtLabels();
