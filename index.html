@@ -1633,7 +1633,7 @@
       <button class="small-btn add" id="androidInstallBtn">Install</button>
     </div>
 
-    <div id="setupView">
+    <div id="homeView">
       <div class="dropdown-row" id="brandingDropdownRow">
         <div class="dropdown" id="themeDropdown">
           <button class="dropdown-toggle" data-target="themeDropdown">
@@ -1683,6 +1683,13 @@
         <button type="button" class="small-btn" id="viewSharedCodeBtn">View</button>
       </div>
       <div class="hint" id="sharedCodeError" style="display:none; color:#c0392b;"></div>
+    </div>
+
+    <div id="setupView" style="display:none;">
+      <button class="icon-btn" id="homeBtn" aria-label="Home">
+        <span class="icon-glyph" aria-hidden="true">🏠</span>
+        <span class="icon-label">Home</span>
+      </button>
 
       <div class="ladder-setup-panel" id="ladderSetupPanel" style="display:none;">
         <div class="dropdown" id="laddersListDropdown">
@@ -2651,6 +2658,8 @@
   let timerSeconds = 0;
   let timerInterval = null;
 
+  const homeView = document.getElementById("homeView");
+  const homeBtn = document.getElementById("homeBtn");
   const setupView = document.getElementById("setupView");
   const sessionView = document.getElementById("sessionView");
 
@@ -5219,6 +5228,7 @@
       config.mode = btn.dataset.mode;
       save(STORAGE.config, config);
       syncModeUI();
+      showSetupView();
     });
   });
 
@@ -6141,9 +6151,16 @@
 
   rosterConfirmCancelBtn.addEventListener("click", closeRosterConfirm);
 
+  function showHomeView() {
+    homeView.style.display = "block";
+    setupView.style.display = "none";
+    sessionView.style.display = "none";
+    tournamentView.style.display = "none";
+  }
   function showSetupView() {
     stopTimer();
     closeTimerFullscreen();
+    homeView.style.display = "none";
     setupView.style.display = "block";
     sessionView.style.display = "none";
     tournamentView.style.display = "none";
@@ -6153,11 +6170,13 @@
     if (config.mode === "tournament") renderPastTournamentsPanel();
   }
   function showSessionView() {
+    homeView.style.display = "none";
     setupView.style.display = "none";
     sessionView.style.display = "block";
     tournamentView.style.display = "none";
   }
   function showTournamentView() {
+    homeView.style.display = "none";
     setupView.style.display = "none";
     sessionView.style.display = "none";
     tournamentView.style.display = "block";
@@ -6167,6 +6186,7 @@
     }
     renderTournamentView();
   }
+  homeBtn.addEventListener("click", showHomeView);
 
   function stopTimer() {
     if (timerInterval) {
@@ -7989,6 +8009,7 @@
   syncModeUI();
   syncLadderHistoryButtons();
   syncTournamentWinByTwoButtons();
+  showHomeView();
   loadSharedViewFromHash();
 
   const setupDropdownRow = document.getElementById("setupDropdownRow");
