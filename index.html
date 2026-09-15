@@ -2554,6 +2554,9 @@
     const rating = duprRatingFor(name);
     return rating == null ? "" : ` (${rating.toFixed(2)})`;
   }
+  function randomDebugRating(min, max, decimals) {
+    return parseFloat((min + Math.random() * (max - min)).toFixed(decimals));
+  }
   let pastTournaments = load(STORAGE.tournaments, []);
   let ladders = load(STORAGE.ladders, []);
   let currentLadder = null;
@@ -3419,12 +3422,21 @@
     }
     const nextClubId = (i) => (isClubCompetitionType() ? tournamentClubs[i % tournamentClubs.length].id : undefined);
     if (isSingles) {
-      TOURNAMENT_DEBUG_NAMES.slice(0, 15).forEach((name, i) => addTournamentTeam({ players: [name], clubId: nextClubId(i) }));
+      TOURNAMENT_DEBUG_NAMES.slice(0, 15).forEach((name, i) => {
+        setDuprRating(name, randomDebugRating(2.5, 6.0, 2));
+        addTournamentTeam({ players: [name], clubId: nextClubId(i) });
+      });
     } else if (isTeamNames) {
-      for (let i = 1; i <= 15; i++) addTournamentTeam({ players: [], teamName: `Team ${i}`, clubId: nextClubId(i) });
+      for (let i = 1; i <= 15; i++) {
+        addTournamentTeam({ players: [], teamName: `Team ${i}`, clubId: nextClubId(i), duprOverride: randomDebugRating(2.5, 6.0, 2) });
+      }
     } else {
       for (let i = 0; i < 15; i++) {
-        addTournamentTeam({ players: [TOURNAMENT_DEBUG_NAMES[2 * i], TOURNAMENT_DEBUG_NAMES[2 * i + 1]], clubId: nextClubId(i) });
+        const p1 = TOURNAMENT_DEBUG_NAMES[2 * i];
+        const p2 = TOURNAMENT_DEBUG_NAMES[2 * i + 1];
+        setDuprRating(p1, randomDebugRating(2.5, 6.0, 2));
+        setDuprRating(p2, randomDebugRating(2.5, 6.0, 2));
+        addTournamentTeam({ players: [p1, p2], clubId: nextClubId(i) });
       }
     }
   });
@@ -5554,6 +5566,19 @@
       "Ivy", "Jack", "Kate", "Liam", "Mia", "Nick", "Olivia",
     ];
     sample.forEach(addTodayPlayer);
+    const isLadder = config.mode === "ladder" && currentLadder;
+    sample.forEach((name) => {
+      setDuprRating(name, randomDebugRating(2.5, 6.0, 2));
+      if (isLadder) currentLadder.startingRatings[name] = randomDebugRating(1.5, 5.5, 1);
+    });
+    if (isLadder) {
+      save(STORAGE.ladders, ladders);
+      renderLadderStandingsTable();
+    }
+    renderTodayChips();
+    renderPickPanel();
+    renderManagePanel();
+    renderTournamentPickPanels();
   });
 
   function debugRandomScore(cap, fallbackTarget) {
