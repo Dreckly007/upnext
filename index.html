@@ -3047,7 +3047,7 @@
       const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
       const perGame = estimateMinutesForTarget(target);
       const total = gamesToPlay * (perGame + CHANGEOVER_MINUTES);
-      targetScoreEstimateNumber.textContent = `${total} min`;
+      targetScoreEstimateNumber.textContent = formatDurationHm(total);
       targetScoreEstimateReason.textContent =
         `for ${gamesToPlay} game${gamesToPlay === 1 ? "" : "s"} · ${perGame} min/game + ${CHANGEOVER_MINUTES} min changeover`;
     }
