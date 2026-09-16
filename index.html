@@ -678,6 +678,17 @@
     margin-top: 12px;
     margin-bottom: 20px;
   }
+  .mode-toggle-cards { flex-direction: column; gap: 14px; }
+  .mode-toggle-cards .format-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 22px 24px;
+    text-align: left;
+  }
+  .mode-toggle-cards .mode-btn-title { font-size: 1.2rem; font-weight: 700; }
+  .mode-toggle-cards .mode-btn-desc { font-size: 0.82rem; font-weight: 500; opacity: 0.85; }
   .ladder-setup-panel {
     background: var(--green-pale);
     border: 1px solid var(--green-pale-border);
@@ -1672,10 +1683,19 @@
         </div>
       </div>
 
-      <div class="format-toggle mode-toggle" id="modeToggle">
-        <button type="button" class="format-btn active" data-mode="session">Session Scheduler</button>
-        <button type="button" class="format-btn" data-mode="ladder">Ladder</button>
-        <button type="button" class="format-btn" data-mode="tournament">Tournament</button>
+      <div class="format-toggle mode-toggle mode-toggle-cards" id="modeToggle">
+        <button type="button" class="format-btn active" data-mode="session">
+          <span class="mode-btn-title">Session Scheduler</span>
+          <span class="mode-btn-desc">One-off session with fair, rotating matchups</span>
+        </button>
+        <button type="button" class="format-btn" data-mode="ladder">
+          <span class="mode-btn-title">Ladder</span>
+          <span class="mode-btn-desc">Long-running round robin with player ratings</span>
+        </button>
+        <button type="button" class="format-btn" data-mode="tournament">
+          <span class="mode-btn-title">Tournament</span>
+          <span class="mode-btn-desc">Groups, seeding, and a knockout bracket</span>
+        </button>
       </div>
 
       <div class="inline-form" id="sharedCodeEntryRow">
