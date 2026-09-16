@@ -481,20 +481,6 @@
   .inline-form input { flex: 1; }
   .empty-note { color: var(--muted); font-size: 0.88rem; padding: 6px 4px; }
 
-  .config-grid {
-    display: grid;
-    grid-template-columns: 0.85fr 0.85fr auto 0.85fr 1.3fr;
-    gap: 14px 8px;
-    margin-top: 10px;
-  }
-  .or-divider {
-    align-self: center;
-    text-align: center;
-    font-weight: 700;
-    color: var(--muted);
-    font-size: 0.85rem;
-    padding: 0;
-  }
   .field {
     margin-top: 16px;
   }
@@ -632,13 +618,6 @@
     color: var(--on-accent);
     border-color: var(--green);
   }
-  .field.mode-active input {
-    border-color: var(--green);
-    background: var(--green-pale);
-    color: var(--green-dark);
-  }
-  .field.mode-active label { color: var(--green-dark); }
-  .field.mode-inactive { opacity: 0.45; }
   .paired-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -647,8 +626,7 @@
   }
   .paired-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
   .paired-grid .field,
-  .paired-grid .estimate-field,
-  .config-grid .field {
+  .paired-grid .estimate-field {
     margin-top: 0;
   }
 
@@ -1417,9 +1395,6 @@
   .modal-btn.cancel { background: #fff; color: var(--text); border: 1px solid var(--card-border); }
 
   @media (max-width: 480px) {
-    .config-grid { grid-template-columns: 1fr 1fr; }
-    .config-grid .or-divider { grid-column: 1 / -1; }
-    .config-grid .field-wide-mobile { grid-column: 1 / -1; }
     .paired-grid, .paired-grid.cols-3 { grid-template-columns: 1fr; }
     .medal-boxes { grid-template-columns: 1fr; }
     .dropdown-row .dropdown-toggle { font-size: 0.78rem; padding: 12px 8px; }
@@ -2067,24 +2042,30 @@
         </div>
       </div>
 
-      <div class="config-grid">
-        <div class="field">
-          <label for="courtsInput">Courts available</label>
-          <div class="number-stepper">
-            <button type="button" class="stepper-btn" data-target="courtsInput" data-step="-1" aria-label="Decrease courts available">−</button>
-            <input type="number" id="courtsInput" min="1" max="12" value="1" />
-            <button type="button" class="stepper-btn" data-target="courtsInput" data-step="1" aria-label="Increase courts available">+</button>
-          </div>
+      <div class="field">
+        <label for="courtsInput">Courts available</label>
+        <div class="number-stepper">
+          <button type="button" class="stepper-btn" data-target="courtsInput" data-step="-1" aria-label="Decrease courts available">−</button>
+          <input type="number" id="courtsInput" min="1" max="12" value="1" />
+          <button type="button" class="stepper-btn" data-target="courtsInput" data-step="1" aria-label="Increase courts available">+</button>
         </div>
-        <div class="field">
-          <label for="gamesToPlayInput">Games to play</label>
-          <div class="number-stepper">
-            <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="-1" aria-label="Decrease games to play">−</button>
-            <input type="number" id="gamesToPlayInput" min="0" value="0" />
-            <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="1" aria-label="Increase games to play">+</button>
-          </div>
+      </div>
+
+      <div class="format-toggle" id="planningModeToggle">
+        <button type="button" class="format-btn active" data-planning-mode="games">How many games would you like to play?</button>
+        <button type="button" class="format-btn" data-planning-mode="time">How much time have you got?</button>
+      </div>
+
+      <div class="field" id="gamesPlanningField">
+        <label for="gamesToPlayInput">Games to play</label>
+        <div class="number-stepper">
+          <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="-1" aria-label="Decrease games to play">−</button>
+          <input type="number" id="gamesToPlayInput" min="0" value="0" />
+          <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="1" aria-label="Increase games to play">+</button>
         </div>
-        <div class="or-divider">OR</div>
+      </div>
+
+      <div class="paired-grid" id="timePlanningFields" style="display:none;">
         <div class="field field-wide-mobile">
           <label for="gameLengthInput">Game length</label>
           <div class="number-stepper">
@@ -2634,6 +2615,9 @@
     schemaVersion: CONFIG_SCHEMA_VERSION,
   });
   config.gamesToPlay = config.gamesToPlay ?? 0;
+  config.planningMode = config.planningMode === "time" || config.planningMode === "games"
+    ? config.planningMode
+    : (config.gameLength > 0 || config.timeAvailable > 0) && !(config.gamesToPlay > 0) ? "time" : "games";
   config.targetScore = config.targetScore ?? 11;
   config.theme = config.theme || "cornish-gold";
   config.customColor = config.customColor || "#b8860b";
@@ -2827,9 +2811,10 @@
   const gameLengthInput = document.getElementById("gameLengthInput");
   const timeAvailableHoursInput = document.getElementById("timeAvailableHoursInput");
   const timeAvailableMinutesInput = document.getElementById("timeAvailableMinutesInput");
-  const gamesToPlayField = gamesToPlayInput.closest(".field");
-  const gameLengthField = gameLengthInput.closest(".field");
-  const timeAvailableField = timeAvailableHoursInput.closest(".field");
+  const planningModeToggle = document.getElementById("planningModeToggle");
+  const planningModeButtons = document.querySelectorAll("#planningModeToggle .format-btn");
+  const gamesPlanningField = document.getElementById("gamesPlanningField");
+  const timePlanningFields = document.getElementById("timePlanningFields");
   const roundsEstimateField = document.getElementById("roundsEstimateField");
   const roundsEstimateNumber = document.getElementById("roundsEstimateNumber");
   const roundsEstimateReason = document.getElementById("roundsEstimateReason");
@@ -3012,7 +2997,7 @@
   }
 
   function isGamesMode() {
-    return (parseInt(gamesToPlayInput.value, 10) || 0) > 0;
+    return config.planningMode !== "time";
   }
 
   function getTimeAvailableMinutes() {
@@ -3046,18 +3031,14 @@
   }
 
   function updateGamesModeUI() {
+    const gamesMode = isGamesMode();
     const gamesToPlay = Math.max(0, parseInt(gamesToPlayInput.value, 10) || 0);
-    const gameLength = Math.max(0, parseInt(gameLengthInput.value, 10) || 0);
-    const timeAvailable = getTimeAvailableMinutes();
-    const gamesMode = gamesToPlay > 0;
-    const timeMode = !gamesMode && (gameLength > 0 || timeAvailable > 0);
 
-    gamesToPlayField.classList.toggle("mode-active", gamesMode);
-    gamesToPlayField.classList.toggle("mode-inactive", timeMode);
-    gameLengthField.classList.toggle("mode-active", timeMode);
-    gameLengthField.classList.toggle("mode-inactive", gamesMode);
-    timeAvailableField.classList.toggle("mode-active", timeMode);
-    timeAvailableField.classList.toggle("mode-inactive", gamesMode);
+    gamesPlanningField.style.display = gamesMode ? "block" : "none";
+    timePlanningFields.style.display = gamesMode ? "none" : "grid";
+    planningModeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.planningMode === config.planningMode);
+    });
 
     targetScoreField.style.display = gamesMode ? "block" : "none";
     winByTwoField.style.display = gamesMode ? "block" : "none";
@@ -5542,6 +5523,13 @@
     persistConfig();
     renderCourtLabels();
   });
+  planningModeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.planningMode = btn.dataset.planningMode;
+      persistConfig();
+      updateGamesModeUI();
+    });
+  });
   gamesToPlayInput.addEventListener("input", () => {
     persistConfig();
     updateGamesModeUI();
@@ -7954,12 +7942,16 @@
     persistConfig();
 
     let numRounds, effectiveGameLength;
-    if (config.gamesToPlay > 0) {
+    if (isGamesMode()) {
+      if (config.gamesToPlay <= 0) {
+        alert("Enter how many games you'd like to play.");
+        return false;
+      }
       numRounds = config.gamesToPlay;
       effectiveGameLength = estimateMinutesForTarget(config.targetScore);
     } else {
       if (config.gameLength <= 0 || config.timeAvailable <= 0) {
-        alert("Enter either a number of games to play, or a game length and time available.");
+        alert("Enter a game length and the time you have available.");
         return false;
       }
       numRounds = computeRounds();
