@@ -2792,6 +2792,7 @@
   const ladderCustomRatingToggle = document.getElementById("ladderCustomRatingToggle");
   const ladderCustomRatingStepper = document.getElementById("ladderCustomRatingStepper");
   const ladderCustomRatingInput = document.getElementById("ladderCustomRatingInput");
+  const duprRatingRow = document.getElementById("duprRatingRow");
   const duprRatingToggle = document.getElementById("duprRatingToggle");
   const duprRatingStepper = document.getElementById("duprRatingStepper");
   const duprRatingInput = document.getElementById("duprRatingInput");
@@ -3278,7 +3279,7 @@
       const chip = document.createElement("div");
       chip.className = "chip";
       const span = document.createElement("span");
-      span.textContent = name + duprSuffix(name);
+      span.textContent = name + (config.mode !== "ladder" ? duprSuffix(name) : "");
       const btn = document.createElement("button");
       btn.textContent = "×";
       btn.title = "Remove";
@@ -3838,7 +3839,7 @@
       ladderCustomRatingStepper.style.display = "none";
       renderLadderStandingsTable();
     }
-    if (name && duprRatingToggle.checked) {
+    if (name && config.mode !== "ladder" && duprRatingToggle.checked) {
       setDuprRating(name, parseFloat(duprRatingInput.value));
       duprRatingToggle.checked = false;
       duprRatingStepper.style.display = "none";
@@ -3869,7 +3870,7 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pick-chip" + (selected ? " selected" : "");
-      btn.textContent = name + duprSuffix(name);
+      btn.textContent = name + (config.mode !== "ladder" ? duprSuffix(name) : "");
       btn.setAttribute("aria-pressed", String(selected));
       btn.addEventListener("click", () => {
         if (selected) removeTodayPlayer(name);
@@ -3894,22 +3895,26 @@
       row.className = "saved-row";
       const span = document.createElement("span");
       span.textContent = name;
-      const duprInput = document.createElement("input");
-      duprInput.type = "number";
-      duprInput.className = "saved-row-dupr";
-      duprInput.min = "2";
-      duprInput.max = "8";
-      duprInput.step = "0.01";
-      duprInput.placeholder = "DUPR";
-      const existing = duprRatingFor(name);
-      if (existing != null) duprInput.value = existing.toFixed(2);
-      duprInput.addEventListener("change", () => {
-        const val = duprInput.value.trim() === "" ? null : parseFloat(duprInput.value);
-        setDuprRating(name, val);
-        renderTodayChips();
-        renderPickPanel();
-        renderTournamentPickPanels();
-      });
+      row.appendChild(span);
+      if (config.mode !== "ladder") {
+        const duprInput = document.createElement("input");
+        duprInput.type = "number";
+        duprInput.className = "saved-row-dupr";
+        duprInput.min = "2";
+        duprInput.max = "8";
+        duprInput.step = "0.01";
+        duprInput.placeholder = "DUPR";
+        const existing = duprRatingFor(name);
+        if (existing != null) duprInput.value = existing.toFixed(2);
+        duprInput.addEventListener("change", () => {
+          const val = duprInput.value.trim() === "" ? null : parseFloat(duprInput.value);
+          setDuprRating(name, val);
+          renderTodayChips();
+          renderPickPanel();
+          renderTournamentPickPanels();
+        });
+        row.appendChild(duprInput);
+      }
       const btn = document.createElement("button");
       btn.className = "small-btn remove";
       btn.textContent = "Remove";
@@ -3921,8 +3926,6 @@
         renderTournamentPickPanels();
         renderSavedNamesDatalist();
       });
-      row.appendChild(span);
-      row.appendChild(duprInput);
       row.appendChild(btn);
       managePanel.appendChild(row);
     });
@@ -5406,11 +5409,14 @@
     const isTournament = config.mode === "tournament";
     ladderSetupPanel.style.display = isLadder ? "block" : "none";
     ladderRatingRow.style.display = isLadder && currentLadder ? "flex" : "none";
+    duprRatingRow.style.display = isLadder ? "none" : "flex";
     tournamentSetupPanel.style.display = isTournament ? "block" : "none";
     sessionSetupFields.style.display = (isTournament || (isLadder && !currentLadder)) ? "none" : "block";
     playFormatField.style.display = isLadder && currentLadder ? "none" : "block";
     renderSessionsPanel();
     renderContinueSessionBanner();
+    renderManagePanel();
+    renderPickPanel();
     if (isLadder) {
       renderLaddersListPanel();
       ladderNewForm.style.display = currentLadder ? "none" : "block";
