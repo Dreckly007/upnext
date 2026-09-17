@@ -2240,6 +2240,10 @@
         <span class="icon-glyph" aria-hidden="true">🏠</span>
         <span class="icon-label">Home</span>
       </button>
+      <button class="icon-btn no-share" id="sessionLaddersBtn" aria-label="Ladders list">
+        <span class="icon-glyph" aria-hidden="true">🪜</span>
+        <span class="icon-label">Ladders</span>
+      </button>
 
       <div class="shared-banner no-print" id="sharedBanner" style="display:none;">
         Viewing a shared schedule (read-only). <a href="#" id="sharedBannerExitLink">Start your own</a>
@@ -2763,6 +2767,8 @@
   const homeView = document.getElementById("homeView");
   const homeBtn = document.getElementById("homeBtn");
   const sessionHomeBtn = document.getElementById("sessionHomeBtn");
+  const sessionLaddersBtn = document.getElementById("sessionLaddersBtn");
+  const laddersListDropdown = document.getElementById("laddersListDropdown");
   const setupView = document.getElementById("setupView");
   const sessionView = document.getElementById("sessionView");
 
@@ -6434,6 +6440,12 @@
   }
   homeBtn.addEventListener("click", showHomeView);
   sessionHomeBtn.addEventListener("click", showHomeView);
+  sessionLaddersBtn.addEventListener("click", () => {
+    currentLadder = null;
+    syncModeUI();
+    showSetupView();
+    laddersListDropdown.classList.add("open");
+  });
   tournamentHomeBtn.addEventListener("click", showHomeView);
 
   function stopTimer() {
@@ -7198,6 +7210,7 @@
     renderFullSchedule();
     renderLeaderboard();
     updateRosterPanelState();
+    sessionLaddersBtn.style.display = currentSession.ladderId ? "" : "none";
   }
 
   document.querySelectorAll("#panelToggleRow .dropdown-toggle").forEach((btn) => {
