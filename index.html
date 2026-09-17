@@ -416,6 +416,9 @@
   .icon-btn .icon-label { font-size: 0.62rem; font-weight: 700; text-align: center; line-height: 1.15; }
   #utilityButtonsRow .outline-btn { width: 100%; margin-bottom: 0; font-size: 0.78rem; padding: 12px 6px; }
   .dropdown-toggle-label { display: flex; align-items: center; gap: 8px; }
+  .acc-toggle-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+  .acc-summary { font-size: 0.72rem; font-weight: 600; opacity: 0.75; }
+  .acc-check { color: var(--green-dark); margin-right: 5px; }
   .theme-toggle-dot {
     width: 20px;
     height: 20px;
@@ -1969,177 +1972,221 @@
       </div>
 
       <div id="sessionSetupFields">
-      <label class="section-label">Today's players</label>
-      <div class="inline-form">
-        <input type="text" id="playerInput" placeholder="Type a name to add..." />
-        <button class="small-btn add" id="playerAddBtn">Add</button>
-      </div>
-      <div class="ladder-rating-row" id="ladderRatingRow" style="display:none;">
-        <label class="checkbox-row">
-          <input type="checkbox" id="ladderCustomRatingToggle" />
-          Set a ladder rating for this player
-        </label>
-        <div class="number-stepper number-stepper-sm" id="ladderCustomRatingStepper" style="display:none;">
-          <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="-0.1" aria-label="Decrease starting rating">−</button>
-          <input type="number" id="ladderCustomRatingInput" min="1" max="8" step="0.1" value="3.0" />
-          <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="0.1" aria-label="Increase starting rating">+</button>
-        </div>
-      </div>
-      <div class="ladder-rating-row" id="duprRatingRow">
-        <label class="checkbox-row">
-          <input type="checkbox" id="duprRatingToggle" />
-          Set a DUPR rating for this player
-        </label>
-        <div class="number-stepper number-stepper-sm" id="duprRatingStepper" style="display:none;">
-          <button type="button" class="stepper-btn" data-target="duprRatingInput" data-step="-0.01" aria-label="Decrease DUPR rating">−</button>
-          <input type="number" id="duprRatingInput" min="2" max="8" step="0.01" value="3.50" />
-          <button type="button" class="stepper-btn" data-target="duprRatingInput" data-step="0.01" aria-label="Increase DUPR rating">+</button>
-        </div>
-      </div>
-      <div class="chips" id="todayChips"></div>
-
-      <div class="dropdown" id="pickDropdown">
-        <button class="dropdown-toggle" data-target="pickDropdown">
-          Pick from all saved players <span class="arrow">▾</span>
+      <div class="dropdown open" id="setupPlayersSection">
+        <button class="dropdown-toggle" data-target="setupPlayersSection">
+          <span class="acc-toggle-text">
+            <span><span class="acc-check" id="playersCheck" style="display:none;">✓</span>Players</span>
+            <span class="acc-summary" id="playersSummary"></span>
+          </span>
+          <span class="arrow">▾</span>
         </button>
-        <div class="dropdown-panel" id="pickPanel"></div>
-      </div>
-
-      <div class="dropdown-row" id="setupDropdownRow">
-        <div class="dropdown" id="manageDropdown">
-          <button class="dropdown-toggle" data-target="manageDropdown">
-            Manage saved names <span class="arrow">▾</span>
-          </button>
-          <div class="dropdown-panel">
-            <div id="managePanel"></div>
-            <div class="inline-form">
-              <input type="text" id="newSavedName" placeholder="Add a new saved name..." />
-              <button class="small-btn add" id="addSavedBtn">Add</button>
+        <div class="dropdown-panel">
+          <label class="section-label">Today's players</label>
+          <div class="inline-form">
+            <input type="text" id="playerInput" placeholder="Type a name to add..." />
+            <button class="small-btn add" id="playerAddBtn">Add</button>
+          </div>
+          <div class="ladder-rating-row" id="ladderRatingRow" style="display:none;">
+            <label class="checkbox-row">
+              <input type="checkbox" id="ladderCustomRatingToggle" />
+              Set a ladder rating for this player
+            </label>
+            <div class="number-stepper number-stepper-sm" id="ladderCustomRatingStepper" style="display:none;">
+              <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="-0.1" aria-label="Decrease starting rating">−</button>
+              <input type="number" id="ladderCustomRatingInput" min="1" max="8" step="0.1" value="3.0" />
+              <button type="button" class="stepper-btn" data-target="ladderCustomRatingInput" data-step="0.1" aria-label="Increase starting rating">+</button>
             </div>
           </div>
-        </div>
-
-        <div class="dropdown" id="sessionsDropdown">
-          <button class="dropdown-toggle" data-target="sessionsDropdown">
-            <span id="sessionsDropdownLabel">Past sessions</span> <span class="arrow">▾</span>
-          </button>
-          <div class="dropdown-panel" id="sessionsPanel"></div>
-        </div>
-
-        <div class="dropdown" id="clubStatsDropdown">
-          <button class="dropdown-toggle" data-target="clubStatsDropdown">
-            Session stats <span class="arrow">▾</span>
-          </button>
-          <div class="dropdown-panel" id="clubStatsPanel"></div>
-        </div>
-      </div>
-
-      <div id="playFormatField">
-        <label class="section-label">Play format</label>
-        <div class="format-toggle" id="formatToggle">
-          <button type="button" class="format-btn active" data-format="doubles">Doubles</button>
-          <button type="button" class="format-btn" data-format="singles">Singles</button>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="courtsInput">Courts available</label>
-        <div class="number-stepper">
-          <button type="button" class="stepper-btn" data-target="courtsInput" data-step="-1" aria-label="Decrease courts available">−</button>
-          <input type="number" id="courtsInput" min="1" max="12" value="1" />
-          <button type="button" class="stepper-btn" data-target="courtsInput" data-step="1" aria-label="Increase courts available">+</button>
-        </div>
-      </div>
-
-      <div class="format-toggle" id="planningModeToggle">
-        <button type="button" class="format-btn active" data-planning-mode="games">How many games would you like to play?</button>
-        <button type="button" class="format-btn" data-planning-mode="time">How much time have you got?</button>
-      </div>
-
-      <div class="field" id="gamesPlanningField">
-        <label for="gamesToPlayInput">Games to play</label>
-        <div class="number-stepper">
-          <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="-1" aria-label="Decrease games to play">−</button>
-          <input type="number" id="gamesToPlayInput" min="0" value="0" />
-          <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="1" aria-label="Increase games to play">+</button>
-        </div>
-      </div>
-
-      <div class="paired-grid" id="timePlanningFields" style="display:none;">
-        <div class="field field-wide-mobile">
-          <label for="gameLengthInput">Game length</label>
-          <div class="number-stepper">
-            <button type="button" class="stepper-btn" data-target="gameLengthInput" data-step="-1" aria-label="Decrease game length">−</button>
-            <div class="stepper-input-wrap has-unit">
-              <input type="number" id="gameLengthInput" min="0" value="0" />
-              <span class="unit-suffix">mins</span>
+          <div class="ladder-rating-row" id="duprRatingRow">
+            <label class="checkbox-row">
+              <input type="checkbox" id="duprRatingToggle" />
+              Set a DUPR rating for this player
+            </label>
+            <div class="number-stepper number-stepper-sm" id="duprRatingStepper" style="display:none;">
+              <button type="button" class="stepper-btn" data-target="duprRatingInput" data-step="-0.01" aria-label="Decrease DUPR rating">−</button>
+              <input type="number" id="duprRatingInput" min="2" max="8" step="0.01" value="3.50" />
+              <button type="button" class="stepper-btn" data-target="duprRatingInput" data-step="0.01" aria-label="Increase DUPR rating">+</button>
             </div>
-            <button type="button" class="stepper-btn" data-target="gameLengthInput" data-step="1" aria-label="Increase game length">+</button>
           </div>
-        </div>
-        <div class="field field-wide-mobile">
-          <label for="timeAvailableHoursInput">Time available</label>
-          <div class="hours-mins-row">
-            <div class="number-stepper number-stepper-sm hours-stepper">
-              <button type="button" class="stepper-btn" data-target="timeAvailableHoursInput" data-step="-1" aria-label="Decrease hours available">−</button>
-              <div class="stepper-input-wrap has-unit">
-                <input type="number" id="timeAvailableHoursInput" min="0" value="0" />
-                <span class="unit-suffix">hrs</span>
+          <div class="chips" id="todayChips"></div>
+
+          <div class="dropdown" id="pickDropdown">
+            <button class="dropdown-toggle" data-target="pickDropdown">
+              Pick from all saved players <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel" id="pickPanel"></div>
+          </div>
+
+          <div class="dropdown-row" id="setupDropdownRow">
+            <div class="dropdown" id="manageDropdown">
+              <button class="dropdown-toggle" data-target="manageDropdown">
+                Manage saved names <span class="arrow">▾</span>
+              </button>
+              <div class="dropdown-panel">
+                <div id="managePanel"></div>
+                <div class="inline-form">
+                  <input type="text" id="newSavedName" placeholder="Add a new saved name..." />
+                  <button class="small-btn add" id="addSavedBtn">Add</button>
+                </div>
               </div>
-              <button type="button" class="stepper-btn" data-target="timeAvailableHoursInput" data-step="1" aria-label="Increase hours available">+</button>
             </div>
-            <div class="number-stepper number-stepper-sm minutes-stepper">
-              <button type="button" class="stepper-btn" data-target="timeAvailableMinutesInput" data-step="-1" aria-label="Decrease minutes available">−</button>
-              <div class="stepper-input-wrap has-unit">
-                <input type="number" id="timeAvailableMinutesInput" min="0" max="59" value="0" />
-                <span class="unit-suffix">mins</span>
+
+            <div class="dropdown" id="sessionsDropdown">
+              <button class="dropdown-toggle" data-target="sessionsDropdown">
+                <span id="sessionsDropdownLabel">Past sessions</span> <span class="arrow">▾</span>
+              </button>
+              <div class="dropdown-panel" id="sessionsPanel"></div>
+            </div>
+
+            <div class="dropdown" id="clubStatsDropdown">
+              <button class="dropdown-toggle" data-target="clubStatsDropdown">
+                Session stats <span class="arrow">▾</span>
+              </button>
+              <div class="dropdown-panel" id="clubStatsPanel"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dropdown" id="setupFormatSection">
+        <button class="dropdown-toggle" data-target="setupFormatSection">
+          <span class="acc-toggle-text">
+            <span>Match format</span>
+            <span class="acc-summary" id="formatSummary"></span>
+          </span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="dropdown-panel">
+          <div id="playFormatField">
+            <label class="section-label">Play format</label>
+            <div class="format-toggle" id="formatToggle">
+              <button type="button" class="format-btn active" data-format="doubles">Doubles</button>
+              <button type="button" class="format-btn" data-format="singles">Singles</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="courtsInput">Courts available</label>
+            <div class="number-stepper">
+              <button type="button" class="stepper-btn" data-target="courtsInput" data-step="-1" aria-label="Decrease courts available">−</button>
+              <input type="number" id="courtsInput" min="1" max="12" value="1" />
+              <button type="button" class="stepper-btn" data-target="courtsInput" data-step="1" aria-label="Increase courts available">+</button>
+            </div>
+          </div>
+
+          <div class="courts-row" id="courtLabelsRow"></div>
+        </div>
+      </div>
+
+      <div class="dropdown" id="setupTimingSection">
+        <button class="dropdown-toggle" data-target="setupTimingSection">
+          <span class="acc-toggle-text">
+            <span>How long to play</span>
+            <span class="acc-summary" id="timingSummary"></span>
+          </span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="dropdown-panel">
+          <div class="format-toggle" id="planningModeToggle">
+            <button type="button" class="format-btn active" data-planning-mode="games">How many games would you like to play?</button>
+            <button type="button" class="format-btn" data-planning-mode="time">How much time have you got?</button>
+          </div>
+
+          <div class="field" id="gamesPlanningField">
+            <label for="gamesToPlayInput">Games to play</label>
+            <div class="number-stepper">
+              <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="-1" aria-label="Decrease games to play">−</button>
+              <input type="number" id="gamesToPlayInput" min="0" value="0" />
+              <button type="button" class="stepper-btn" data-target="gamesToPlayInput" data-step="1" aria-label="Increase games to play">+</button>
+            </div>
+          </div>
+
+          <div class="paired-grid" id="timePlanningFields" style="display:none;">
+            <div class="field field-wide-mobile">
+              <label for="gameLengthInput">Game length</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="gameLengthInput" data-step="-1" aria-label="Decrease game length">−</button>
+                <div class="stepper-input-wrap has-unit">
+                  <input type="number" id="gameLengthInput" min="0" value="0" />
+                  <span class="unit-suffix">mins</span>
+                </div>
+                <button type="button" class="stepper-btn" data-target="gameLengthInput" data-step="1" aria-label="Increase game length">+</button>
               </div>
-              <button type="button" class="stepper-btn" data-target="timeAvailableMinutesInput" data-step="1" aria-label="Increase minutes available">+</button>
+            </div>
+            <div class="field field-wide-mobile">
+              <label for="timeAvailableHoursInput">Time available</label>
+              <div class="hours-mins-row">
+                <div class="number-stepper number-stepper-sm hours-stepper">
+                  <button type="button" class="stepper-btn" data-target="timeAvailableHoursInput" data-step="-1" aria-label="Decrease hours available">−</button>
+                  <div class="stepper-input-wrap has-unit">
+                    <input type="number" id="timeAvailableHoursInput" min="0" value="0" />
+                    <span class="unit-suffix">hrs</span>
+                  </div>
+                  <button type="button" class="stepper-btn" data-target="timeAvailableHoursInput" data-step="1" aria-label="Increase hours available">+</button>
+                </div>
+                <div class="number-stepper number-stepper-sm minutes-stepper">
+                  <button type="button" class="stepper-btn" data-target="timeAvailableMinutesInput" data-step="-1" aria-label="Decrease minutes available">−</button>
+                  <div class="stepper-input-wrap has-unit">
+                    <input type="number" id="timeAvailableMinutesInput" min="0" max="59" value="0" />
+                    <span class="unit-suffix">mins</span>
+                  </div>
+                  <button type="button" class="stepper-btn" data-target="timeAvailableMinutesInput" data-step="1" aria-label="Increase minutes available">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field estimate-field" id="roundsEstimateField" style="display:none;">
+            <div class="estimate-box">
+              <div class="estimate-box-header">Estimated games to play</div>
+              <div class="estimate-box-panel">
+                <span class="estimate-number" id="roundsEstimateNumber"></span>
+                <span class="estimate-reason" id="roundsEstimateReason"></span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="field estimate-field" id="roundsEstimateField" style="display:none;">
-        <div class="estimate-box">
-          <div class="estimate-box-header">Estimated games to play</div>
-          <div class="estimate-box-panel">
-            <span class="estimate-number" id="roundsEstimateNumber"></span>
-            <span class="estimate-reason" id="roundsEstimateReason"></span>
-          </div>
-        </div>
-      </div>
+      <div class="dropdown" id="setupScoringSection">
+        <button class="dropdown-toggle" data-target="setupScoringSection">
+          <span class="acc-toggle-text">
+            <span>Scoring</span>
+            <span class="acc-summary" id="scoringSummary"></span>
+          </span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="dropdown-panel">
+          <div class="paired-grid">
+            <div class="field" id="targetScoreField" style="display:none;">
+              <label for="targetScoreInput">Points to win</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="targetScoreInput" data-step="-1" aria-label="Decrease points to win">−</button>
+                <input type="number" id="targetScoreInput" min="1" max="21" value="11" />
+                <button type="button" class="stepper-btn" data-target="targetScoreInput" data-step="1" aria-label="Increase points to win">+</button>
+              </div>
+            </div>
 
-      <div class="paired-grid">
-        <div class="field" id="targetScoreField" style="display:none;">
-          <label for="targetScoreInput">Points to win</label>
-          <div class="number-stepper">
-            <button type="button" class="stepper-btn" data-target="targetScoreInput" data-step="-1" aria-label="Decrease points to win">−</button>
-            <input type="number" id="targetScoreInput" min="1" max="21" value="11" />
-            <button type="button" class="stepper-btn" data-target="targetScoreInput" data-step="1" aria-label="Increase points to win">+</button>
-          </div>
-        </div>
+            <div class="field" id="winByTwoField" style="display:none;">
+              <label>Win by 2 clear points</label>
+              <div class="yesno-toggle">
+                <button type="button" class="yesno-btn" id="winByTwoYesBtn">Yes</button>
+                <button type="button" class="yesno-btn active" id="winByTwoNoBtn">No</button>
+              </div>
+            </div>
 
-        <div class="field" id="winByTwoField" style="display:none;">
-          <label>Win by 2 clear points</label>
-          <div class="yesno-toggle">
-            <button type="button" class="yesno-btn" id="winByTwoYesBtn">Yes</button>
-            <button type="button" class="yesno-btn active" id="winByTwoNoBtn">No</button>
-          </div>
-        </div>
-
-        <div class="field estimate-field" id="targetScoreEstimateField" style="display:none;">
-          <div class="estimate-box">
-            <div class="estimate-box-header">Estimated playing time needed</div>
-            <div class="estimate-box-panel">
-              <span class="estimate-number" id="targetScoreEstimateNumber"></span>
-              <span class="estimate-reason" id="targetScoreEstimateReason"></span>
+            <div class="field estimate-field" id="targetScoreEstimateField" style="display:none;">
+              <div class="estimate-box">
+                <div class="estimate-box-header">Estimated playing time needed</div>
+                <div class="estimate-box-panel">
+                  <span class="estimate-number" id="targetScoreEstimateNumber"></span>
+                  <span class="estimate-reason" id="targetScoreEstimateReason"></span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="courts-row" id="courtLabelsRow"></div>
 
       <button class="generate-btn" id="generateBtn">Generate Schedule</button>
       <button class="debug-btn" id="debugBtn">Debug: fill 15 names</button>
@@ -2826,6 +2873,15 @@
   const targetScoreEstimateField = document.getElementById("targetScoreEstimateField");
   const targetScoreEstimateNumber = document.getElementById("targetScoreEstimateNumber");
   const targetScoreEstimateReason = document.getElementById("targetScoreEstimateReason");
+  const setupPlayersSection = document.getElementById("setupPlayersSection");
+  const setupFormatSection = document.getElementById("setupFormatSection");
+  const setupTimingSection = document.getElementById("setupTimingSection");
+  const setupScoringSection = document.getElementById("setupScoringSection");
+  const playersCheck = document.getElementById("playersCheck");
+  const playersSummary = document.getElementById("playersSummary");
+  const formatSummary = document.getElementById("formatSummary");
+  const timingSummary = document.getElementById("timingSummary");
+  const scoringSummary = document.getElementById("scoringSummary");
   const courtLabelsRow = document.getElementById("courtLabelsRow");
   const generateBtn = document.getElementById("generateBtn");
   const debugBtn = document.getElementById("debugBtn");
@@ -3040,6 +3096,7 @@
       btn.classList.toggle("active", btn.dataset.planningMode === config.planningMode);
     });
 
+    setupScoringSection.style.display = gamesMode ? "block" : "none";
     targetScoreField.style.display = gamesMode ? "block" : "none";
     winByTwoField.style.display = gamesMode ? "block" : "none";
     targetScoreEstimateField.style.display = gamesMode ? "block" : "none";
@@ -3052,6 +3109,44 @@
         `for ${gamesToPlay} game${gamesToPlay === 1 ? "" : "s"} · ${perGame} min/game + ${CHANGEOVER_MINUTES} min changeover`;
     }
     updateRoundsHint();
+    updateAccordionSummaries();
+  }
+
+  function updateAccordionSummaries() {
+    const n = todayPlayers.length;
+    playersSummary.textContent = n === 0 ? "No players yet" : `${n} player${n === 1 ? "" : "s"} added`;
+    const minPlayers = config.format === "singles" ? 2 : 4;
+    playersCheck.style.display = n >= minPlayers ? "inline" : "none";
+
+    const courts = Math.max(1, parseInt(courtsInput.value, 10) || 1);
+    formatSummary.textContent = `${config.format === "singles" ? "Singles" : "Doubles"} · ${courts} court${courts === 1 ? "" : "s"}`;
+
+    const gamesMode = isGamesMode();
+    if (gamesMode) {
+      const gamesToPlay = Math.max(0, parseInt(gamesToPlayInput.value, 10) || 0);
+      if (gamesToPlay > 0) {
+        const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
+        const perGame = estimateMinutesForTarget(target);
+        const total = gamesToPlay * (perGame + CHANGEOVER_MINUTES);
+        timingSummary.textContent = `${gamesToPlay} game${gamesToPlay === 1 ? "" : "s"} · about ${formatDurationHm(total)}`;
+      } else {
+        timingSummary.textContent = "Not set yet";
+      }
+    } else {
+      const rounds = computeRounds();
+      const time = getTimeAvailableMinutes();
+      timingSummary.textContent = rounds > 0
+        ? `~${rounds} game${rounds === 1 ? "" : "s"} · ${formatDurationHm(time)} available`
+        : "Not set yet";
+    }
+
+    const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
+    scoringSummary.textContent = `To ${target}, win by ${config.winByTwo ? 2 : 1}`;
+  }
+
+  function resetSetupAccordion() {
+    [setupFormatSection, setupTimingSection, setupScoringSection].forEach((section) => section.classList.remove("open"));
+    setupPlayersSection.classList.add("open");
   }
 
   function persistConfig() {
@@ -3130,6 +3225,7 @@
       chip.appendChild(btn);
       todayChips.appendChild(chip);
     });
+    updateAccordionSummaries();
   }
 
   function tournamentTeamDisplayName(team) {
@@ -5153,7 +5249,10 @@
     btn.addEventListener("click", () => {
       const dropdown = document.getElementById(btn.dataset.target);
       const isOpen = dropdown.classList.contains("open");
-      document.querySelectorAll(".dropdown.open").forEach((d) => d.classList.remove("open"));
+      document.querySelectorAll(".dropdown.open").forEach((d) => {
+        if (d !== dropdown && d.contains(dropdown)) return;
+        d.classList.remove("open");
+      });
       document.querySelectorAll(".dropdown-row.expanded").forEach((r) => r.classList.remove("expanded"));
       if (!isOpen) {
         dropdown.classList.add("open");
@@ -5168,6 +5267,7 @@
       btn.classList.toggle("active", btn.dataset.format === config.format);
     });
     syncTournamentFormatButtons();
+    updateAccordionSummaries();
   }
   formatButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -5522,6 +5622,7 @@
   courtsInput.addEventListener("input", () => {
     persistConfig();
     renderCourtLabels();
+    updateAccordionSummaries();
   });
   planningModeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -5566,6 +5667,7 @@
   function syncWinByTwoButtons() {
     winByTwoYesBtn.classList.toggle("active", config.winByTwo);
     winByTwoNoBtn.classList.toggle("active", !config.winByTwo);
+    updateAccordionSummaries();
   }
   winByTwoYesBtn.addEventListener("click", () => {
     config.winByTwo = true;
@@ -6174,6 +6276,7 @@
     tournamentView.style.display = "none";
     syncFormatButtons();
     renderClubStatsPanel();
+    resetSetupAccordion();
     if (config.mode === "ladder") renderLadderStandingsTable();
     if (config.mode === "tournament") renderPastTournamentsPanel();
   }
