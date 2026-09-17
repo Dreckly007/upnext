@@ -372,7 +372,7 @@
   .dropdown { margin-top: 12px; }
   .dropdown-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin-top: 12px; }
   .dropdown-row.no-print { margin-top: 0; margin-bottom: 10px; }
-  .dropdown-row .dropdown { flex: 1 1 0; min-width: 0; margin-top: 0; }
+  .dropdown-row .dropdown { flex: 1 1 160px; min-width: 0; margin-top: 0; }
   .dropdown-row.expanded .dropdown { flex: 1 1 100%; }
   .dropdown-toggle {
     width: 100%;
@@ -2877,6 +2877,10 @@
   const setupFormatSection = document.getElementById("setupFormatSection");
   const setupTimingSection = document.getElementById("setupTimingSection");
   const setupScoringSection = document.getElementById("setupScoringSection");
+  const pickDropdown = document.getElementById("pickDropdown");
+  const manageDropdown = document.getElementById("manageDropdown");
+  const sessionsDropdown = document.getElementById("sessionsDropdown");
+  const clubStatsDropdown = document.getElementById("clubStatsDropdown");
   const playersCheck = document.getElementById("playersCheck");
   const playersSummary = document.getElementById("playersSummary");
   const formatSummary = document.getElementById("formatSummary");
@@ -3147,6 +3151,8 @@
   function resetSetupAccordion() {
     [setupFormatSection, setupTimingSection, setupScoringSection].forEach((section) => section.classList.remove("open"));
     setupPlayersSection.classList.add("open");
+    [pickDropdown, manageDropdown, sessionsDropdown, clubStatsDropdown].forEach((d) => d.classList.remove("open"));
+    setupDropdownRow.classList.remove("expanded");
   }
 
   function persistConfig() {
