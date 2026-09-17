@@ -470,6 +470,17 @@
   .saved-row:last-child, .session-row:last-child { border-bottom: none; }
   .saved-row span { flex: 1; }
   .saved-row-dupr { width: 64px; padding: 6px 8px; text-align: center; margin: 0 8px; }
+  #managePanel {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  #managePanel .saved-row {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  #managePanel .empty-note { grid-column: 1 / -1; }
   .tournament-dupr-input { flex: 0 0 76px; width: 76px; text-align: center; }
   .small-btn {
     border: 1px solid var(--card-border);
@@ -1401,6 +1412,7 @@
 
   @media (max-width: 480px) {
     .paired-grid, .paired-grid.cols-3 { grid-template-columns: 1fr; }
+    #managePanel { grid-template-columns: 1fr; }
     .medal-boxes { grid-template-columns: 1fr; }
     .dropdown-row .dropdown-toggle { font-size: 0.78rem; padding: 12px 8px; }
     .dropdown-row .dropdown-toggle .arrow { flex-shrink: 0; margin-left: 4px; }
