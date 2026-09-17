@@ -495,6 +495,28 @@
   .small-btn.remove { color: #c0392b; }
   .rating-up { color: #2e7d32; font-weight: 700; }
   .rating-down { color: #c0392b; font-weight: 700; }
+  .in-progress-tag {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--green-dark);
+    background: var(--green-pale);
+    border-radius: 6px;
+    padding: 2px 6px;
+  }
+  .continue-session-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--green-pale);
+    border: 1px solid var(--green-pale-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    font-weight: 600;
+    color: var(--green-dark);
+  }
   .inline-form { display: flex; gap: 8px; margin-top: 10px; }
   .inline-form input { flex: 1; }
   .empty-note { color: var(--muted); font-size: 0.88rem; padding: 6px 4px; }
@@ -1997,6 +2019,10 @@
           <span class="arrow">▾</span>
         </button>
         <div class="dropdown-panel">
+          <div class="continue-session-banner" id="continueSessionBanner" style="display:none;">
+            <span id="continueSessionText"></span>
+            <button type="button" class="small-btn add" id="continueSessionBtn">Continue</button>
+          </div>
           <label class="section-label">Today's players</label>
           <div class="inline-form">
             <input type="text" id="playerInput" placeholder="Type a name to add..." />
@@ -2210,6 +2236,11 @@
     </div>
 
     <div id="sessionView" style="display:none;">
+      <button class="icon-btn no-share" id="sessionHomeBtn" aria-label="Home">
+        <span class="icon-glyph" aria-hidden="true">🏠</span>
+        <span class="icon-label">Home</span>
+      </button>
+
       <div class="shared-banner no-print" id="sharedBanner" style="display:none;">
         Viewing a shared schedule (read-only). <a href="#" id="sharedBannerExitLink">Start your own</a>
       </div>
@@ -2464,6 +2495,10 @@
         <button class="icon-btn no-share" id="tournamentBackBtn" aria-label="Back to setup">
           <span class="icon-glyph" aria-hidden="true">↺</span>
           <span class="icon-label">Back to Setup</span>
+        </button>
+        <button class="icon-btn no-share" id="tournamentHomeBtn" aria-label="Home">
+          <span class="icon-glyph" aria-hidden="true">🏠</span>
+          <span class="icon-label">Home</span>
         </button>
         <button class="icon-btn" id="printTournamentGroupsBtn" aria-label="Print group standings">
           <span class="icon-glyph" aria-hidden="true">🧾</span>
@@ -2727,6 +2762,7 @@
 
   const homeView = document.getElementById("homeView");
   const homeBtn = document.getElementById("homeBtn");
+  const sessionHomeBtn = document.getElementById("sessionHomeBtn");
   const setupView = document.getElementById("setupView");
   const sessionView = document.getElementById("sessionView");
 
@@ -2737,6 +2773,9 @@
   const managePanel = document.getElementById("managePanel");
   const sessionsPanel = document.getElementById("sessionsPanel");
   const sessionsDropdownLabel = document.getElementById("sessionsDropdownLabel");
+  const continueSessionBanner = document.getElementById("continueSessionBanner");
+  const continueSessionText = document.getElementById("continueSessionText");
+  const continueSessionBtn = document.getElementById("continueSessionBtn");
   const clubStatsPanel = document.getElementById("clubStatsPanel");
   const themeSwatchesContainer = document.getElementById("themeSwatches");
   const customColorRow = document.getElementById("customColorRow");
@@ -2861,6 +2900,7 @@
   const tournamentMedalsPanel = document.getElementById("tournamentMedalsPanel");
   const tournamentBracketContainer = document.getElementById("tournamentBracketContainer");
   const tournamentBackBtn = document.getElementById("tournamentBackBtn");
+  const tournamentHomeBtn = document.getElementById("tournamentHomeBtn");
   const printTournamentGroupsBtn = document.getElementById("printTournamentGroupsBtn");
   const printTournamentScheduleBtn = document.getElementById("printTournamentScheduleBtn");
   const printTournamentBracketBtn = document.getElementById("printTournamentBracketBtn");
@@ -3927,7 +3967,15 @@
       const row = document.createElement("div");
       row.className = "session-row";
       const span = document.createElement("span");
+      const isUnfinished = (session.maxRoundReached ?? 0) < session.rounds.length - 1;
       span.textContent = `${session.date} — ${session.players.length} players, ${session.rounds.length} rounds`;
+      if (isUnfinished) {
+        const tag = document.createElement("span");
+        tag.className = "in-progress-tag";
+        tag.textContent = "In progress";
+        span.appendChild(document.createTextNode(" "));
+        span.appendChild(tag);
+      }
       const btnGroup = document.createElement("div");
       btnGroup.style.display = "flex";
       btnGroup.style.gap = "6px";
@@ -3939,7 +3987,7 @@
           session.maxRoundReached = session.rounds.length - 1;
         }
         currentSession = session;
-        currentRoundIndex = 0;
+        currentRoundIndex = session.maxRoundReached ?? 0;
         resetPendingRoster();
         showSessionView();
         renderAll();
@@ -3959,6 +4007,27 @@
       row.appendChild(btnGroup);
       sessionsPanel.appendChild(row);
     });
+  }
+
+  function renderContinueSessionBanner() {
+    const isLadder = config.mode === "ladder";
+    const relevant = isLadder
+      ? pastSessions.filter((s) => currentLadder && s.ladderId === currentLadder.id)
+      : pastSessions.filter((s) => !s.ladderId);
+    const unfinished = [...relevant].reverse().find((s) => (s.maxRoundReached ?? 0) < s.rounds.length - 1);
+    if (!unfinished) {
+      continueSessionBanner.style.display = "none";
+      return;
+    }
+    continueSessionBanner.style.display = "flex";
+    continueSessionText.textContent = `Session in progress — Round ${(unfinished.maxRoundReached ?? 0) + 1} of ${unfinished.rounds.length}`;
+    continueSessionBtn.onclick = () => {
+      currentSession = unfinished;
+      currentRoundIndex = unfinished.maxRoundReached ?? 0;
+      resetPendingRoster();
+      showSessionView();
+      renderAll();
+    };
   }
 
   function computeClubStats() {
@@ -5341,6 +5410,7 @@
     sessionSetupFields.style.display = (isTournament || (isLadder && !currentLadder)) ? "none" : "block";
     playFormatField.style.display = isLadder && currentLadder ? "none" : "block";
     renderSessionsPanel();
+    renderContinueSessionBanner();
     if (isLadder) {
       renderLaddersListPanel();
       ladderNewForm.style.display = currentLadder ? "none" : "block";
@@ -5423,6 +5493,7 @@
     save(STORAGE.today, todayPlayers);
     renderTodayChips();
     syncModeUI();
+    setupPlayersSection.classList.add("open");
   }
 
   function renderLaddersListPanel() {
@@ -6310,6 +6381,7 @@
     syncFormatButtons();
     renderClubStatsPanel();
     resetSetupAccordion();
+    renderContinueSessionBanner();
     if (config.mode === "ladder") renderLadderStandingsTable();
     if (config.mode === "tournament") renderPastTournamentsPanel();
   }
@@ -6331,6 +6403,8 @@
     renderTournamentView();
   }
   homeBtn.addEventListener("click", showHomeView);
+  sessionHomeBtn.addEventListener("click", showHomeView);
+  tournamentHomeBtn.addEventListener("click", showHomeView);
 
   function stopTimer() {
     if (timerInterval) {
@@ -8137,7 +8211,12 @@
     return true;
   }
 
-  generateBtn.addEventListener("click", buildAndShowSession);
+  generateBtn.addEventListener("click", () => {
+    if (continueSessionBanner.style.display !== "none") {
+      if (!confirm("You have a session in progress. Starting a new one won't delete it — you can still find it under Past sessions — but it will stop being the active one. Continue?")) return;
+    }
+    buildAndShowSession();
+  });
 
   regenerateBtn.addEventListener("click", () => {
     const prevPlayers = todayPlayers;
