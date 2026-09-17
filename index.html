@@ -493,6 +493,8 @@
   }
   .small-btn.add { color: var(--green-dark); border-color: var(--green-pale-border); background: var(--green-pale); }
   .small-btn.remove { color: #c0392b; }
+  .rating-up { color: #2e7d32; font-weight: 700; }
+  .rating-down { color: #c0392b; font-weight: 700; }
   .inline-form { display: flex; gap: 8px; margin-top: 10px; }
   .inline-form input { flex: 1; }
   .empty-note { color: var(--muted); font-size: 0.88rem; padding: 6px 4px; }
@@ -4039,7 +4041,8 @@
     const stats = {};
     const ensure = (name) => {
       if (!stats[name]) {
-        stats[name] = { rating: ladderStartingRating(ladder, name), matches: 0, wins: 0, losses: 0 };
+        const start = ladderStartingRating(ladder, name);
+        stats[name] = { rating: start, previousRating: start, matches: 0, wins: 0, losses: 0 };
       }
       return stats[name];
     };
@@ -4055,11 +4058,13 @@
           court.teamA.forEach((p) => {
             const st = ensure(p);
             st.matches += 1;
+            st.previousRating = st.rating;
             if (aWon) { st.wins += 1; st.rating += delta; } else { st.losses += 1; st.rating -= delta; }
           });
           court.teamB.forEach((p) => {
             const st = ensure(p);
             st.matches += 1;
+            st.previousRating = st.rating;
             if (!aWon) { st.wins += 1; st.rating += delta; } else { st.losses += 1; st.rating -= delta; }
           });
         });
@@ -4068,8 +4073,16 @@
     ladder.roster.forEach(ensure);
     Object.keys(stats).forEach((name) => {
       stats[name].rating = Math.round(stats[name].rating * 1000) / 1000;
+      stats[name].previousRating = Math.round(stats[name].previousRating * 1000) / 1000;
     });
     return stats;
+  }
+
+  function ladderRatingTrendArrow(st) {
+    if (st.rating === st.previousRating) return "";
+    return st.rating > st.previousRating
+      ? '<span class="rating-up">▲</span>'
+      : '<span class="rating-down">▼</span>';
   }
 
   function getSortedLadderNames(stats) {
@@ -7054,12 +7067,18 @@
       if (diffB !== diffA) return diffB - diffA;
       return a.localeCompare(b);
     });
-    let html = "<thead><tr><th>#</th><th>Player</th><th>Won</th><th>Played</th><th>Scheduled</th><th>+/-</th></tr></thead><tbody>";
+    const ladder = session.ladderId ? ladders.find((l) => l.id === session.ladderId) : null;
+    const ladderStats = ladder ? computeLadderRatings(ladder) : null;
+    const ratingHeader = ladderStats ? "<th>Rating</th>" : "";
+    let html = `<thead><tr><th>#</th><th>Player</th>${ratingHeader}<th>Won</th><th>Played</th><th>Scheduled</th><th>Points Won</th><th>Points Lost</th><th>+/-</th></tr></thead><tbody>`;
     names.forEach((name, i) => {
       const st = stats[name];
       const diff = st.pointsFor - st.pointsAgainst;
       const diffText = diff > 0 ? `+${diff}` : String(diff);
-      html += `<tr><td>${i + 1}</td><td>${name}</td><td>${st.wins}</td><td>${st.played}</td><td>${st.scheduled}</td><td>${diffText}</td></tr>`;
+      const ratingCell = ladderStats && ladderStats[name]
+        ? `<td>${ladderStats[name].rating.toFixed(3)} ${ladderRatingTrendArrow(ladderStats[name])}</td>`
+        : ladderStats ? "<td></td>" : "";
+      html += `<tr><td>${i + 1}</td><td>${name}</td>${ratingCell}<td>${st.wins}</td><td>${st.played}</td><td>${st.scheduled}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
     });
     html += "</tbody>";
     return html;
