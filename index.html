@@ -374,6 +374,8 @@
   .dropdown-row.no-print { margin-top: 0; margin-bottom: 10px; }
   .dropdown-row .dropdown { flex: 1 1 160px; min-width: 0; margin-top: 0; }
   .dropdown-row.expanded .dropdown { flex: 1 1 100%; }
+  #setupDropdownRow { display: block; }
+  #setupDropdownRow .dropdown { margin-top: 12px; }
   .dropdown-toggle {
     width: 100%;
     text-align: left;
@@ -427,7 +429,7 @@
     flex-shrink: 0;
   }
   .dropdown-toggle .arrow { transition: transform 0.15s ease; }
-  .dropdown.open .dropdown-toggle .arrow { transform: rotate(180deg); }
+  .dropdown.open > .dropdown-toggle .arrow { transform: rotate(180deg); }
   .dropdown-panel {
     display: none;
     background: #fff;
@@ -437,8 +439,8 @@
     border-radius: 0 0 10px 10px;
     padding: 12px 14px;
   }
-  .dropdown.open .dropdown-panel { display: block; }
-  .dropdown.open .dropdown-toggle { border-radius: 10px 10px 0 0; }
+  .dropdown.open > .dropdown-panel { display: block; }
+  .dropdown.open > .dropdown-toggle { border-radius: 10px 10px 0 0; }
 
   .pick-chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
   .pick-chip {
