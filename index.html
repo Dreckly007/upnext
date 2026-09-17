@@ -4012,12 +4012,18 @@
     });
   }
 
+  function findUnfinishedSession(ladderId) {
+    const relevant = ladderId
+      ? pastSessions.filter((s) => s.ladderId === ladderId)
+      : pastSessions.filter((s) => !s.ladderId);
+    return [...relevant].reverse().find((s) => (s.maxRoundReached ?? 0) < s.rounds.length - 1);
+  }
+
   function renderContinueSessionBanner() {
     const isLadder = config.mode === "ladder";
-    const relevant = isLadder
-      ? pastSessions.filter((s) => currentLadder && s.ladderId === currentLadder.id)
-      : pastSessions.filter((s) => !s.ladderId);
-    const unfinished = [...relevant].reverse().find((s) => (s.maxRoundReached ?? 0) < s.rounds.length - 1);
+    const unfinished = isLadder
+      ? (currentLadder ? findUnfinishedSession(currentLadder.id) : null)
+      : findUnfinishedSession(null);
     if (!unfinished) {
       continueSessionBanner.style.display = "none";
       return;
@@ -5520,13 +5526,31 @@
         const span = document.createElement("span");
         const formatLabel = ladder.format === "singles" ? "Singles" : "Doubles";
         span.textContent = `${ladder.name} — ${formatLabel}, ${ladder.roster.length} players, ${ladder.status}`;
+        const unfinishedForLadder = findUnfinishedSession(ladder.id);
+        if (unfinishedForLadder) {
+          const tag = document.createElement("span");
+          tag.className = "in-progress-tag";
+          tag.textContent = "In progress";
+          span.appendChild(document.createTextNode(" "));
+          span.appendChild(tag);
+        }
         const btnGroup = document.createElement("div");
         btnGroup.style.display = "flex";
         btnGroup.style.gap = "6px";
         const viewBtn = document.createElement("button");
         viewBtn.className = "small-btn";
         viewBtn.textContent = "View";
-        viewBtn.addEventListener("click", () => selectLadder(ladder));
+        viewBtn.addEventListener("click", () => {
+          selectLadder(ladder);
+          const unfinished = findUnfinishedSession(ladder.id);
+          if (unfinished) {
+            currentSession = unfinished;
+            currentRoundIndex = unfinished.maxRoundReached ?? 0;
+            resetPendingRoster();
+            showSessionView();
+            renderAll();
+          }
+        });
         const delBtn = document.createElement("button");
         delBtn.className = "small-btn remove";
         delBtn.textContent = "Delete";
