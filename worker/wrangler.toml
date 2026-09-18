@@ -1,0 +1,13 @@
+name = "pbscheduler-sync"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# The exact origin your app is served from, e.g. "https://<you>.github.io".
+# Locking this down (instead of "*") means only your own site's pages can
+# call this Worker's write endpoints.
+[vars]
+ALLOWED_ORIGIN = "https://REPLACE-WITH-YOUR-SITE-ORIGIN"
+
+kv_namespaces = [
+  { binding = "LADDERS", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+]

@@ -1813,6 +1813,28 @@
             </div>
           </div>
 
+          <div class="dropdown" id="ladderSyncDropdown">
+            <button class="dropdown-toggle" data-target="ladderSyncDropdown">
+              Online results <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel">
+              <div class="hint">Let players submit their own results from a personal link, instead of typing every result in yourself. Needs a small backend you deploy once -- see <code>worker/README-DEPLOY.md</code>.</div>
+              <div class="field" id="syncWorkerUrlField">
+                <label for="syncWorkerUrlInput">Sync server URL</label>
+                <input type="text" id="syncWorkerUrlInput" placeholder="https://pbscheduler-sync.your-subdomain.workers.dev" />
+              </div>
+              <div id="syncNotEnabledField">
+                <button class="outline-btn" id="enableLadderSyncBtn">Enable online results for this ladder</button>
+              </div>
+              <div id="syncEnabledField" style="display:none;">
+                <div class="empty-note" id="syncStatusNote"></div>
+                <label class="section-label">Get a player's link</label>
+                <div id="syncPlayerLinksPanel"></div>
+                <button class="outline-btn no-print" id="refreshLadderSyncBtn">Refresh results now</button>
+              </div>
+            </div>
+          </div>
+
           <div class="field">
             <label>Use ladder history when generating</label>
             <div class="yesno-toggle">
@@ -2588,6 +2610,10 @@
 
     <div id="printTournamentMedalGamesView"></div>
 
+    <div id="submitView" style="display:none;">
+      <div id="submitContent"></div>
+    </div>
+
     <div class="modal-overlay no-print" id="swapConfirmOverlay" style="display:none;">
       <div class="modal-card">
         <div class="modal-title">Swap players?</div>
@@ -2757,8 +2783,10 @@
     useLadderHistory: true,
     tournamentGroups: 2,
     tournamentAdvance: 2,
+    syncWorkerUrl: "",
     schemaVersion: CONFIG_SCHEMA_VERSION,
   });
+  config.syncWorkerUrl = config.syncWorkerUrl || "";
   config.gamesToPlay = config.gamesToPlay ?? 0;
   config.planningMode = config.planningMode === "time" || config.planningMode === "games"
     ? config.planningMode
@@ -2814,6 +2842,8 @@
   const laddersListDropdown = document.getElementById("laddersListDropdown");
   const setupView = document.getElementById("setupView");
   const sessionView = document.getElementById("sessionView");
+  const submitView = document.getElementById("submitView");
+  const submitContent = document.getElementById("submitContent");
 
   const playerInput = document.getElementById("playerInput");
   const playerAddBtn = document.getElementById("playerAddBtn");
@@ -2864,6 +2894,13 @@
   const logMatchScoreA = document.getElementById("logMatchScoreA");
   const logMatchScoreB = document.getElementById("logMatchScoreB");
   const logMatchBtn = document.getElementById("logMatchBtn");
+  const syncWorkerUrlInput = document.getElementById("syncWorkerUrlInput");
+  const syncNotEnabledField = document.getElementById("syncNotEnabledField");
+  const syncEnabledField = document.getElementById("syncEnabledField");
+  const syncStatusNote = document.getElementById("syncStatusNote");
+  const syncPlayerLinksPanel = document.getElementById("syncPlayerLinksPanel");
+  const enableLadderSyncBtn = document.getElementById("enableLadderSyncBtn");
+  const refreshLadderSyncBtn = document.getElementById("refreshLadderSyncBtn");
   const closeLadderBtn = document.getElementById("closeLadderBtn");
   const switchLadderBtn = document.getElementById("switchLadderBtn");
   const playFormatField = document.getElementById("playFormatField");
@@ -3868,6 +3905,7 @@
       save(STORAGE.ladders, ladders);
       renderLadderStandingsTable();
       renderLaddersListPanel();
+      if (currentLadder.sync && currentLadder.sync.enabled) apiPushLadderRoster(currentLadder).catch(() => {});
     }
     renderTodayChips();
     renderPickPanel();
@@ -4061,6 +4099,14 @@
         save(STORAGE.sessions, pastSessions);
         renderSessionsPanel();
         renderClubStatsPanel();
+        if (session.remoteMatchId && session.ladderId) {
+          const ladder = ladders.find((l) => l.id === session.ladderId);
+          if (ladder && ladder.sync && ladder.sync.enabled) {
+            apiDeleteLadderMatch(ladder, session.remoteMatchId).catch(() => {
+              alert("Deleted locally, but couldn't reach the sync server to delete it there -- it may reappear on the next sync unless you delete it again once you're back online.");
+            });
+          }
+        }
       });
       btnGroup.appendChild(viewBtn);
       btnGroup.appendChild(delBtn);
@@ -4262,6 +4308,7 @@
     ladderStandingsTable.innerHTML = buildLadderStandingsTableHtml(currentLadder);
     renderLadderPairingProgress();
     renderLogMatchPanel();
+    renderLadderSyncPanel();
   }
 
   function renderLogMatchPanel() {
@@ -4313,6 +4360,148 @@
     logMatchScoreA.value = "0";
     logMatchScoreB.value = "0";
     alert("Match result logged.");
+  });
+
+  async function apiEnableLadderSync(ladder) {
+    const res = await fetch(`${config.syncWorkerUrl}/api/ladders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ladderId: ladder.id, name: ladder.name, format: ladder.format }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `request failed (${res.status})`);
+    return res.json();
+  }
+
+  async function apiPushLadderRoster(ladder) {
+    const res = await fetch(`${config.syncWorkerUrl}/api/ladders/${ladder.id}/roster`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": ladder.sync.adminToken },
+      body: JSON.stringify({ roster: ladder.roster }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `request failed (${res.status})`);
+    return res.json();
+  }
+
+  async function apiCreatePlayerLink(ladder, playerName) {
+    const res = await fetch(`${config.syncWorkerUrl}/api/ladders/${ladder.id}/links`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Token": ladder.sync.adminToken },
+      body: JSON.stringify({ playerName }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `request failed (${res.status})`);
+    return res.json();
+  }
+
+  async function apiFetchLadderMatches(ladder) {
+    const res = await fetch(`${config.syncWorkerUrl}/api/ladders/${ladder.id}/matches`, {
+      headers: { "X-Admin-Token": ladder.sync.adminToken },
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `request failed (${res.status})`);
+    return res.json();
+  }
+
+  async function apiDeleteLadderMatch(ladder, remoteMatchId) {
+    const res = await fetch(`${config.syncWorkerUrl}/api/ladders/${ladder.id}/matches/${remoteMatchId}`, {
+      method: "DELETE",
+      headers: { "X-Admin-Token": ladder.sync.adminToken },
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `request failed (${res.status})`);
+    return res.json();
+  }
+
+  function buildSubmitUrl(token) {
+    return `${location.origin}${location.pathname}#submit=${token}&worker=${encodeURIComponent(config.syncWorkerUrl)}`;
+  }
+
+  async function syncLadderResultsIfEnabled(ladder) {
+    if (!ladder.sync || !ladder.sync.enabled || !config.syncWorkerUrl) return;
+    try {
+      const { matches } = await apiFetchLadderMatches(ladder);
+      let added = 0;
+      matches.forEach((m) => {
+        if (pastSessions.some((s) => s.ladderId === ladder.id && s.remoteMatchId === m.id)) return;
+        pastSessions.push(buildLadderMatchSession(ladder, {
+          teamA: m.teamA,
+          teamB: m.teamB,
+          scoreA: m.scoreA,
+          scoreB: m.scoreB,
+          remoteMatchId: m.id,
+          submittedBy: m.submittedBy,
+          when: new Date(m.ts).toLocaleString(),
+        }));
+        added++;
+      });
+      if (added) {
+        save(STORAGE.sessions, pastSessions);
+        renderSessionsPanel();
+        renderClubStatsPanel();
+        renderLadderStandingsTable();
+      }
+      if (syncStatusNote) syncStatusNote.textContent = `Synced. ${added ? `${added} new result${added === 1 ? "" : "s"} added.` : "No new results."}`;
+    } catch (e) {
+      if (syncStatusNote) syncStatusNote.textContent = `Couldn't reach the sync server (${e.message}). Will try again next time.`;
+    }
+  }
+
+  function renderLadderSyncPanel() {
+    if (!currentLadder) return;
+    syncWorkerUrlInput.value = config.syncWorkerUrl;
+    const enabled = !!(currentLadder.sync && currentLadder.sync.enabled);
+    syncNotEnabledField.style.display = enabled ? "none" : "block";
+    syncEnabledField.style.display = enabled ? "block" : "none";
+    if (!enabled) return;
+    syncPlayerLinksPanel.innerHTML = "";
+    currentLadder.roster.forEach((name) => {
+      const row = document.createElement("div");
+      row.className = "saved-row";
+      const span = document.createElement("span");
+      span.textContent = name;
+      const btn = document.createElement("button");
+      btn.className = "small-btn";
+      btn.textContent = "Get link";
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          const { token } = await apiCreatePlayerLink(currentLadder, name);
+          const url = buildSubmitUrl(token);
+          showShareModal(url, token);
+        } catch (e) {
+          alert(`Couldn't create a link: ${e.message}`);
+        }
+        btn.disabled = false;
+      });
+      row.appendChild(span);
+      row.appendChild(btn);
+      syncPlayerLinksPanel.appendChild(row);
+    });
+  }
+
+  syncWorkerUrlInput.addEventListener("change", () => {
+    config.syncWorkerUrl = syncWorkerUrlInput.value.trim();
+    save(STORAGE.config, config);
+  });
+
+  enableLadderSyncBtn.addEventListener("click", async () => {
+    if (!currentLadder) return;
+    if (!config.syncWorkerUrl) {
+      alert("Enter your sync server URL first.");
+      return;
+    }
+    enableLadderSyncBtn.disabled = true;
+    try {
+      const { adminToken } = await apiEnableLadderSync(currentLadder);
+      currentLadder.sync = { enabled: true, adminToken };
+      save(STORAGE.ladders, ladders);
+      await apiPushLadderRoster(currentLadder);
+      renderLadderSyncPanel();
+    } catch (e) {
+      alert(`Couldn't enable online results: ${e.message}`);
+    }
+    enableLadderSyncBtn.disabled = false;
+  });
+
+  refreshLadderSyncBtn.addEventListener("click", () => {
+    if (currentLadder) syncLadderResultsIfEnabled(currentLadder);
   });
 
   function computeLadderPairCoverage(ladder) {
@@ -5630,6 +5819,7 @@
     renderTodayChips();
     syncModeUI();
     setupPlayersSection.classList.add("open");
+    syncLadderResultsIfEnabled(ladder);
   }
 
   function renderLaddersListPanel() {
@@ -7965,6 +8155,136 @@
     return ok;
   }
 
+  function showSubmitView() {
+    homeView.style.display = "none";
+    setupView.style.display = "none";
+    sessionView.style.display = "none";
+    tournamentView.style.display = "none";
+    submitView.style.display = "block";
+  }
+
+  function maybeRenderSubmitView() {
+    if (!location.hash.startsWith("#submit=")) return false;
+    const params = new URLSearchParams(location.hash.slice(1));
+    const token = params.get("submit");
+    const workerUrl = params.get("worker");
+    if (!token || !workerUrl) return false;
+    renderSubmitView(token, workerUrl);
+    return true;
+  }
+
+  async function renderSubmitView(token, workerUrl) {
+    showSubmitView();
+    submitContent.innerHTML = `<div class="empty-note">Loading…</div>`;
+    let info;
+    try {
+      const res = await fetch(`${workerUrl}/api/submit/${token}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "This link doesn't look valid.");
+      info = await res.json();
+    } catch (e) {
+      submitContent.innerHTML = `<div class="hint" style="color:#c0392b;">${e.message || "Couldn't load this link. It may be invalid, or the ladder may no longer be accepting results."}</div>`;
+      return;
+    }
+
+    const isSingles = info.format === "singles";
+    const others = info.roster.filter((n) => n !== info.playerName);
+    const optionsHtml = `<option value="">Choose...</option>` + others.map((n) => `<option value="${n}">${n}</option>`).join("");
+    const matchId = crypto.randomUUID();
+
+    submitContent.innerHTML = `
+      <label class="section-label">${info.ladderName}</label>
+      <div class="hint">You are: <strong>${info.playerName}</strong></div>
+      ${isSingles ? `
+        <div class="field">
+          <label>Opponent</label>
+          <select id="submitOpponent1">${optionsHtml}</select>
+        </div>
+      ` : `
+        <div class="field">
+          <label>Your partner</label>
+          <select id="submitPartner">${optionsHtml}</select>
+        </div>
+        <div class="field">
+          <label>Opponent 1</label>
+          <select id="submitOpponent1">${optionsHtml}</select>
+        </div>
+        <div class="field">
+          <label>Opponent 2</label>
+          <select id="submitOpponent2">${optionsHtml}</select>
+        </div>
+      `}
+      <div class="score-row">
+        <div class="number-stepper number-stepper-sm">
+          <button type="button" class="stepper-btn" data-target="submitMyScore" data-step="-1" aria-label="Decrease your score">−</button>
+          <input type="number" id="submitMyScore" min="0" value="0" />
+          <button type="button" class="stepper-btn" data-target="submitMyScore" data-step="1" aria-label="Increase your score">+</button>
+        </div>
+        <span class="score-label">SCORE</span>
+        <div class="number-stepper number-stepper-sm">
+          <button type="button" class="stepper-btn" data-target="submitTheirScore" data-step="-1" aria-label="Decrease their score">−</button>
+          <input type="number" id="submitTheirScore" min="0" value="0" />
+          <button type="button" class="stepper-btn" data-target="submitTheirScore" data-step="1" aria-label="Increase their score">+</button>
+        </div>
+      </div>
+      <div class="hint" id="submitError" style="display:none; color:#c0392b;"></div>
+      <button class="generate-btn" id="submitResultBtn">Submit result</button>
+    `;
+
+    submitContent.querySelectorAll(".stepper-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const input = document.getElementById(btn.dataset.target);
+        if (!input) return;
+        const step = parseFloat(btn.dataset.step);
+        let value = parseFloat(input.value);
+        if (isNaN(value)) value = 0;
+        input.value = Math.max(0, value + step);
+      });
+    });
+
+    document.getElementById("submitResultBtn").addEventListener("click", async () => {
+      const errorEl = document.getElementById("submitError");
+      errorEl.style.display = "none";
+      const partner = isSingles ? null : document.getElementById("submitPartner").value;
+      const opponent1 = document.getElementById("submitOpponent1").value;
+      const opponent2 = isSingles ? null : document.getElementById("submitOpponent2").value;
+      const teamA = isSingles ? [info.playerName] : [info.playerName, partner];
+      const teamB = isSingles ? [opponent1] : [opponent1, opponent2];
+      const allNames = [...teamA, ...teamB];
+      if (allNames.some((n) => !n)) {
+        errorEl.textContent = "Please choose everyone in the match.";
+        errorEl.style.display = "block";
+        return;
+      }
+      if (new Set(allNames).size !== allNames.length) {
+        errorEl.textContent = "Each player can only appear once.";
+        errorEl.style.display = "block";
+        return;
+      }
+      const myScore = parseInt(document.getElementById("submitMyScore").value, 10);
+      const theirScore = parseInt(document.getElementById("submitTheirScore").value, 10);
+      if (isNaN(myScore) || isNaN(theirScore) || myScore === theirScore) {
+        errorEl.textContent = "Enter a final score for each side (they can't be tied).";
+        errorEl.style.display = "block";
+        return;
+      }
+      const btn = document.getElementById("submitResultBtn");
+      btn.disabled = true;
+      try {
+        const res = await fetch(`${workerUrl}/api/submit/${token}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ matchId, teamA, teamB, scoreA: myScore, scoreB: theirScore }),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Something went wrong.");
+        submitContent.innerHTML = `<div class="hint">Thanks — your result has been recorded.</div>`;
+      } catch (e) {
+        errorEl.textContent = e.message || "Couldn't submit — check your connection and try again.";
+        errorEl.style.display = "block";
+        btn.disabled = false;
+      }
+    });
+  }
+
   viewSharedCodeBtn.addEventListener("click", async () => {
     sharedCodeError.style.display = "none";
     const raw = sharedCodeInput.value.trim();
@@ -8403,8 +8723,10 @@
   syncModeUI();
   syncLadderHistoryButtons();
   syncTournamentWinByTwoButtons();
-  showHomeView();
-  loadSharedViewFromHash();
+  if (!maybeRenderSubmitView()) {
+    showHomeView();
+    loadSharedViewFromHash();
+  }
 
   const setupDropdownRow = document.getElementById("setupDropdownRow");
   const brandingDropdownRow = document.getElementById("brandingDropdownRow");
