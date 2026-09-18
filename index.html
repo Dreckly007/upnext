@@ -1770,6 +1770,49 @@
 
           <div id="ladderPairingProgress" class="qualifiers-box" style="display:none;"></div>
 
+          <div class="dropdown" id="logMatchDropdown">
+            <button class="dropdown-toggle" data-target="logMatchDropdown">
+              Log a match result <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel">
+              <div class="paired-grid">
+                <div class="field">
+                  <label>Team A – Player 1</label>
+                  <select id="logMatchTeamA1"></select>
+                </div>
+                <div class="field" id="logMatchTeamA2Field">
+                  <label>Team A – Player 2</label>
+                  <select id="logMatchTeamA2"></select>
+                </div>
+              </div>
+              <div class="paired-grid">
+                <div class="field">
+                  <label>Team B – Player 1</label>
+                  <select id="logMatchTeamB1"></select>
+                </div>
+                <div class="field" id="logMatchTeamB2Field">
+                  <label>Team B – Player 2</label>
+                  <select id="logMatchTeamB2"></select>
+                </div>
+              </div>
+              <div class="score-row">
+                <div class="number-stepper number-stepper-sm">
+                  <button type="button" class="stepper-btn" data-target="logMatchScoreA" data-step="-1" aria-label="Decrease Team A score">−</button>
+                  <input type="number" id="logMatchScoreA" min="0" value="0" />
+                  <button type="button" class="stepper-btn" data-target="logMatchScoreA" data-step="1" aria-label="Increase Team A score">+</button>
+                </div>
+                <span class="score-label">SCORE</span>
+                <div class="number-stepper number-stepper-sm">
+                  <button type="button" class="stepper-btn" data-target="logMatchScoreB" data-step="-1" aria-label="Decrease Team B score">−</button>
+                  <input type="number" id="logMatchScoreB" min="0" value="0" />
+                  <button type="button" class="stepper-btn" data-target="logMatchScoreB" data-step="1" aria-label="Increase Team B score">+</button>
+                </div>
+              </div>
+              <div class="hint">Use this to record a match players arranged and played on their own, without generating a full night's schedule.</div>
+              <button class="generate-btn" id="logMatchBtn">Log result</button>
+            </div>
+          </div>
+
           <div class="field">
             <label>Use ladder history when generating</label>
             <div class="yesno-toggle">
@@ -2812,6 +2855,15 @@
   const ladderActivePanel = document.getElementById("ladderActivePanel");
   const ladderActiveName = document.getElementById("ladderActiveName");
   const ladderPairingProgress = document.getElementById("ladderPairingProgress");
+  const logMatchTeamA1 = document.getElementById("logMatchTeamA1");
+  const logMatchTeamA2 = document.getElementById("logMatchTeamA2");
+  const logMatchTeamA2Field = document.getElementById("logMatchTeamA2Field");
+  const logMatchTeamB1 = document.getElementById("logMatchTeamB1");
+  const logMatchTeamB2 = document.getElementById("logMatchTeamB2");
+  const logMatchTeamB2Field = document.getElementById("logMatchTeamB2Field");
+  const logMatchScoreA = document.getElementById("logMatchScoreA");
+  const logMatchScoreB = document.getElementById("logMatchScoreB");
+  const logMatchBtn = document.getElementById("logMatchBtn");
   const closeLadderBtn = document.getElementById("closeLadderBtn");
   const switchLadderBtn = document.getElementById("switchLadderBtn");
   const playFormatField = document.getElementById("playFormatField");
@@ -4121,6 +4173,20 @@
     return pastSessions.filter((s) => s.ladderId === ladder.id);
   }
 
+  function buildLadderMatchSession(ladder, { teamA, teamB, scoreA, scoreB, remoteMatchId, submittedBy, when }) {
+    return {
+      id: remoteMatchId ? `ladder-match-${remoteMatchId}` : `ladder-match-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      date: when || new Date().toLocaleString(),
+      players: [...teamA, ...teamB],
+      config: { ...config, format: ladder.format, courts: 1, courtLabels: ["1"] },
+      rounds: [{ round: 1, sitOuts: [], courts: [{ label: "1", teamA, teamB, scoreA: String(scoreA), scoreB: String(scoreB) }] }],
+      ladderId: ladder.id,
+      maxRoundReached: 0,
+      submittedBy: submittedBy || "organizer",
+      remoteMatchId: remoteMatchId || undefined,
+    };
+  }
+
   function computeLadderRatings(ladder) {
     const stats = {};
     const ensure = (name) => {
@@ -4195,7 +4261,59 @@
     if (!currentLadder) { ladderStandingsTable.innerHTML = ""; return; }
     ladderStandingsTable.innerHTML = buildLadderStandingsTableHtml(currentLadder);
     renderLadderPairingProgress();
+    renderLogMatchPanel();
   }
+
+  function renderLogMatchPanel() {
+    if (!currentLadder) return;
+    const isSingles = currentLadder.format === "singles";
+    logMatchTeamA2Field.style.display = isSingles ? "none" : "block";
+    logMatchTeamB2Field.style.display = isSingles ? "none" : "block";
+    const options = currentLadder.roster.map((name) => `<option value="${name}">${name}</option>`).join("");
+    [logMatchTeamA1, logMatchTeamA2, logMatchTeamB1, logMatchTeamB2].forEach((select) => {
+      const prevValue = select.value;
+      select.innerHTML = options;
+      if (currentLadder.roster.includes(prevValue)) select.value = prevValue;
+    });
+  }
+
+  logMatchBtn.addEventListener("click", () => {
+    if (!currentLadder) return;
+    const isSingles = currentLadder.format === "singles";
+    const teamA = isSingles ? [logMatchTeamA1.value] : [logMatchTeamA1.value, logMatchTeamA2.value];
+    const teamB = isSingles ? [logMatchTeamB1.value] : [logMatchTeamB1.value, logMatchTeamB2.value];
+    if (teamA.some((n) => !n) || teamB.some((n) => !n)) {
+      alert("Pick all players for both teams.");
+      return;
+    }
+    if (!isSingles && teamA[0] === teamA[1]) {
+      alert("Team A needs two different players.");
+      return;
+    }
+    if (!isSingles && teamB[0] === teamB[1]) {
+      alert("Team B needs two different players.");
+      return;
+    }
+    if (teamA.some((n) => teamB.includes(n))) {
+      alert("A player can't be on both teams.");
+      return;
+    }
+    const scoreA = parseInt(logMatchScoreA.value, 10);
+    const scoreB = parseInt(logMatchScoreB.value, 10);
+    if (isNaN(scoreA) || isNaN(scoreB) || scoreA === scoreB) {
+      alert("Enter a final score for each team (they can't be tied).");
+      return;
+    }
+    const session = buildLadderMatchSession(currentLadder, { teamA, teamB, scoreA, scoreB });
+    pastSessions.push(session);
+    save(STORAGE.sessions, pastSessions);
+    renderSessionsPanel();
+    renderClubStatsPanel();
+    renderLadderStandingsTable();
+    logMatchScoreA.value = "0";
+    logMatchScoreB.value = "0";
+    alert("Match result logged.");
+  });
 
   function computeLadderPairCoverage(ladder) {
     const roster = ladder.roster;
