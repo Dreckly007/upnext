@@ -368,6 +368,23 @@
     border-radius: 50%;
   }
   .chip button:hover { background: #f1f1f1; color: #c0392b; }
+  .chip.chip-paired { border-color: var(--green-dark); }
+  .chip.chip-pairing-selected { background: var(--green-pale); border-color: var(--green-dark); }
+  .fixed-pair-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--green-dark);
+    white-space: nowrap;
+  }
+
+  .fixed-pairs-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .small-btn.active { color: var(--on-accent); background: var(--green-dark); border-color: var(--green-dark); }
 
   .dropdown { margin-top: 12px; }
   .dropdown-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin-top: 12px; }
@@ -2117,6 +2134,11 @@
           </div>
           <div class="chips" id="todayChips"></div>
 
+          <div class="fixed-pairs-row" id="fixedPairsRow" style="display:none;">
+            <button type="button" class="small-btn" id="fixedPairsModeBtn">Pair up players</button>
+            <span class="hint" id="fixedPairsHint" style="display:none;">Tap two players above to pair them as Fixed Doubles.</span>
+          </div>
+
           <div class="dropdown" id="pickDropdown">
             <button class="dropdown-toggle" data-target="pickDropdown">
               Pick from all saved players <span class="arrow">▾</span>
@@ -2686,6 +2708,7 @@
     saved: "pbs_savedPlayers",
     sessions: "pbs_pastSessions",
     today: "pbs_todayPlayers",
+    fixedPairs: "pbs_fixedPairs",
     config: "pbs_config",
     installTipDismissed: "pbs_installTipDismissed",
     logo: "pbs_clubLogo",
@@ -2713,6 +2736,9 @@
   const CHANGEOVER_MINUTES = 2;
 
   let todayPlayers = load(STORAGE.today, []);
+  let fixedPairs = load(STORAGE.fixedPairs, []);
+  let pairingMode = false;
+  let pairingFirstPick = null;
   let savedPlayers = load(STORAGE.saved, []);
   let pastSessions = load(STORAGE.sessions, []);
   let ladderStartingRatings = load(STORAGE.ladderStartingRatings, {});
@@ -2848,6 +2874,9 @@
   const playerInput = document.getElementById("playerInput");
   const playerAddBtn = document.getElementById("playerAddBtn");
   const todayChips = document.getElementById("todayChips");
+  const fixedPairsRow = document.getElementById("fixedPairsRow");
+  const fixedPairsModeBtn = document.getElementById("fixedPairsModeBtn");
+  const fixedPairsHint = document.getElementById("fixedPairsHint");
   const pickPanel = document.getElementById("pickPanel");
   const managePanel = document.getElementById("managePanel");
   const sessionsPanel = document.getElementById("sessionsPanel");
@@ -3270,7 +3299,9 @@
 
   function updateAccordionSummaries() {
     const n = todayPlayers.length;
-    playersSummary.textContent = n === 0 ? "No players yet" : `${n} player${n === 1 ? "" : "s"} added`;
+    const pairCount = fixedPairs.length;
+    playersSummary.textContent = (n === 0 ? "No players yet" : `${n} player${n === 1 ? "" : "s"} added`)
+      + (pairCount > 0 ? ` · ${pairCount} fixed pair${pairCount === 1 ? "" : "s"}` : "");
     const minPlayers = config.format === "singles" ? 2 : 4;
     playersCheck.style.display = n >= minPlayers ? "inline" : "none";
 
@@ -3373,17 +3404,70 @@
     todayPlayers.forEach((name) => {
       const chip = document.createElement("div");
       chip.className = "chip";
+      const pair = fixedPairs.find((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+      if (pair) chip.classList.add("chip-paired");
+      if (pairingMode && pairingFirstPick && pairingFirstPick.toLowerCase() === name.toLowerCase()) {
+        chip.classList.add("chip-pairing-selected");
+      }
       const span = document.createElement("span");
       span.textContent = name + (config.mode !== "ladder" ? duprSuffix(name) : "");
-      const btn = document.createElement("button");
-      btn.textContent = "×";
-      btn.title = "Remove";
-      btn.addEventListener("click", () => removeTodayPlayer(name));
       chip.appendChild(span);
-      chip.appendChild(btn);
+      if (pair) {
+        const partner = pair.find((n) => n.toLowerCase() !== name.toLowerCase());
+        const badge = document.createElement("span");
+        badge.className = "fixed-pair-badge";
+        badge.textContent = `🔗 ${partner}`;
+        chip.appendChild(badge);
+      }
+      if (pairingMode) {
+        chip.addEventListener("click", () => handlePairingChipTap(name));
+      } else {
+        const btn = document.createElement("button");
+        btn.textContent = "×";
+        btn.title = "Remove";
+        btn.addEventListener("click", () => removeTodayPlayer(name));
+        chip.appendChild(btn);
+      }
       todayChips.appendChild(chip);
     });
     updateAccordionSummaries();
+  }
+
+  function addFixedPair(a, b) {
+    if (fixedPairs.some((p) => p.includes(a) || p.includes(b))) return;
+    fixedPairs.push([a, b]);
+    save(STORAGE.fixedPairs, fixedPairs);
+    renderTodayChips();
+  }
+
+  function removeFixedPair(name) {
+    const idx = fixedPairs.findIndex((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+    if (idx === -1) return;
+    fixedPairs.splice(idx, 1);
+    save(STORAGE.fixedPairs, fixedPairs);
+    renderTodayChips();
+  }
+
+  function handlePairingChipTap(name) {
+    const existingPair = fixedPairs.find((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+    if (existingPair) {
+      const partner = existingPair.find((n) => n.toLowerCase() !== name.toLowerCase());
+      if (confirm(`Unpair ${name} and ${partner}?`)) removeFixedPair(name);
+      return;
+    }
+    if (!pairingFirstPick) {
+      pairingFirstPick = name;
+      renderTodayChips();
+      return;
+    }
+    if (pairingFirstPick.toLowerCase() === name.toLowerCase()) {
+      pairingFirstPick = null;
+      renderTodayChips();
+      return;
+    }
+    addFixedPair(pairingFirstPick, name);
+    pairingFirstPick = null;
+    renderTodayChips();
   }
 
   function tournamentTeamDisplayName(team) {
@@ -3917,6 +4001,7 @@
     if (idx === -1) return;
     todayPlayers.splice(idx, 1);
     save(STORAGE.today, todayPlayers);
+    removeFixedPair(name);
     renderTodayChips();
     renderPickPanel();
   }
@@ -3949,6 +4034,15 @@
     if (e.key === "Enter") submitPlayerAdd();
   });
   playerAddBtn.addEventListener("click", submitPlayerAdd);
+
+  fixedPairsModeBtn.addEventListener("click", () => {
+    pairingMode = !pairingMode;
+    pairingFirstPick = null;
+    fixedPairsModeBtn.textContent = pairingMode ? "Done pairing" : "Pair up players";
+    fixedPairsModeBtn.classList.toggle("active", pairingMode);
+    fixedPairsHint.style.display = pairingMode ? "inline" : "none";
+    renderTodayChips();
+  });
 
   function renderPickPanel() {
     pickPanel.innerHTML = "";
@@ -5686,11 +5780,27 @@
     });
   });
 
+  function syncFixedPairsVisibility() {
+    const isLadder = config.mode === "ladder";
+    const ladderBlocksFixedPairs = isLadder && currentLadder && currentLadder.trackPairings;
+    const hidden = config.format === "singles" || ladderBlocksFixedPairs;
+    fixedPairsRow.style.display = hidden ? "none" : "flex";
+    if (hidden && pairingMode) {
+      pairingMode = false;
+      pairingFirstPick = null;
+      fixedPairsModeBtn.textContent = "Pair up players";
+      fixedPairsModeBtn.classList.remove("active");
+      fixedPairsHint.style.display = "none";
+      renderTodayChips();
+    }
+  }
+
   function syncFormatButtons() {
     formatButtons.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.format === config.format);
     });
     syncTournamentFormatButtons();
+    syncFixedPairsVisibility();
     updateAccordionSummaries();
   }
   formatButtons.forEach((btn) => {
@@ -5751,6 +5861,7 @@
       renderPastTournamentsPanel();
       syncTournamentFormatButtons();
     }
+    syncFixedPairsVisibility();
   }
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -5815,7 +5926,11 @@
   function selectLadder(ladder) {
     currentLadder = ladder;
     todayPlayers = [];
+    fixedPairs = [];
+    pairingMode = false;
+    pairingFirstPick = null;
     save(STORAGE.today, todayPlayers);
+    save(STORAGE.fixedPairs, fixedPairs);
     renderTodayChips();
     syncModeUI();
     setupPlayersSection.classList.add("open");
@@ -6182,6 +6297,14 @@
     return [a, b].sort().join("|");
   }
 
+  function fixedPairKeysFor(fixedPairsArr) {
+    return new Set((fixedPairsArr || []).map(([a, b]) => pairKey(a, b)));
+  }
+
+  function computeMaxExcludingFixed(countMap, fixedPairKeysSet) {
+    return Object.entries(countMap).reduce((m, [k, v]) => (fixedPairKeysSet.has(k) ? m : Math.max(m, v)), 0);
+  }
+
   function groupKey(names) {
     return names.slice().sort().join("|");
   }
@@ -6251,6 +6374,124 @@
     return { split: best, score: bestScore };
   }
 
+  // --- Fixed Doubles: "unit" helpers -----------------------------------
+  // A unit is either a locked pair (always shares a team, every round) or a
+  // lone individual. Sit-out selection and court-grouping operate on units;
+  // the resulting teamA/teamB arrays are always plain player-name arrays,
+  // so nothing downstream of generateRounds needs to know units exist.
+
+  function buildFixedPairMap(fixedPairs) {
+    const map = new Map();
+    (fixedPairs || []).forEach(([a, b]) => {
+      map.set(a, b);
+      map.set(b, a);
+    });
+    return map;
+  }
+
+  function buildUnits(players, fixedPairMap) {
+    const units = [];
+    const seen = new Set();
+    const playerSet = new Set(players);
+    players.forEach((p) => {
+      if (seen.has(p)) return;
+      const partner = fixedPairMap.get(p);
+      if (partner && partner !== p && playerSet.has(partner)) {
+        const members = [p, partner].sort();
+        units.push({ id: pairKey(members[0], members[1]), kind: "pair", members, size: 2 });
+        seen.add(p);
+        seen.add(partner);
+      } else {
+        units.push({ id: p, kind: "single", members: [p], size: 1 });
+        seen.add(p);
+      }
+    });
+    return units;
+  }
+
+  // First-fit bin-packing of units into `actualCourts` bins of capacity
+  // `playersPerCourt`. Unit sizes are only ever 1 or 2, so first-fit never
+  // needs backtracking as long as the total slot count matches exactly --
+  // callers retry with a fresh shuffle (or the sort-by-size-desc fallback
+  // below) if this returns null.
+  function packUnitsIntoCourts(units, actualCourts, playersPerCourt) {
+    const bins = Array.from({ length: actualCourts }, () => ({ units: [], slots: 0 }));
+    for (const u of units) {
+      const bin = bins.find((b) => b.slots + u.size <= playersPerCourt);
+      if (!bin) return null;
+      bin.units.push(u);
+      bin.slots += u.size;
+    }
+    if (bins.some((b) => b.slots !== playersPerCourt)) return null;
+    return bins.map((b) => b.units);
+  }
+
+  // Given the units assigned to one court, decide teamA/teamB and a
+  // fairness score. A court with a fixed pair never runs the 3-way split
+  // search -- the pair is forced onto one team, so only opponent variety
+  // (for that pair, and for two singles thrown together against it) is
+  // scored. A court of 4 singles falls through to the unchanged
+  // bestTeamSplit, so behavior is byte-for-byte identical when there are
+  // no fixed pairs in play.
+  function scoreCourtGrouping(unitGroup, ctx) {
+    const {
+      format, partnerCount, opponentCount, lastPartnerRound, lastOpponentRound,
+      unitOpponentCount, lastUnitOpponentRound, currentRound, remainingRequired,
+    } = ctx;
+
+    if (format === "singles") {
+      const [uA, uB] = unitGroup;
+      const k = pairKey(uA.members[0], uB.members[0]);
+      let score = Math.pow(opponentCount[k] || 0, 2);
+      if (remainingRequired && remainingRequired.has(k)) score -= 1000;
+      return { split: { teamA: [uA.members[0]], teamB: [uB.members[0]] }, score };
+    }
+
+    const pairUnits = unitGroup.filter((u) => u.kind === "pair");
+
+    function opponentScoreBetween(teamA, teamB) {
+      let s = 0;
+      teamA.forEach((a) => {
+        teamB.forEach((b) => {
+          const k = pairKey(a, b);
+          s += Math.pow(opponentCount[k] || 0, 2);
+          if (lastPartnerRound[k] === currentRound - 1) s += 50;
+        });
+      });
+      return s;
+    }
+    function unitOpponentScoreBetween(teamA, teamB) {
+      const k1 = pairKey(teamA[0], teamA[1]);
+      const k2 = pairKey(teamB[0], teamB[1]);
+      const uk = [k1, k2].sort().join("||");
+      let s = Math.pow(unitOpponentCount[uk] || 0, 2);
+      if (lastUnitOpponentRound[uk] === currentRound - 1) s += 50;
+      return s;
+    }
+
+    if (pairUnits.length === 2) {
+      const [u1, u2] = pairUnits;
+      const score = opponentScoreBetween(u1.members, u2.members) + unitOpponentScoreBetween(u1.members, u2.members);
+      return { split: { teamA: u1.members, teamB: u2.members }, score };
+    }
+    if (pairUnits.length === 1) {
+      const pairUnit = pairUnits[0];
+      const singles = unitGroup.filter((u) => u.kind === "single").map((u) => u.members[0]);
+      const teamA = pairUnit.members;
+      const teamB = singles;
+      let score = opponentScoreBetween(teamA, teamB) + unitOpponentScoreBetween(teamA, teamB);
+      const k = pairKey(teamB[0], teamB[1]);
+      score += Math.pow(partnerCount[k] || 0, 2);
+      if (lastOpponentRound[k] === currentRound - 1) score += 50;
+      if (remainingRequired && remainingRequired.has(k)) score -= 1000;
+      return { split: { teamA, teamB }, score };
+    }
+
+    // 4 singles -- unchanged path, byte-for-byte identical to today's behavior.
+    const players4 = unitGroup.flatMap((u) => u.members);
+    return bestTeamSplit(players4, partnerCount, opponentCount, lastPartnerRound, lastOpponentRound, currentRound, remainingRequired);
+  }
+
   function computeFairnessState(rounds, format) {
     const partnerCount = {};
     const opponentCount = {};
@@ -6259,6 +6500,8 @@
     const lastOpponentRound = {};
     const sitCount = {};
     const lastRestRound = {};
+    const unitOpponentCount = {};
+    const lastUnitOpponentRound = {};
     rounds.forEach((round) => {
       round.sitOuts.forEach((p) => {
         sitCount[p] = (sitCount[p] || 0) + 1;
@@ -6274,6 +6517,9 @@
           lastPartnerRound[k2] = round.round - 1;
           const gKey = groupKey([...teamA, ...teamB]);
           groupCount[gKey] = (groupCount[gKey] || 0) + 1;
+          const uk = [k1, k2].sort().join("||");
+          unitOpponentCount[uk] = (unitOpponentCount[uk] || 0) + 1;
+          lastUnitOpponentRound[uk] = round.round - 1;
         }
         teamA.forEach((a) => {
           teamB.forEach((b) => {
@@ -6284,7 +6530,7 @@
         });
       });
     });
-    return { partnerCount, opponentCount, groupCount, lastPartnerRound, lastOpponentRound, sitCount, lastRestRound };
+    return { partnerCount, opponentCount, groupCount, lastPartnerRound, lastOpponentRound, sitCount, lastRestRound, unitOpponentCount, lastUnitOpponentRound };
   }
 
   function buildLadderHistorySeed(ladder, format) {
@@ -6298,8 +6544,10 @@
       partnerCount: state.partnerCount,
       opponentCount: state.opponentCount,
       groupCount: state.groupCount,
+      unitOpponentCount: state.unitOpponentCount,
       lastPartnerRound: {},
       lastOpponentRound: {},
+      lastUnitOpponentRound: {},
       sitCount: {},
       lastRestRound: {},
     };
@@ -6314,7 +6562,7 @@
     });
   }
 
-  function generateRounds(players, numRounds, courtsCount, courtLabels, format, seed, requiredPairs) {
+  function generateRounds(players, numRounds, courtsCount, courtLabels, format, seed, requiredPairs, fixedPairs) {
     const playersPerCourt = format === "singles" ? 2 : 4;
     const startRound = seed ? seed.startRound : 0;
     const partnerCount = seed ? { ...seed.partnerCount } : {};
@@ -6322,13 +6570,29 @@
     const groupCount = seed ? { ...seed.groupCount } : {};
     const lastPartnerRound = seed ? { ...seed.lastPartnerRound } : {};
     const lastOpponentRound = seed ? { ...seed.lastOpponentRound } : {};
-    const sitCount = {};
-    const lastRestRound = {};
+    const unitOpponentCount = seed && seed.unitOpponentCount ? { ...seed.unitOpponentCount } : {};
+    const lastUnitOpponentRound = seed && seed.lastUnitOpponentRound ? { ...seed.lastUnitOpponentRound } : {};
     const remainingRequired = requiredPairs ? new Set(requiredPairs) : null;
-    players.forEach((p) => {
-      sitCount[p] = seed && p in seed.sitCount ? seed.sitCount[p] : 0;
-      lastRestRound[p] = seed && p in seed.lastRestRound ? seed.lastRestRound[p] : -1;
+
+    // Fixed Doubles is a doubles-only concept -- defensively ignore it for singles
+    // even if stale data is passed in.
+    const effectiveFixedPairs = format === "singles" ? [] : (fixedPairs || []);
+    const fixedPairMap = buildFixedPairMap(effectiveFixedPairs);
+    const units = buildUnits(players, fixedPairMap);
+    const fixedPairKeys = new Set(units.filter((u) => u.kind === "pair").map((u) => u.id));
+
+    // A pair unit's sit-out fairness is derived from its two members' own
+    // seeded values (conservative "max" merge) so a newly-declared pair
+    // doesn't get an unfair head start or deficit on rest.
+    const unitSitCount = {};
+    const unitLastRestRound = {};
+    units.forEach((u) => {
+      const sitVals = u.members.map((p) => (seed && p in seed.sitCount ? seed.sitCount[p] : 0));
+      const restVals = u.members.map((p) => (seed && p in seed.lastRestRound ? seed.lastRestRound[p] : -1));
+      unitSitCount[u.id] = Math.max(...sitVals);
+      unitLastRestRound[u.id] = Math.max(...restVals);
     });
+
     const rounds = [];
     const actualCourts = Math.min(courtsCount, Math.floor(players.length / playersPerCourt));
 
@@ -6338,47 +6602,74 @@
       const needed = actualCourts * playersPerCourt;
       const sitOutNeeded = n - needed;
 
-      const tiebreak = {};
-      players.forEach((p) => (tiebreak[p] = Math.random()));
-      const orderedBySit = [...players].sort((a, b) => {
-        if (sitCount[a] !== sitCount[b]) return sitCount[a] - sitCount[b];
-        if (lastRestRound[a] !== lastRestRound[b]) return lastRestRound[a] - lastRestRound[b];
-        return tiebreak[a] - tiebreak[b];
-      });
-      const sittingOut = orderedBySit.slice(0, sitOutNeeded);
-      const playing = orderedBySit.slice(sitOutNeeded);
-      sittingOut.forEach((p) => {
-        sitCount[p] += 1;
-        lastRestRound[p] = r;
+      const tiebreak = new Map(units.map((u) => [u.id, Math.random()]));
+      const orderedUnits = units.slice().sort((a, b) => {
+        if (unitSitCount[a.id] !== unitSitCount[b.id]) return unitSitCount[a.id] - unitSitCount[b.id];
+        if (unitLastRestRound[a.id] !== unitLastRestRound[b.id]) return unitLastRestRound[a.id] - unitLastRestRound[b.id];
+        return tiebreak.get(a.id) - tiebreak.get(b.id);
       });
 
+      const sittingOutUnits = [];
+      let sitRunning = 0;
+      for (const u of orderedUnits) {
+        if (sitRunning >= sitOutNeeded) break;
+        if (sitRunning + u.size <= sitOutNeeded) {
+          sittingOutUnits.push(u);
+          sitRunning += u.size;
+        }
+      }
+      sittingOutUnits.forEach((u) => {
+        unitSitCount[u.id] += 1;
+        unitLastRestRound[u.id] = r;
+      });
+      const sittingOutSet = new Set(sittingOutUnits);
+      const playingUnits = orderedUnits.filter((u) => !sittingOutSet.has(u));
+      const sittingOut = sittingOutUnits.flatMap((u) => u.members);
+
+      const ctx = {
+        format, partnerCount, opponentCount, lastPartnerRound, lastOpponentRound,
+        unitOpponentCount, lastUnitOpponentRound, currentRound: r, remainingRequired,
+      };
+
       let bestGrouping = null;
+      let bestPackedGroups = null;
       let bestScore = Infinity;
       for (let attempt = 0; attempt < 300; attempt++) {
-        const shuffled = shuffle(playing);
-        const groups = [];
-        for (let i = 0; i < actualCourts; i++) {
-          groups.push(shuffled.slice(i * playersPerCourt, i * playersPerCourt + playersPerCourt));
-        }
-        const results = format === "singles"
-          ? groups.map((g) => {
-              const k = pairKey(g[0], g[1]);
-              let score = Math.pow(opponentCount[k] || 0, 2);
-              if (remainingRequired && remainingRequired.has(k)) score -= 1000;
-              return { split: { teamA: [g[0]], teamB: [g[1]] }, score };
-            })
-          : groups.map((g) => bestTeamSplit(g, partnerCount, opponentCount, lastPartnerRound, lastOpponentRound, r, remainingRequired));
+        const shuffled = shuffle(playingUnits);
+        const packedGroups = packUnitsIntoCourts(shuffled, actualCourts, playersPerCourt);
+        if (!packedGroups) continue;
+        const results = packedGroups.map((g) => scoreCourtGrouping(g, ctx));
         let totalScore = results.reduce((sum, res) => sum + res.score, 0);
         if (format !== "singles") {
-          groups.forEach((g) => {
-            totalScore += Math.pow(groupCount[groupKey(g)] || 0, 2) * 6;
+          packedGroups.forEach((g) => {
+            const flat = g.flatMap((u) => u.members);
+            totalScore += Math.pow(groupCount[groupKey(flat)] || 0, 2) * 6;
           });
         }
         if (totalScore < bestScore) {
           bestScore = totalScore;
           bestGrouping = results;
+          bestPackedGroups = packedGroups;
         }
         if (bestScore === 0) break;
+      }
+
+      if (!bestGrouping) {
+        // Every random attempt failed to pack (should be unreachable for a
+        // valid roster -- unit sizes are only 1/2 and total slots always
+        // match exactly -- but fall back to a deterministic sort-by-size
+        // pack rather than crash).
+        const sorted = playingUnits.slice().sort((a, b) => b.size - a.size);
+        bestPackedGroups = packUnitsIntoCourts(sorted, actualCourts, playersPerCourt);
+        if (!bestPackedGroups) {
+          console.warn("generateRounds: could not pack units into courts; falling back to naive slicing.");
+          const flatNames = playingUnits.flatMap((u) => u.members);
+          bestPackedGroups = [];
+          for (let i = 0; i < actualCourts; i++) {
+            bestPackedGroups.push([{ kind: "single", members: [flatNames[i * playersPerCourt]], size: 1 }]);
+          }
+        }
+        bestGrouping = bestPackedGroups.map((g) => scoreCourtGrouping(g, ctx));
       }
 
       bestGrouping.forEach((res) => {
@@ -6393,6 +6684,9 @@
           if (remainingRequired) { remainingRequired.delete(key1); remainingRequired.delete(key2); }
           const gKey = groupKey([...teamA, ...teamB]);
           groupCount[gKey] = (groupCount[gKey] || 0) + 1;
+          const uk = [key1, key2].sort().join("||");
+          unitOpponentCount[uk] = (unitOpponentCount[uk] || 0) + 1;
+          lastUnitOpponentRound[uk] = r;
         }
         teamA.forEach((a) => {
           teamB.forEach((b) => {
@@ -6415,11 +6709,12 @@
       rounds.push({ round: r + 1, courts, sitOuts: sittingOut });
     }
 
-    const maxPartner = Object.values(partnerCount).reduce((m, v) => Math.max(m, v), 0);
+    const maxPartner = computeMaxExcludingFixed(partnerCount, fixedPairKeys);
     const maxOpponent = Object.values(opponentCount).reduce((m, v) => Math.max(m, v), 0);
     const maxGroup = Object.values(groupCount).reduce((m, v) => Math.max(m, v), 0);
+    const maxUnitOpponent = Object.values(unitOpponentCount).reduce((m, v) => Math.max(m, v), 0);
 
-    return { rounds, actualCourts, maxPartner, maxOpponent, maxGroup };
+    return { rounds, actualCourts, maxPartner, maxOpponent, maxGroup, maxUnitOpponent };
   }
 
   function getAllPlayersEver(session) {
@@ -6492,7 +6787,7 @@
 
     const { rounds: tailRounds } = generateRounds(
       newRoster, tailCount, s.config.courts, s.config.courtLabels, s.config.format,
-      { ...state, startRound: frozenCount }
+      { ...state, startRound: frozenCount }, null, s.fixedPairs
     );
 
     s.rounds = frozenRounds.concat(tailRounds);
@@ -6501,9 +6796,11 @@
     if (options.resetMaxRoundReached) s.maxRoundReached = frozenCount;
 
     const combined = computeFairnessState(s.rounds, s.config.format);
-    s.maxPartner = Object.values(combined.partnerCount).reduce((m, v) => Math.max(m, v), 0);
+    const fixedKeys = fixedPairKeysFor(s.fixedPairs);
+    s.maxPartner = computeMaxExcludingFixed(combined.partnerCount, fixedKeys);
     s.maxOpponent = Object.values(combined.opponentCount).reduce((m, v) => Math.max(m, v), 0);
     s.maxGroup = Object.values(combined.groupCount).reduce((m, v) => Math.max(m, v), 0);
+    s.maxUnitOpponent = Object.values(combined.unitOpponentCount).reduce((m, v) => Math.max(m, v), 0);
     s.flipCount = countRoleFlips(s.rounds, s.config.format);
 
     updateSessionInStorage();
@@ -6607,9 +6904,11 @@
     diff.added.forEach((name) => round.sitOuts.push(name));
 
     const combined = computeFairnessState(s.rounds, s.config.format);
-    s.maxPartner = Object.values(combined.partnerCount).reduce((m, v) => Math.max(m, v), 0);
+    const fixedKeys1 = fixedPairKeysFor(s.fixedPairs);
+    s.maxPartner = computeMaxExcludingFixed(combined.partnerCount, fixedKeys1);
     s.maxOpponent = Object.values(combined.opponentCount).reduce((m, v) => Math.max(m, v), 0);
     s.maxGroup = Object.values(combined.groupCount).reduce((m, v) => Math.max(m, v), 0);
+    s.maxUnitOpponent = Object.values(combined.unitOpponentCount).reduce((m, v) => Math.max(m, v), 0);
     s.flipCount = countRoleFlips(s.rounds, s.config.format);
     updateSessionInStorage();
     renderAll();
@@ -6621,9 +6920,11 @@
     const round = s.rounds[currentRoundIndex];
     if (!swapPlayersInRound(round, nameA, nameB)) return;
     const combined = computeFairnessState(s.rounds, s.config.format);
-    s.maxPartner = Object.values(combined.partnerCount).reduce((m, v) => Math.max(m, v), 0);
+    const fixedKeys2 = fixedPairKeysFor(s.fixedPairs);
+    s.maxPartner = computeMaxExcludingFixed(combined.partnerCount, fixedKeys2);
     s.maxOpponent = Object.values(combined.opponentCount).reduce((m, v) => Math.max(m, v), 0);
     s.maxGroup = Object.values(combined.groupCount).reduce((m, v) => Math.max(m, v), 0);
+    s.maxUnitOpponent = Object.values(combined.unitOpponentCount).reduce((m, v) => Math.max(m, v), 0);
     s.flipCount = countRoleFlips(s.rounds, s.config.format);
     updateSessionInStorage();
     renderAll();
@@ -6891,11 +7192,18 @@
       ? `${s.config.gameLength} min games (to ${s.config.targetScore})`
       : `${s.config.gameLength} min games`;
     const formatLabel = (s.ladderId ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
+    const fixedPairCount = (s.fixedPairs || []).length;
     const statParts = [];
-    if (s.config.format !== "singles") statParts.push(`Max repeat partner: ${s.maxPartner}`);
+    if (s.config.format !== "singles") {
+      statParts.push(`Max repeat partner: ${s.maxPartner}` + (fixedPairCount ? " (rotating players)" : ""));
+    }
     statParts.push(`Max repeat opponent: ${s.maxOpponent}`);
+    if (s.config.format !== "singles" && fixedPairCount) {
+      statParts.push(`Max repeat matchup: ${s.maxUnitOpponent ?? 0}`);
+    }
     if (s.config.format !== "singles") statParts.push(`Max repeat group: ${s.maxGroup}`);
     if (s.config.format !== "singles") statParts.push(`Immediate re-match flips: ${s.flipCount}`);
+    if (fixedPairCount) statParts.push(`${fixedPairCount} fixed pair${fixedPairCount === 1 ? "" : "s"}`);
     infoBar.textContent =
       `${formatLabel} · ${s.players.length} players · ${courtsNow} courts · ${gameDesc} · ` +
       `${s.rounds.length} rounds · ${avgActive} active each · ` +
@@ -7346,7 +7654,8 @@
       cellNames.forEach((name) => {
         const cell = document.createElement("div");
         cell.className = "team-cell";
-        cell.textContent = name;
+        const isFixed = (s.fixedPairs || []).some((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+        cell.textContent = isFixed ? `🔗 ${name}` : name;
         if (courtTapMode === "remove" && !pendingRoster.includes(name)) cell.classList.add("remove-marked");
         cell.addEventListener("click", () => handleCourtTap(name, cell));
         teamBox.appendChild(cell);
@@ -7928,6 +8237,7 @@
     return {
       date: s.date,
       players: s.players,
+      fixedPairs: s.fixedPairs || [],
       config: {
         format: s.config.format,
         courts: s.config.courts,
@@ -8109,17 +8419,20 @@
   function loadSharedSession(data) {
     if (!data || !Array.isArray(data.rounds) || !Array.isArray(data.players)) return false;
     const combined = computeFairnessState(data.rounds, data.config.format);
+    const fixedKeys = fixedPairKeysFor(data.fixedPairs);
     currentSession = {
       id: "shared",
       date: data.date,
       players: data.players,
       config: data.config,
       rounds: data.rounds,
+      fixedPairs: data.fixedPairs || [],
       actualCourts: Math.max(0, ...data.rounds.map((r) => r.courts.length)),
       maxRoundReached: data.rounds.length - 1,
-      maxPartner: Object.values(combined.partnerCount).reduce((m, v) => Math.max(m, v), 0),
+      maxPartner: computeMaxExcludingFixed(combined.partnerCount, fixedKeys),
       maxOpponent: Object.values(combined.opponentCount).reduce((m, v) => Math.max(m, v), 0),
       maxGroup: Object.values(combined.groupCount).reduce((m, v) => Math.max(m, v), 0),
+      maxUnitOpponent: Object.values(combined.unitOpponentCount).reduce((m, v) => Math.max(m, v), 0),
       flipCount: countRoleFlips(data.rounds, data.config.format),
     };
     currentRoundIndex = 0;
@@ -8375,6 +8688,16 @@
     else if (courtTapMode === "remove") handleRemoveTap(name, el);
   }
 
+  function swapWouldSplitFixedPair(nameA, nameB) {
+    const sessionFixedPairs = (currentSession && currentSession.fixedPairs) || [];
+    const pairOf = (name) => sessionFixedPairs.find((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+    const pairA = pairOf(nameA);
+    const pairB = pairOf(nameB);
+    if (pairA && !pairA.some((n) => n.toLowerCase() === nameB.toLowerCase())) return true;
+    if (pairB && !pairB.some((n) => n.toLowerCase() === nameA.toLowerCase())) return true;
+    return false;
+  }
+
   function handleSwapTap(name, el) {
     const existingIdx = swapSelection.findIndex((s) => s.name === name);
     if (existingIdx !== -1) {
@@ -8384,6 +8707,10 @@
     }
     if (swapSelection.length === 2) {
       swapSelection.shift().el.classList.remove("swap-selected");
+    }
+    if (swapSelection.length === 1 && swapWouldSplitFixedPair(swapSelection[0].name, name)) {
+      alert("That would split a fixed pair. Swap their partner too, or unpair them first.");
+      return;
     }
     el.classList.add("swap-selected");
     swapSelection.push({ name, el });
@@ -8417,7 +8744,11 @@
   startOverLink.addEventListener("click", () => {
     if (!confirm("Start over? This clears today's players list.")) return;
     todayPlayers = [];
+    fixedPairs = [];
+    pairingMode = false;
+    pairingFirstPick = null;
     save(STORAGE.today, todayPlayers);
+    save(STORAGE.fixedPairs, fixedPairs);
     currentSession = null;
     renderTodayChips();
     renderPickPanel();
@@ -8660,8 +8991,9 @@
     const requiredPairs = isLadder && currentLadder.trackPairings
       ? new Set(computeLadderPairCoverage(currentLadder).remaining.map(([a, b]) => pairKey(a, b)))
       : null;
-    const { rounds, actualCourts, maxPartner, maxOpponent, maxGroup } = generateRounds(
-      todayPlayers, numRounds, config.courts, config.courtLabels, config.format, ladderSeed, requiredPairs
+    const fixedPairsForGeneration = config.format === "doubles" ? fixedPairs : [];
+    const { rounds, actualCourts, maxPartner, maxOpponent, maxGroup, maxUnitOpponent } = generateRounds(
+      todayPlayers, numRounds, config.courts, config.courtLabels, config.format, ladderSeed, requiredPairs, fixedPairsForGeneration
     );
     if (rounds.length === 0) {
       alert(`Not enough players for even one court (need at least ${minPlayers}).`);
@@ -8671,12 +9003,14 @@
       id: `${pastSessions.length}-${todayPlayers.length}-${rounds.length}-${Math.random().toString(36).slice(2, 8)}`,
       date: new Date().toLocaleString(),
       players: todayPlayers.slice(),
+      fixedPairs: fixedPairsForGeneration.map((p) => p.slice()),
       config: { ...config, courtLabels: config.courtLabels.slice(), gameLength: effectiveGameLength },
       ladderId: isLadder ? currentLadder.id : null,
       actualCourts,
       maxPartner,
       maxOpponent,
       maxGroup,
+      maxUnitOpponent,
       flipCount: countRoleFlips(rounds, config.format),
       rounds,
       maxRoundReached: 0,
