@@ -277,6 +277,19 @@
     font-size: 0.9rem;
     margin: 0 0 28px 3px;
   }
+  .section-title-bar {
+    display: block;
+    text-align: center;
+    background: var(--green-pale);
+    color: var(--green-dark);
+    border: 1px solid var(--green-pale-border);
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    padding: 8px 14px;
+    margin: 0 0 16px;
+  }
   .club-logo {
     display: block;
     max-width: 160px;
@@ -1677,6 +1690,8 @@
       <button class="small-btn add" id="androidInstallBtn">Install</button>
     </div>
 
+    <div class="section-title-bar" id="sectionTitleBar"></div>
+
     <div id="homeView">
       <div class="dropdown-row" id="brandingDropdownRow">
         <div class="dropdown" id="themeDropdown">
@@ -2862,6 +2877,7 @@
   let timerInterval = null;
 
   const homeView = document.getElementById("homeView");
+  const sectionTitleBar = document.getElementById("sectionTitleBar");
   const homeBtn = document.getElementById("homeBtn");
   const sessionHomeBtn = document.getElementById("sessionHomeBtn");
   const sessionLaddersBtn = document.getElementById("sessionLaddersBtn");
@@ -5830,6 +5846,20 @@
     });
   });
 
+  function updateSectionTitleBar() {
+    if (homeView.style.display !== "none") {
+      sectionTitleBar.textContent = "Home";
+      return;
+    }
+    if (config.mode === "ladder") {
+      sectionTitleBar.textContent = currentLadder ? `Ladder · ${currentLadder.name}` : "Ladder";
+    } else if (config.mode === "tournament") {
+      sectionTitleBar.textContent = currentTournament ? `Tournament · ${currentTournament.name || "Untitled Tournament"}` : "Tournament";
+    } else {
+      sectionTitleBar.textContent = "Session Scheduler";
+    }
+  }
+
   function syncModeUI() {
     modeButtons.forEach((btn) => {
       btn.classList.toggle("active", btn.dataset.mode === config.mode);
@@ -5862,6 +5892,7 @@
       syncTournamentFormatButtons();
     }
     syncFixedPairsVisibility();
+    updateSectionTitleBar();
   }
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -7015,6 +7046,7 @@
     setupView.style.display = "none";
     sessionView.style.display = "none";
     tournamentView.style.display = "none";
+    updateSectionTitleBar();
   }
   function showSetupView() {
     stopTimer();
@@ -7029,12 +7061,14 @@
     renderContinueSessionBanner();
     if (config.mode === "ladder") renderLadderStandingsTable();
     if (config.mode === "tournament") renderPastTournamentsPanel();
+    updateSectionTitleBar();
   }
   function showSessionView() {
     homeView.style.display = "none";
     setupView.style.display = "none";
     sessionView.style.display = "block";
     tournamentView.style.display = "none";
+    updateSectionTitleBar();
   }
   function showTournamentView() {
     homeView.style.display = "none";
@@ -7046,6 +7080,7 @@
       tournamentKnockoutStartTimeInput.value = new Date().toTimeString().slice(0, 5);
     }
     renderTournamentView();
+    updateSectionTitleBar();
   }
   homeBtn.addEventListener("click", showHomeView);
   sessionHomeBtn.addEventListener("click", showHomeView);
