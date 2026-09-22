@@ -1241,6 +1241,23 @@
   .qualifiers-box .qteams { color: var(--text); }
   .qualifiers-box .qteams-pending { color: var(--muted); font-style: italic; }
 
+  .box-standings { margin-bottom: 18px; border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden; }
+  .box-standings:last-child { margin-bottom: 0; }
+  .box-standings-header {
+    background: var(--green-pale);
+    color: var(--green-dark);
+    font-weight: 700;
+    font-size: 0.92rem;
+    padding: 10px 14px;
+  }
+  .box-standings table { margin: 0; }
+  .box-promote-row td { background: #eaf6ec; }
+  .box-relegate-row td { background: #fbeee7; }
+  .box-zone-tag { font-size: 0.68rem; font-weight: 700; border-radius: 6px; padding: 1px 6px; margin-left: 6px; white-space: nowrap; }
+  .box-zone-tag.up { color: #2e7d32; background: #d7f0da; }
+  .box-zone-tag.down { color: #a04a2b; background: #fbeee7; }
+  .box-move-select { font-size: 0.78rem; padding: 2px 4px; }
+
   .court-schedule-round { padding: 8px 0; border-bottom: 1px solid var(--card-border); }
   .court-schedule-round:last-child { border-bottom: none; }
   .court-schedule-day-header {
@@ -1802,11 +1819,61 @@
 
           <div id="ladderPairingProgress" class="qualifiers-box" style="display:none;"></div>
 
+          <div class="dropdown" id="ladderBoxesDropdown">
+            <button class="dropdown-toggle" data-target="ladderBoxesDropdown">
+              Ladder Boxes <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel">
+              <div id="ladderBoxesSetupPanel" style="display:none;">
+                <div class="paired-grid">
+                  <div class="field">
+                    <label for="ladderBoxSizeInput">Max players per box</label>
+                    <div class="number-stepper">
+                      <button type="button" class="stepper-btn" data-target="ladderBoxSizeInput" data-step="-1" aria-label="Decrease max players per box">−</button>
+                      <input type="number" id="ladderBoxSizeInput" min="2" max="20" value="8" />
+                      <button type="button" class="stepper-btn" data-target="ladderBoxSizeInput" data-step="1" aria-label="Increase max players per box">+</button>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="ladderPromoteCountInput">Promote per box</label>
+                    <div class="number-stepper">
+                      <button type="button" class="stepper-btn" data-target="ladderPromoteCountInput" data-step="-1" aria-label="Decrease promote count">−</button>
+                      <input type="number" id="ladderPromoteCountInput" min="0" max="10" value="1" />
+                      <button type="button" class="stepper-btn" data-target="ladderPromoteCountInput" data-step="1" aria-label="Increase promote count">+</button>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="ladderRelegateCountInput">Relegate per box</label>
+                    <div class="number-stepper">
+                      <button type="button" class="stepper-btn" data-target="ladderRelegateCountInput" data-step="-1" aria-label="Decrease relegate count">−</button>
+                      <input type="number" id="ladderRelegateCountInput" min="0" max="10" value="1" />
+                      <button type="button" class="stepper-btn" data-target="ladderRelegateCountInput" data-step="1" aria-label="Increase relegate count">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="hint">Splits the current roster into boxes by rating. You can move players between boxes manually afterwards.</div>
+                <button class="generate-btn" id="enableLadderBoxesBtn">Split into boxes</button>
+              </div>
+              <div id="ladderBoxesEnabledPanel" style="display:none;">
+                <div class="continue-session-banner" id="ladderCycleBanner">
+                  <span id="ladderCycleText"></span>
+                  <button type="button" class="small-btn add" id="endLadderCycleBtn">End Cycle</button>
+                </div>
+                <div id="ladderBoxesContainer"></div>
+                <button type="button" class="small-btn remove" id="disableLadderBoxesBtn">Disable boxes</button>
+              </div>
+            </div>
+          </div>
+
           <div class="dropdown" id="logMatchDropdown">
             <button class="dropdown-toggle" data-target="logMatchDropdown">
               Log a match result <span class="arrow">▾</span>
             </button>
             <div class="dropdown-panel">
+              <div class="field" id="logMatchBoxField" style="display:none;">
+                <label for="logMatchBoxSelect">Box</label>
+                <select id="logMatchBoxSelect"></select>
+              </div>
               <div class="paired-grid">
                 <div class="field">
                   <label>Team A – Player 1</label>
@@ -2801,6 +2868,12 @@
       roster: [...roster],
       startingRatings: { ...ladderStartingRatings },
       trackPairings: false,
+      boxesEnabled: false,
+      boxSize: 8,
+      promoteCount: 1,
+      relegateCount: 1,
+      boxes: [],
+      cycleStartDate: null,
     };
     ladders.push(legacyLadder);
     legacySessions.forEach((s) => { s.ladderId = legacyLadder.id; });
@@ -2930,6 +3003,18 @@
   const ladderActivePanel = document.getElementById("ladderActivePanel");
   const ladderActiveName = document.getElementById("ladderActiveName");
   const ladderPairingProgress = document.getElementById("ladderPairingProgress");
+  const ladderBoxesSetupPanel = document.getElementById("ladderBoxesSetupPanel");
+  const ladderBoxesEnabledPanel = document.getElementById("ladderBoxesEnabledPanel");
+  const ladderBoxesContainer = document.getElementById("ladderBoxesContainer");
+  const ladderCycleText = document.getElementById("ladderCycleText");
+  const ladderBoxSizeInput = document.getElementById("ladderBoxSizeInput");
+  const ladderPromoteCountInput = document.getElementById("ladderPromoteCountInput");
+  const ladderRelegateCountInput = document.getElementById("ladderRelegateCountInput");
+  const enableLadderBoxesBtn = document.getElementById("enableLadderBoxesBtn");
+  const disableLadderBoxesBtn = document.getElementById("disableLadderBoxesBtn");
+  const endLadderCycleBtn = document.getElementById("endLadderCycleBtn");
+  const logMatchBoxField = document.getElementById("logMatchBoxField");
+  const logMatchBoxSelect = document.getElementById("logMatchBoxSelect");
   const logMatchTeamA1 = document.getElementById("logMatchTeamA1");
   const logMatchTeamA2 = document.getElementById("logMatchTeamA2");
   const logMatchTeamA2Field = document.getElementById("logMatchTeamA2Field");
@@ -4002,6 +4087,9 @@
     }
     if (config.mode === "ladder" && currentLadder && !currentLadder.roster.some((p) => p.toLowerCase() === name.toLowerCase())) {
       currentLadder.roster.push(name);
+      if (currentLadder.boxesEnabled && Array.isArray(currentLadder.boxes) && currentLadder.boxes.length) {
+        currentLadder.boxes[currentLadder.boxes.length - 1].push(name);
+      }
       save(STORAGE.ladders, ladders);
       renderLadderStandingsTable();
       renderLaddersListPanel();
@@ -4398,6 +4486,70 @@
     });
   }
 
+  function boxIndexOf(ladder, name) {
+    if (!Array.isArray(ladder.boxes)) return -1;
+    return ladder.boxes.findIndex((box) => box.includes(name));
+  }
+
+  function assignPlayersToBoxes(ladder) {
+    const stats = computeLadderRatings(ladder);
+    const sorted = getSortedLadderNames(stats).filter((name) => ladder.roster.includes(name));
+    const size = Math.max(1, ladder.boxSize || 8);
+    const boxes = [];
+    for (let i = 0; i < sorted.length; i += size) {
+      boxes.push(sorted.slice(i, i + size));
+    }
+    ladder.boxes = boxes;
+    ladder.cycleStartDate = new Date().toLocaleString();
+  }
+
+  function computeBoxStandings(ladder, boxIndex) {
+    const box = (ladder.boxes || [])[boxIndex] || [];
+    const stats = computeLadderRatings(ladder);
+    const names = box.filter((name) => stats[name]).sort((a, b) => {
+      if (stats[b].rating !== stats[a].rating) return stats[b].rating - stats[a].rating;
+      return a.localeCompare(b);
+    });
+    return names.map((name) => ({ name, ...stats[name] }));
+  }
+
+  function endLadderCycle(ladder) {
+    const boxes = ladder.boxes || [];
+    const promote = Math.max(0, ladder.promoteCount || 0);
+    const relegate = Math.max(0, ladder.relegateCount || 0);
+    const standingsPerBox = boxes.map((_, i) => computeBoxStandings(ladder, i).map((s) => s.name));
+    const newBoxes = standingsPerBox.map((names) => names.slice());
+    boxes.forEach((_, i) => {
+      const names = standingsPerBox[i];
+      const size = names.length;
+      const promoteN = Math.min(promote, Math.max(0, size - 1));
+      const relegateN = Math.min(relegate, Math.max(0, size - 1 - promoteN));
+      if (i > 0 && promoteN > 0) {
+        names.slice(0, promoteN).forEach((name) => {
+          newBoxes[i] = newBoxes[i].filter((n) => n !== name);
+          newBoxes[i - 1].push(name);
+        });
+      }
+      if (i < boxes.length - 1 && relegateN > 0) {
+        names.slice(size - relegateN).forEach((name) => {
+          newBoxes[i] = newBoxes[i].filter((n) => n !== name);
+          newBoxes[i + 1].push(name);
+        });
+      }
+    });
+    ladder.boxes = newBoxes;
+    ladder.cycleStartDate = new Date().toLocaleString();
+  }
+
+  function moveLadderPlayerToBox(ladder, name, newBoxIndex) {
+    if (!Array.isArray(ladder.boxes) || !ladder.boxes[newBoxIndex]) return;
+    ladder.boxes.forEach((box) => {
+      const idx = box.indexOf(name);
+      if (idx !== -1) box.splice(idx, 1);
+    });
+    ladder.boxes[newBoxIndex].push(name);
+  }
+
   function buildLadderStandingsTableHtml(ladder) {
     const stats = computeLadderRatings(ladder);
     const names = getSortedLadderNames(stats);
@@ -4417,22 +4569,122 @@
     if (!currentLadder) { ladderStandingsTable.innerHTML = ""; return; }
     ladderStandingsTable.innerHTML = buildLadderStandingsTableHtml(currentLadder);
     renderLadderPairingProgress();
+    renderLadderBoxesPanel();
     renderLogMatchPanel();
     renderLadderSyncPanel();
   }
+
+  function renderLadderBoxesPanel() {
+    if (!currentLadder) return;
+    const ladder = currentLadder;
+    const enabled = !!ladder.boxesEnabled;
+    ladderBoxesSetupPanel.style.display = enabled ? "none" : "block";
+    ladderBoxesEnabledPanel.style.display = enabled ? "block" : "none";
+    if (!enabled) return;
+    ladderCycleText.textContent = ladder.cycleStartDate ? `Cycle started ${ladder.cycleStartDate}` : "Cycle just started";
+    ladderBoxesContainer.innerHTML = "";
+    const promote = Math.max(0, ladder.promoteCount || 0);
+    const relegate = Math.max(0, ladder.relegateCount || 0);
+    (ladder.boxes || []).forEach((box, boxIndex) => {
+      const standings = computeBoxStandings(ladder, boxIndex);
+      const promoteN = Math.min(promote, Math.max(0, standings.length - 1));
+      const relegateN = Math.min(relegate, Math.max(0, standings.length - 1 - promoteN));
+
+      const wrap = document.createElement("div");
+      wrap.className = "box-standings";
+      const header = document.createElement("div");
+      header.className = "box-standings-header";
+      header.textContent = `Box ${boxIndex + 1}`;
+      wrap.appendChild(header);
+
+      const table = document.createElement("table");
+      table.className = "schedule-table";
+      let bodyRows = "";
+      standings.forEach((st, i) => {
+        const isPromote = boxIndex > 0 && i < promoteN;
+        const isRelegate = boxIndex < ladder.boxes.length - 1 && i >= standings.length - relegateN;
+        const rowClass = isPromote ? "box-promote-row" : isRelegate ? "box-relegate-row" : "";
+        const zoneTag = isPromote ? '<span class="box-zone-tag up">&uarr; UP</span>' : isRelegate ? '<span class="box-zone-tag down">&darr; DOWN</span>' : "";
+        bodyRows += `<tr class="${rowClass}"><td>${i + 1}</td><td>${st.name}${zoneTag}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td><td class="box-move-cell" data-name="${st.name}"></td></tr>`;
+      });
+      table.innerHTML = `<thead><tr><th>#</th><th>Player</th><th>Rating</th><th>Matches</th><th>Won</th><th>Lost</th><th>Move</th></tr></thead><tbody>${bodyRows || '<tr><td colspan="7" class="empty-note">No players in this box.</td></tr>'}</tbody>`;
+      wrap.appendChild(table);
+      ladderBoxesContainer.appendChild(wrap);
+
+      table.querySelectorAll(".box-move-cell").forEach((cell) => {
+        const name = cell.dataset.name;
+        const select = document.createElement("select");
+        select.className = "box-move-select";
+        ladder.boxes.forEach((_, i) => {
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.textContent = `Box ${i + 1}`;
+          if (i === boxIndex) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.addEventListener("change", () => {
+          moveLadderPlayerToBox(ladder, name, parseInt(select.value, 10));
+          save(STORAGE.ladders, ladders);
+          renderLadderStandingsTable();
+        });
+        cell.appendChild(select);
+      });
+    });
+  }
+
+  enableLadderBoxesBtn.addEventListener("click", () => {
+    if (!currentLadder) return;
+    currentLadder.boxSize = Math.max(2, parseInt(ladderBoxSizeInput.value, 10) || 8);
+    currentLadder.promoteCount = Math.max(0, parseInt(ladderPromoteCountInput.value, 10) || 0);
+    currentLadder.relegateCount = Math.max(0, parseInt(ladderRelegateCountInput.value, 10) || 0);
+    currentLadder.boxesEnabled = true;
+    if (!Array.isArray(currentLadder.boxes) || currentLadder.boxes.length === 0) {
+      assignPlayersToBoxes(currentLadder);
+    }
+    save(STORAGE.ladders, ladders);
+    renderLadderStandingsTable();
+  });
+
+  disableLadderBoxesBtn.addEventListener("click", () => {
+    if (!currentLadder) return;
+    currentLadder.boxesEnabled = false;
+    save(STORAGE.ladders, ladders);
+    renderLadderStandingsTable();
+  });
+
+  endLadderCycleBtn.addEventListener("click", () => {
+    if (!currentLadder) return;
+    if (!confirm("End this cycle and move players between boxes now?")) return;
+    endLadderCycle(currentLadder);
+    save(STORAGE.ladders, ladders);
+    renderLadderStandingsTable();
+  });
 
   function renderLogMatchPanel() {
     if (!currentLadder) return;
     const isSingles = currentLadder.format === "singles";
     logMatchTeamA2Field.style.display = isSingles ? "none" : "block";
     logMatchTeamB2Field.style.display = isSingles ? "none" : "block";
-    const options = currentLadder.roster.map((name) => `<option value="${name}">${name}</option>`).join("");
+    const boxesEnabled = !!currentLadder.boxesEnabled && Array.isArray(currentLadder.boxes) && currentLadder.boxes.length > 0;
+    logMatchBoxField.style.display = boxesEnabled ? "block" : "none";
+    let eligiblePlayers = currentLadder.roster;
+    if (boxesEnabled) {
+      const boxOptions = currentLadder.boxes.map((_, i) => `<option value="${i}">Box ${i + 1}</option>`).join("");
+      const prevBoxValue = logMatchBoxSelect.value;
+      logMatchBoxSelect.innerHTML = boxOptions;
+      if (prevBoxValue !== "" && currentLadder.boxes[prevBoxValue]) logMatchBoxSelect.value = prevBoxValue;
+      const selectedBox = parseInt(logMatchBoxSelect.value, 10) || 0;
+      eligiblePlayers = currentLadder.boxes[selectedBox] || [];
+    }
+    const options = eligiblePlayers.map((name) => `<option value="${name}">${name}</option>`).join("");
     [logMatchTeamA1, logMatchTeamA2, logMatchTeamB1, logMatchTeamB2].forEach((select) => {
       const prevValue = select.value;
       select.innerHTML = options;
-      if (currentLadder.roster.includes(prevValue)) select.value = prevValue;
+      if (eligiblePlayers.includes(prevValue)) select.value = prevValue;
     });
   }
+
+  logMatchBoxSelect.addEventListener("change", renderLogMatchPanel);
 
   logMatchBtn.addEventListener("click", () => {
     if (!currentLadder) return;
@@ -4471,6 +4723,7 @@
     logMatchScoreB.value = "0";
     alert("Match result logged.");
   });
+
 
   async function apiEnableLadderSync(ladder) {
     const res = await fetch(`${config.syncWorkerUrl}/api/ladders`, {
@@ -6043,6 +6296,12 @@
       roster: [],
       startingRatings: {},
       trackPairings: ladderNewTrackPairings,
+      boxesEnabled: false,
+      boxSize: 8,
+      promoteCount: 1,
+      relegateCount: 1,
+      boxes: [],
+      cycleStartDate: null,
     };
     ladders.push(ladder);
     save(STORAGE.ladders, ladders);
@@ -7969,9 +8228,35 @@
     printWithClass("printing-leaderboard");
   });
 
+  function buildPrintLadderBoxesHtml(ladder) {
+    const promote = Math.max(0, ladder.promoteCount || 0);
+    const relegate = Math.max(0, ladder.relegateCount || 0);
+    let html = "";
+    (ladder.boxes || []).forEach((box, boxIndex) => {
+      const standings = computeBoxStandings(ladder, boxIndex);
+      const promoteN = Math.min(promote, Math.max(0, standings.length - 1));
+      const relegateN = Math.min(relegate, Math.max(0, standings.length - 1 - promoteN));
+      html += `<div class="print-round"><div class="print-sheets-header">Box ${boxIndex + 1}</div><table class="schedule-table"><thead><tr><th>#</th><th>Player</th><th>Rating</th><th>Matches</th><th>Won</th><th>Lost</th></tr></thead><tbody>`;
+      if (standings.length === 0) {
+        html += `<tr><td colspan="6" class="empty-note">No players in this box.</td></tr>`;
+      }
+      standings.forEach((st, i) => {
+        const isPromote = boxIndex > 0 && i < promoteN;
+        const isRelegate = boxIndex < ladder.boxes.length - 1 && i >= standings.length - relegateN;
+        const zoneTag = isPromote ? " (UP)" : isRelegate ? " (DOWN)" : "";
+        html += `<tr><td>${i + 1}</td><td>${st.name}${zoneTag}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td></tr>`;
+      });
+      html += "</tbody></table></div>";
+    });
+    return html;
+  }
+
   function buildPrintLadderStandingsHtml(ladder) {
     const header = `${printLogoHtml()}<div class="print-sheets-header">${ladder.name} · Ladder Standings</div>`;
-    let html = `${header}<table class="schedule-table">${buildLadderStandingsTableHtml(ladder)}</table>`;
+    const boxesEnabled = !!ladder.boxesEnabled && Array.isArray(ladder.boxes) && ladder.boxes.length > 0;
+    let html = boxesEnabled
+      ? `${header}${buildPrintLadderBoxesHtml(ladder)}`
+      : `${header}<table class="schedule-table">${buildLadderStandingsTableHtml(ladder)}</table>`;
     if (ladder.trackPairings) {
       html += `<div class="print-round">${buildLadderPairingProgressHtml(ladder)}</div>`;
     }
