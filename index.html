@@ -2243,8 +2243,23 @@
           </div>
           <label class="section-label">Today's players</label>
           <div class="inline-form">
-            <input type="text" id="playerInput" placeholder="Type a name to add..." />
+            <input type="text" id="playerFirstNameInput" placeholder="First name" />
+            <input type="text" id="playerSurnameInput" placeholder="Surname" />
             <button class="small-btn add" id="playerAddBtn">Add</button>
+          </div>
+          <div class="field" id="sessionNameDisplayField" style="display:none;">
+            <label>Show names as</label>
+            <div class="format-toggle" id="sessionNameDisplayToggle">
+              <button type="button" class="format-btn active" data-name-display="both">Both names</button>
+              <button type="button" class="format-btn" data-name-display="first">First names only</button>
+            </div>
+          </div>
+          <div class="field" id="ladderNameDisplayField" style="display:none;">
+            <label>Show names as</label>
+            <div class="format-toggle" id="ladderNameDisplayToggle">
+              <button type="button" class="format-btn active" data-name-display="both">Both names</button>
+              <button type="button" class="format-btn" data-name-display="first">First names only</button>
+            </div>
           </div>
           <div class="ladder-rating-row" id="ladderRatingRow" style="display:none;">
             <label class="checkbox-row">
@@ -2290,7 +2305,8 @@
               <div class="dropdown-panel">
                 <div id="managePanel"></div>
                 <div class="inline-form">
-                  <input type="text" id="newSavedName" placeholder="Add a new saved name..." />
+                  <input type="text" id="newSavedFirstNameInput" placeholder="First name" />
+                  <input type="text" id="newSavedSurnameInput" placeholder="Surname" />
                   <button class="small-btn add" id="addSavedBtn">Add</button>
                 </div>
               </div>
@@ -2852,6 +2868,7 @@
     tournaments: "pbs_tournaments",
     ladders: "pbs_ladders",
     duprRatings: "pbs_duprRatings",
+    nameParts: "pbs_nameParts",
   };
 
   const LADDER_DEFAULT_RATING = 3.0;
@@ -2879,6 +2896,36 @@
   let pastSessions = load(STORAGE.sessions, []);
   let ladderStartingRatings = load(STORAGE.ladderStartingRatings, {});
   let duprRatings = load(STORAGE.duprRatings, {});
+  let nameParts = load(STORAGE.nameParts, {});
+
+  function setNameParts(fullName, firstName, surname) {
+    const key = (fullName || "").toLowerCase();
+    if (!key) return;
+    nameParts[key] = { firstName: (firstName || "").trim(), surname: (surname || "").trim() };
+    save(STORAGE.nameParts, nameParts);
+  }
+  function getNameParts(fullName) {
+    const key = (fullName || "").toLowerCase();
+    if (nameParts[key]) return nameParts[key];
+    const trimmed = (fullName || "").trim();
+    const lastSpace = trimmed.lastIndexOf(" ");
+    if (lastSpace === -1) return { firstName: trimmed, surname: "" };
+    return { firstName: trimmed.slice(0, lastSpace), surname: trimmed.slice(lastSpace + 1) };
+  }
+  function composeFullName(firstName, surname) {
+    return `${(firstName || "").trim()} ${(surname || "").trim()}`.trim();
+  }
+  function displayNameFor(fullName, contextNames, mode) {
+    if (mode !== "first") return fullName;
+    const { firstName, surname } = getNameParts(fullName);
+    if (!firstName) return fullName;
+    const collision = (contextNames || []).some((other) => {
+      if ((other || "").toLowerCase() === (fullName || "").toLowerCase()) return false;
+      return getNameParts(other).firstName.toLowerCase() === firstName.toLowerCase();
+    });
+    if (!collision) return firstName;
+    return surname ? `${firstName} ${surname.charAt(0).toUpperCase()}.` : firstName;
+  }
 
   function duprRatingFor(name) {
     const val = duprRatings[(name || "").toLowerCase()];
@@ -2978,6 +3025,9 @@
     : "standard";
   config.tournamentHoursPerDay = config.tournamentHoursPerDay ?? 0;
   config.tournamentDaysAvailable = config.tournamentDaysAvailable ?? 1;
+  config.sessionNameDisplay = config.sessionNameDisplay === "first" ? "first" : "both";
+  config.ladderNameDisplay = config.ladderNameDisplay === "first" ? "first" : "both";
+  config.tournamentNameDisplay = config.tournamentNameDisplay === "first" ? "first" : "both";
   if ((config.schemaVersion || 1) < CONFIG_SCHEMA_VERSION) {
     // One-time migration: browsers with settings saved before the
     // "games to play" mode existed get bumped onto the new defaults.
@@ -3014,8 +3064,13 @@
   const submitView = document.getElementById("submitView");
   const submitContent = document.getElementById("submitContent");
 
-  const playerInput = document.getElementById("playerInput");
+  const playerFirstNameInput = document.getElementById("playerFirstNameInput");
+  const playerSurnameInput = document.getElementById("playerSurnameInput");
   const playerAddBtn = document.getElementById("playerAddBtn");
+  const sessionNameDisplayField = document.getElementById("sessionNameDisplayField");
+  const sessionNameDisplayButtons = document.querySelectorAll("#sessionNameDisplayToggle .format-btn");
+  const ladderNameDisplayField = document.getElementById("ladderNameDisplayField");
+  const ladderNameDisplayButtons = document.querySelectorAll("#ladderNameDisplayToggle .format-btn");
   const todayChips = document.getElementById("todayChips");
   const fixedPairsRow = document.getElementById("fixedPairsRow");
   const fixedPairsModeBtn = document.getElementById("fixedPairsModeBtn");
@@ -3237,7 +3292,8 @@
   const generateBtn = document.getElementById("generateBtn");
   const debugBtn = document.getElementById("debugBtn");
   const debugFillScoresBtn = document.getElementById("debugFillScoresBtn");
-  const newSavedName = document.getElementById("newSavedName");
+  const newSavedFirstNameInput = document.getElementById("newSavedFirstNameInput");
+  const newSavedSurnameInput = document.getElementById("newSavedSurnameInput");
   const addSavedBtn = document.getElementById("addSavedBtn");
 
   const roundHeader = document.getElementById("roundHeader");
@@ -3574,6 +3630,7 @@
 
   function renderTodayChips() {
     todayChips.innerHTML = "";
+    const nameDisplayMode = config.mode === "ladder" ? config.ladderNameDisplay : config.sessionNameDisplay;
     todayPlayers.forEach((name) => {
       const chip = document.createElement("div");
       chip.className = "chip";
@@ -3583,13 +3640,13 @@
         chip.classList.add("chip-pairing-selected");
       }
       const span = document.createElement("span");
-      span.textContent = name + (config.mode !== "ladder" ? duprSuffix(name) : "");
+      span.textContent = displayNameFor(name, todayPlayers, nameDisplayMode) + (config.mode !== "ladder" ? duprSuffix(name) : "");
       chip.appendChild(span);
       if (pair) {
         const partner = pair.find((n) => n.toLowerCase() !== name.toLowerCase());
         const badge = document.createElement("span");
         badge.className = "fixed-pair-badge";
-        badge.textContent = `🔗 ${partner}`;
+        badge.textContent = `🔗 ${displayNameFor(partner, todayPlayers, nameDisplayMode)}`;
         chip.appendChild(badge);
       }
       if (pairingMode) {
@@ -4184,9 +4241,14 @@
   }
 
   function submitPlayerAdd() {
-    const name = playerInput.value.trim();
-    addTodayPlayer(playerInput.value);
-    playerInput.value = "";
+    const firstName = playerFirstNameInput.value.trim();
+    const surname = playerSurnameInput.value.trim();
+    if (!firstName || !surname) return;
+    const name = composeFullName(firstName, surname);
+    addTodayPlayer(name);
+    setNameParts(name, firstName, surname);
+    playerFirstNameInput.value = "";
+    playerSurnameInput.value = "";
     if (config.mode === "ladder" && currentLadder && name && ladderCustomRatingToggle.checked) {
       const rating = parseFloat(ladderCustomRatingInput.value);
       if (!isNaN(rating)) {
@@ -4207,10 +4269,41 @@
       renderTournamentPickPanels();
     }
   }
-  playerInput.addEventListener("keydown", (e) => {
+  playerFirstNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") playerSurnameInput.focus();
+  });
+  playerSurnameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") submitPlayerAdd();
   });
   playerAddBtn.addEventListener("click", submitPlayerAdd);
+
+  function syncSessionNameDisplayButtons() {
+    sessionNameDisplayButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.nameDisplay === config.sessionNameDisplay);
+    });
+  }
+  sessionNameDisplayButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.sessionNameDisplay = btn.dataset.nameDisplay;
+      save(STORAGE.config, config);
+      syncSessionNameDisplayButtons();
+      renderTodayChips();
+    });
+  });
+  function syncLadderNameDisplayButtons() {
+    ladderNameDisplayButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.nameDisplay === config.ladderNameDisplay);
+    });
+  }
+  ladderNameDisplayButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.ladderNameDisplay = btn.dataset.nameDisplay;
+      save(STORAGE.config, config);
+      syncLadderNameDisplayButtons();
+      renderTodayChips();
+      if (currentLadder) renderLadderStandingsTable();
+    });
+  });
 
   fixedPairsModeBtn.addEventListener("click", () => {
     pairingMode = !pairingMode;
@@ -4299,21 +4392,29 @@
   }
 
   addSavedBtn.addEventListener("click", () => {
-    const name = newSavedName.value.trim();
-    if (!name) return;
+    const firstName = newSavedFirstNameInput.value.trim();
+    const surname = newSavedSurnameInput.value.trim();
+    if (!firstName || !surname) return;
+    const name = composeFullName(firstName, surname);
     if (savedPlayers.some((p) => p.toLowerCase() === name.toLowerCase())) {
-      newSavedName.value = "";
+      newSavedFirstNameInput.value = "";
+      newSavedSurnameInput.value = "";
       return;
     }
     savedPlayers.push(name);
     save(STORAGE.saved, savedPlayers);
-    newSavedName.value = "";
+    setNameParts(name, firstName, surname);
+    newSavedFirstNameInput.value = "";
+    newSavedSurnameInput.value = "";
     renderManagePanel();
     renderPickPanel();
     renderTournamentPickPanels();
     renderSavedNamesDatalist();
   });
-  newSavedName.addEventListener("keydown", (e) => {
+  newSavedFirstNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") newSavedSurnameInput.focus();
+  });
+  newSavedSurnameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") addSavedBtn.click();
   });
 
@@ -4462,12 +4563,13 @@
       clubStatsPanel.appendChild(note);
       return;
     }
+    const nameDisplayMode = config.mode === "ladder" ? config.ladderNameDisplay : config.sessionNameDisplay;
     names.forEach((name) => {
       const st = stats[name];
       const row = document.createElement("div");
       row.className = "saved-row";
       const span = document.createElement("span");
-      span.textContent = name;
+      span.textContent = displayNameFor(name, names, nameDisplayMode);
       const stat = document.createElement("span");
       const sessionWord = st.sessions.size === 1 ? "session" : "sessions";
       stat.textContent = `${st.sessions.size} ${sessionWord} · ${st.games} games · ${st.wins} wins`;
@@ -4632,7 +4734,7 @@
     }
     names.forEach((name, i) => {
       const st = stats[name];
-      html += `<tr><td>${i + 1}</td><td>${name}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td></tr>`;
+      html += `<tr><td>${i + 1}</td><td>${displayNameFor(name, ladder.roster, config.ladderNameDisplay)}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td></tr>`;
     });
     html += "</tbody>";
     return html;
@@ -4678,7 +4780,8 @@
         const isRelegate = boxIndex < ladder.boxes.length - 1 && i >= standings.length - relegateN;
         const rowClass = isPromote ? "box-promote-row" : isRelegate ? "box-relegate-row" : "";
         const zoneTag = isPromote ? '<span class="box-zone-tag up">&uarr; UP</span>' : isRelegate ? '<span class="box-zone-tag down">&darr; DOWN</span>' : "";
-        bodyRows += `<tr class="${rowClass}"><td>${i + 1}</td><td>${st.name}${zoneTag}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td><td class="box-move-cell" data-name="${st.name}"></td></tr>`;
+        const displayName = displayNameFor(st.name, ladder.roster, config.ladderNameDisplay);
+        bodyRows += `<tr class="${rowClass}"><td>${i + 1}</td><td>${displayName}${zoneTag}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td><td class="box-move-cell" data-name="${st.name}"></td></tr>`;
       });
       table.innerHTML = `<thead><tr><th>#</th><th>Player</th><th>Rating</th><th>Matches</th><th>Won</th><th>Lost</th><th>Move</th></tr></thead><tbody>${bodyRows || '<tr><td colspan="7" class="empty-note">No players in this box.</td></tr>'}</tbody>`;
       wrap.appendChild(table);
@@ -4749,7 +4852,7 @@
       const selectedBox = parseInt(logMatchBoxSelect.value, 10) || 0;
       eligiblePlayers = currentLadder.boxes[selectedBox] || [];
     }
-    const options = eligiblePlayers.map((name) => `<option value="${name}">${name}</option>`).join("");
+    const options = eligiblePlayers.map((name) => `<option value="${name}">${displayNameFor(name, eligiblePlayers, config.ladderNameDisplay)}</option>`).join("");
     [logMatchTeamA1, logMatchTeamA2, logMatchTeamB1, logMatchTeamB2].forEach((select) => {
       const prevValue = select.value;
       select.innerHTML = options;
@@ -4891,7 +4994,7 @@
       const row = document.createElement("div");
       row.className = "saved-row";
       const span = document.createElement("span");
-      span.textContent = name;
+      span.textContent = displayNameFor(name, currentLadder.roster, config.ladderNameDisplay);
       const btn = document.createElement("button");
       btn.className = "small-btn";
       btn.textContent = "Get link";
@@ -4977,7 +5080,9 @@
     if (coverage.total > 0 && coverage.remaining.length === 0) {
       html += `<div class="qgroup"><span class="qteams">Every player has ${verb} everyone else — round robin complete!</span></div>`;
     } else if (coverage.remaining.length > 0) {
-      const list = coverage.remaining.map(([a, b]) => `${a} &amp; ${b}`).join(", ");
+      const list = coverage.remaining
+        .map(([a, b]) => `${displayNameFor(a, ladder.roster, config.ladderNameDisplay)} &amp; ${displayNameFor(b, ladder.roster, config.ladderNameDisplay)}`)
+        .join(", ");
       html += `<div class="qgroup"><span class="qname">Still needed</span><span class="qteams">${list}</span></div>`;
     }
     html += `</div>`;
@@ -6234,6 +6339,10 @@
     ladderSetupPanel.style.display = isLadder ? "block" : "none";
     ladderRatingRow.style.display = isLadder && currentLadder ? "flex" : "none";
     duprRatingRow.style.display = isLadder ? "none" : "flex";
+    sessionNameDisplayField.style.display = isLadder || isTournament ? "none" : "block";
+    ladderNameDisplayField.style.display = isLadder && currentLadder ? "block" : "none";
+    syncSessionNameDisplayButtons();
+    syncLadderNameDisplayButtons();
     tournamentSetupPanel.style.display = isTournament ? "block" : "none";
     sessionSetupFields.style.display = (isTournament || (isLadder && !currentLadder)) ? "none" : "block";
     playFormatField.style.display = isLadder && currentLadder ? "none" : "block";
@@ -8043,6 +8152,7 @@
     const round = s.rounds[currentRoundIndex];
     roundHeader.textContent = `Round ${currentRoundIndex + 1} / ${s.rounds.length}`;
     const scoreMax = (s.config.gamesToPlay > 0 && !s.config.winByTwo) ? s.config.targetScore : null;
+    const nameDisplayMode = s.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
 
     courtsContainer.innerHTML = "";
     round.courts.forEach((court) => {
@@ -8063,7 +8173,8 @@
         const cell = document.createElement("div");
         cell.className = "team-cell";
         const isFixed = (s.fixedPairs || []).some((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
-        cell.textContent = isFixed ? `🔗 ${name}` : name;
+        const displayName = displayNameFor(name, s.players, nameDisplayMode);
+        cell.textContent = isFixed ? `🔗 ${displayName}` : displayName;
         if (courtTapMode === "remove" && !pendingRoster.includes(name)) cell.classList.add("remove-marked");
         cell.addEventListener("click", () => handleCourtTap(name, cell));
         teamBox.appendChild(cell);
@@ -8121,7 +8232,7 @@
       round.sitOuts.forEach((name) => {
         const pill = document.createElement("span");
         pill.className = "resting-pill";
-        pill.textContent = name;
+        pill.textContent = displayNameFor(name, s.players, nameDisplayMode);
         if (courtTapMode === "remove" && !pendingRoster.includes(name)) pill.classList.add("remove-marked");
         pill.addEventListener("click", () => handleCourtTap(name, pill));
         restingBar.appendChild(pill);
@@ -8139,6 +8250,8 @@
 
   function renderFullSchedule() {
     const s = currentSession;
+    const nameDisplayMode = s.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
+    const displayJoin = (names) => names.map((n) => displayNameFor(n, s.players, nameDisplayMode)).join(" & ");
     const maxCourts = Math.max(0, ...s.rounds.map((r) => r.courts.length));
     fullScheduleMeta.textContent = `${s.players.length} PLAYERS · UP TO ${maxCourts} COURTS`;
     let html = "<thead><tr><th>#</th>";
@@ -8158,9 +8271,9 @@
         const middle = hasScore
           ? `<div class="score">${court.scoreA} – ${court.scoreB}</div>`
           : `<div class="vs">vs</div>`;
-        html += `<td>${court.teamA.join(" & ")}${middle}${court.teamB.join(" & ")}</td>`;
+        html += `<td>${displayJoin(court.teamA)}${middle}${displayJoin(court.teamB)}</td>`;
       }
-      html += `<td class="resting-cell">${round.sitOuts.join(", ")}</td></tr>`;
+      html += `<td class="resting-cell">${round.sitOuts.map((n) => displayNameFor(n, s.players, nameDisplayMode)).join(", ")}</td></tr>`;
     });
     html += "</tbody>";
     fullScheduleTable.innerHTML = html;
@@ -8211,6 +8324,7 @@
     const ladder = session.ladderId ? ladders.find((l) => l.id === session.ladderId) : null;
     const ladderStats = ladder ? computeLadderRatings(ladder) : null;
     const ratingHeader = ladderStats ? "<th>Rating</th>" : "";
+    const nameDisplayMode = session.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
     let html = `<thead><tr><th>#</th><th>Player</th>${ratingHeader}<th>Won</th><th>Played</th><th>Scheduled</th><th>Points Won</th><th>Points Lost</th><th>+/-</th></tr></thead><tbody>`;
     names.forEach((name, i) => {
       const st = stats[name];
@@ -8219,7 +8333,7 @@
       const ratingCell = ladderStats && ladderStats[name]
         ? `<td>${ladderStats[name].rating.toFixed(3)} ${ladderRatingTrendArrow(ladderStats[name])}</td>`
         : ladderStats ? "<td></td>" : "";
-      html += `<tr><td>${i + 1}</td><td>${name}</td>${ratingCell}<td>${st.wins}</td><td>${st.played}</td><td>${st.scheduled}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
+      html += `<tr><td>${i + 1}</td><td>${displayNameFor(name, names, nameDisplayMode)}</td>${ratingCell}<td>${st.wins}</td><td>${st.played}</td><td>${st.scheduled}</td><td>${st.pointsFor}</td><td>${st.pointsAgainst}</td><td>${diffText}</td></tr>`;
     });
     html += "</tbody>";
     return html;
@@ -8288,6 +8402,7 @@
 
   function buildPrintRoundsHtml(showScoreLine) {
     const s = currentSession;
+    const nameDisplayMode = s.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
     const maxCourts = Math.max(1, ...s.rounds.map((r) => r.courts.length));
     const formatLabel = (s.ladderId ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
     const scoreBox = `<span class="print-score-box"></span>`;
@@ -8301,7 +8416,7 @@
         const cellNames = court.teamA.length === 2
           ? [court.teamA[0], court.teamB[0], court.teamA[1], court.teamB[1]]
           : [court.teamA[0], court.teamB[0]];
-        const cells = cellNames.map((name) => `<span>${name}</span>`).join("");
+        const cells = cellNames.map((name) => `<span>${displayNameFor(name, s.players, nameDisplayMode)}</span>`).join("");
         let scoreLine = "";
         if (showScoreLine) {
           const hasScore = court.scoreA !== "" || court.scoreB !== "";
@@ -8313,7 +8428,7 @@
       });
       html += `</div>`;
       if (round.sitOuts.length) {
-        html += `<div class="print-resting">Resting: ${round.sitOuts.join(", ")}</div>`;
+        html += `<div class="print-resting">Resting: ${round.sitOuts.map((n) => displayNameFor(n, s.players, nameDisplayMode)).join(", ")}</div>`;
       }
       html += `</div>`;
     });
@@ -8358,7 +8473,8 @@
         const isPromote = boxIndex > 0 && i < promoteN;
         const isRelegate = boxIndex < ladder.boxes.length - 1 && i >= standings.length - relegateN;
         const zoneTag = isPromote ? " (UP)" : isRelegate ? " (DOWN)" : "";
-        html += `<tr><td>${i + 1}</td><td>${st.name}${zoneTag}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td></tr>`;
+        const displayName = displayNameFor(st.name, ladder.roster, config.ladderNameDisplay);
+        html += `<tr><td>${i + 1}</td><td>${displayName}${zoneTag}</td><td>${st.rating.toFixed(3)}</td><td>${st.matches}</td><td>${st.wins}</td><td>${st.losses}</td></tr>`;
       });
       html += "</tbody></table></div>";
     });
@@ -8387,10 +8503,11 @@
     const stats = computeClubStats();
     const names = getSortedClubStatsNames(stats);
     const header = `${printLogoHtml()}<div class="print-sheets-header">Session Stats · ${names.length} players · ${pastSessions.length} sessions</div>`;
+    const nameDisplayMode = config.mode === "ladder" ? config.ladderNameDisplay : config.sessionNameDisplay;
     let html = `${header}<table class="schedule-table"><thead><tr><th>Player</th><th>Sessions</th><th>Games</th><th>Wins</th></tr></thead><tbody>`;
     names.forEach((name) => {
       const st = stats[name];
-      html += `<tr><td>${name}</td><td>${st.sessions.size}</td><td>${st.games}</td><td>${st.wins}</td></tr>`;
+      html += `<tr><td>${displayNameFor(name, names, nameDisplayMode)}</td><td>${st.sessions.size}</td><td>${st.games}</td><td>${st.wins}</td></tr>`;
     });
     html += "</tbody></table>";
     return html;
