@@ -2026,8 +2026,10 @@
                 </select>
               </div>
               <div class="inline-form" id="tournamentTeamEntryDoubles">
-                <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" list="savedNamesDatalist" />
-                <input type="text" id="tournamentPlayer2Input" placeholder="Player 2" list="savedNamesDatalist" />
+                <input type="text" id="tournamentPlayer1FirstNameInput" placeholder="Player 1 first name" />
+                <input type="text" id="tournamentPlayer1SurnameInput" placeholder="Player 1 surname" />
+                <input type="text" id="tournamentPlayer2FirstNameInput" placeholder="Player 2 first name" />
+                <input type="text" id="tournamentPlayer2SurnameInput" placeholder="Player 2 surname" />
                 <input type="number" id="tournamentDuprDoublesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to auto-average the two players' saved DUPR ratings" />
                 <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
               </div>
@@ -2043,7 +2045,8 @@
                 <button class="small-btn add" id="tournamentAddNamedTeamBtn">Add team</button>
               </div>
               <div class="inline-form" id="tournamentTeamEntrySingles" style="display:none;">
-                <input type="text" id="tournamentSinglesInput" placeholder="Player name" list="savedNamesDatalist" />
+                <input type="text" id="tournamentSinglesFirstNameInput" placeholder="First name" />
+                <input type="text" id="tournamentSinglesSurnameInput" placeholder="Surname" />
                 <input type="number" id="tournamentDuprSinglesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to use this player's saved DUPR rating" />
                 <button class="small-btn add" id="tournamentAddSinglesBtn">Add</button>
               </div>
@@ -2053,7 +2056,13 @@
                 </button>
                 <div class="dropdown-panel" id="tournamentPickPanelSingles"></div>
               </div>
-              <datalist id="savedNamesDatalist"></datalist>
+              <div class="field" id="tournamentNameDisplayField">
+                <label>Show names as</label>
+                <div class="format-toggle" id="tournamentNameDisplayToggle">
+                  <button type="button" class="format-btn active" data-name-display="both">Both names</button>
+                  <button type="button" class="format-btn" data-name-display="first">First names only</button>
+                </div>
+              </div>
               <div class="chips" id="tournamentTeamChips"></div>
             </div>
           </div>
@@ -3172,13 +3181,18 @@
   const tournamentTeamEntryDoubles = document.getElementById("tournamentTeamEntryDoubles");
   const tournamentTeamEntryDoublesByName = document.getElementById("tournamentTeamEntryDoublesByName");
   const tournamentTeamEntrySingles = document.getElementById("tournamentTeamEntrySingles");
-  const tournamentPlayer1Input = document.getElementById("tournamentPlayer1Input");
-  const tournamentPlayer2Input = document.getElementById("tournamentPlayer2Input");
+  const tournamentPlayer1FirstNameInput = document.getElementById("tournamentPlayer1FirstNameInput");
+  const tournamentPlayer1SurnameInput = document.getElementById("tournamentPlayer1SurnameInput");
+  const tournamentPlayer2FirstNameInput = document.getElementById("tournamentPlayer2FirstNameInput");
+  const tournamentPlayer2SurnameInput = document.getElementById("tournamentPlayer2SurnameInput");
   const tournamentAddTeamBtn = document.getElementById("tournamentAddTeamBtn");
   const tournamentTeamNameInput = document.getElementById("tournamentTeamNameInput");
   const tournamentAddNamedTeamBtn = document.getElementById("tournamentAddNamedTeamBtn");
-  const tournamentSinglesInput = document.getElementById("tournamentSinglesInput");
+  const tournamentSinglesFirstNameInput = document.getElementById("tournamentSinglesFirstNameInput");
+  const tournamentSinglesSurnameInput = document.getElementById("tournamentSinglesSurnameInput");
   const tournamentAddSinglesBtn = document.getElementById("tournamentAddSinglesBtn");
+  const tournamentNameDisplayField = document.getElementById("tournamentNameDisplayField");
+  const tournamentNameDisplayButtons = document.querySelectorAll("#tournamentNameDisplayToggle .format-btn");
   const tournamentDuprDoublesInput = document.getElementById("tournamentDuprDoublesInput");
   const tournamentDuprTeamNameInput = document.getElementById("tournamentDuprTeamNameInput");
   const tournamentDuprSinglesInput = document.getElementById("tournamentDuprSinglesInput");
@@ -3186,7 +3200,6 @@
   const tournamentPickDropdownDoubles = document.getElementById("tournamentPickDropdownDoubles");
   const tournamentPickPanelSingles = document.getElementById("tournamentPickPanelSingles");
   const tournamentPickDropdownSingles = document.getElementById("tournamentPickDropdownSingles");
-  const savedNamesDatalist = document.getElementById("savedNamesDatalist");
   const tournamentTeamChips = document.getElementById("tournamentTeamChips");
   const tournamentGroupsInput = document.getElementById("tournamentGroupsInput");
   const tournamentAdvanceInput = document.getElementById("tournamentAdvanceInput");
@@ -3704,6 +3717,12 @@
     return team.teamName || team.players.join(" & ");
   }
 
+  function tournamentTeamChipLabel(team) {
+    if (team.teamName) return team.teamName;
+    const contextNames = tournamentTeams.flatMap((t) => t.players || []);
+    return team.players.map((p) => displayNameFor(p, contextNames, config.tournamentNameDisplay)).join(" & ");
+  }
+
   function isClubCompetitionType() {
     return config.tournamentCompetitionType !== "standard";
   }
@@ -3731,8 +3750,8 @@
       const dupr = effectiveTeamDupr(team);
       const tags = [clubName, dupr == null ? null : `DUPR ${dupr.toFixed(2)}`].filter(Boolean).join(", ");
       span.textContent = tags
-        ? `${tournamentTeamDisplayName(team)} (${tags})`
-        : tournamentTeamDisplayName(team);
+        ? `${tournamentTeamChipLabel(team)} (${tags})`
+        : tournamentTeamChipLabel(team);
       const btn = document.createElement("button");
       btn.textContent = "×";
       btn.title = "Remove";
@@ -3773,35 +3792,53 @@
   }
 
   tournamentAddTeamBtn.addEventListener("click", () => {
-    const p1 = tournamentPlayer1Input.value.trim();
-    const p2 = tournamentPlayer2Input.value.trim();
-    if (!p1 || !p2) return;
+    const p1First = tournamentPlayer1FirstNameInput.value.trim();
+    const p1Surname = tournamentPlayer1SurnameInput.value.trim();
+    const p2First = tournamentPlayer2FirstNameInput.value.trim();
+    const p2Surname = tournamentPlayer2SurnameInput.value.trim();
+    if (!p1First || !p1Surname || !p2First || !p2Surname) return;
     if (!ensureClubSelectedOrWarn()) return;
+    const p1 = composeFullName(p1First, p1Surname);
+    const p2 = composeFullName(p2First, p2Surname);
     const duprOverride = tournamentDuprDoublesInput.value.trim() === "" ? undefined : parseFloat(tournamentDuprDoublesInput.value);
     addTournamentTeam({ players: [p1, p2], clubId: clubIdForNextTeam(), duprOverride });
-    tournamentPlayer1Input.value = "";
-    tournamentPlayer2Input.value = "";
+    setNameParts(p1, p1First, p1Surname);
+    setNameParts(p2, p2First, p2Surname);
+    tournamentPlayer1FirstNameInput.value = "";
+    tournamentPlayer1SurnameInput.value = "";
+    tournamentPlayer2FirstNameInput.value = "";
+    tournamentPlayer2SurnameInput.value = "";
     tournamentDuprDoublesInput.value = "";
-    tournamentPlayer1Input.focus();
+    tournamentPlayer1FirstNameInput.focus();
   });
-  [tournamentPlayer1Input, tournamentPlayer2Input].forEach((input) => {
+  const tournamentPlayerInputs = [tournamentPlayer1FirstNameInput, tournamentPlayer1SurnameInput, tournamentPlayer2FirstNameInput, tournamentPlayer2SurnameInput];
+  tournamentPlayerInputs.forEach((input) => {
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") tournamentAddTeamBtn.click();
+      if (e.key !== "Enter") return;
+      const idx = tournamentPlayerInputs.indexOf(input);
+      if (idx < tournamentPlayerInputs.length - 1) tournamentPlayerInputs[idx + 1].focus();
+      else tournamentAddTeamBtn.click();
     });
   });
 
-  let tournamentLastFocusedPlayerInput = tournamentPlayer1Input;
-  [tournamentPlayer1Input, tournamentPlayer2Input].forEach((input) => {
-    input.addEventListener("focus", () => { tournamentLastFocusedPlayerInput = input; });
+  let tournamentLastFocusedPlayerSlot = 1;
+  [tournamentPlayer1FirstNameInput, tournamentPlayer1SurnameInput].forEach((input) => {
+    input.addEventListener("focus", () => { tournamentLastFocusedPlayerSlot = 1; });
   });
-
-  function renderSavedNamesDatalist() {
-    savedNamesDatalist.innerHTML = "";
-    savedPlayers.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      savedNamesDatalist.appendChild(option);
-    });
+  [tournamentPlayer2FirstNameInput, tournamentPlayer2SurnameInput].forEach((input) => {
+    input.addEventListener("focus", () => { tournamentLastFocusedPlayerSlot = 2; });
+  });
+  function fillTournamentPlayerSlot(slot, fullName) {
+    const { firstName, surname } = getNameParts(fullName);
+    const firstInput = slot === 1 ? tournamentPlayer1FirstNameInput : tournamentPlayer2FirstNameInput;
+    const surnameInput = slot === 1 ? tournamentPlayer1SurnameInput : tournamentPlayer2SurnameInput;
+    firstInput.value = firstName;
+    surnameInput.value = surname;
+  }
+  function tournamentPlayerSlotEmpty(slot) {
+    const firstInput = slot === 1 ? tournamentPlayer1FirstNameInput : tournamentPlayer2FirstNameInput;
+    const surnameInput = slot === 1 ? tournamentPlayer1SurnameInput : tournamentPlayer2SurnameInput;
+    return !firstInput.value.trim() && !surnameInput.value.trim();
   }
 
   function renderTournamentPickPanel(panelEl, onPick) {
@@ -3828,19 +3865,21 @@
 
   function renderTournamentPickPanels() {
     renderTournamentPickPanel(tournamentPickPanelDoubles, (name) => {
-      const target = tournamentLastFocusedPlayerInput;
-      target.value = name;
-      const other = target === tournamentPlayer1Input ? tournamentPlayer2Input : tournamentPlayer1Input;
-      if (!other.value.trim()) {
-        tournamentLastFocusedPlayerInput = other;
-        other.focus();
+      const slot = tournamentLastFocusedPlayerSlot;
+      fillTournamentPlayerSlot(slot, name);
+      const otherSlot = slot === 1 ? 2 : 1;
+      if (tournamentPlayerSlotEmpty(otherSlot)) {
+        tournamentLastFocusedPlayerSlot = otherSlot;
+        (otherSlot === 1 ? tournamentPlayer1FirstNameInput : tournamentPlayer2FirstNameInput).focus();
       } else {
-        target.focus();
+        (slot === 1 ? tournamentPlayer1FirstNameInput : tournamentPlayer2FirstNameInput).focus();
       }
     });
     renderTournamentPickPanel(tournamentPickPanelSingles, (name) => {
-      tournamentSinglesInput.value = name;
-      tournamentSinglesInput.focus();
+      const { firstName, surname } = getNameParts(name);
+      tournamentSinglesFirstNameInput.value = firstName;
+      tournamentSinglesSurnameInput.value = surname;
+      tournamentSinglesFirstNameInput.focus();
     });
   }
 
@@ -3963,15 +4002,22 @@
   });
 
   tournamentAddSinglesBtn.addEventListener("click", () => {
-    const name = tournamentSinglesInput.value.trim();
-    if (!name) return;
+    const firstName = tournamentSinglesFirstNameInput.value.trim();
+    const surname = tournamentSinglesSurnameInput.value.trim();
+    if (!firstName || !surname) return;
+    const name = composeFullName(firstName, surname);
     const duprOverride = tournamentDuprSinglesInput.value.trim() === "" ? undefined : parseFloat(tournamentDuprSinglesInput.value);
     addTournamentTeam({ players: [name], duprOverride });
-    tournamentSinglesInput.value = "";
+    setNameParts(name, firstName, surname);
+    tournamentSinglesFirstNameInput.value = "";
+    tournamentSinglesSurnameInput.value = "";
     tournamentDuprSinglesInput.value = "";
-    tournamentSinglesInput.focus();
+    tournamentSinglesFirstNameInput.focus();
   });
-  tournamentSinglesInput.addEventListener("keydown", (e) => {
+  tournamentSinglesFirstNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") tournamentSinglesSurnameInput.focus();
+  });
+  tournamentSinglesSurnameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") tournamentAddSinglesBtn.click();
   });
 
@@ -4213,7 +4259,6 @@
       savedPlayers.push(name);
       save(STORAGE.saved, savedPlayers);
       renderManagePanel();
-      renderSavedNamesDatalist();
     }
     if (config.mode === "ladder" && currentLadder && !currentLadder.roster.some((p) => p.toLowerCase() === name.toLowerCase())) {
       currentLadder.roster.push(name);
@@ -4305,6 +4350,24 @@
     });
   });
 
+  function syncTournamentNameDisplayButtons() {
+    tournamentNameDisplayButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.nameDisplay === config.tournamentNameDisplay);
+    });
+  }
+  tournamentNameDisplayButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.tournamentNameDisplay = btn.dataset.nameDisplay;
+      save(STORAGE.config, config);
+      syncTournamentNameDisplayButtons();
+      renderTournamentTeamChips();
+      if (currentTournament) {
+        renderTournamentGroupStage(currentTournament);
+        if (currentTournament.status === "knockout") renderTournamentKnockout(currentTournament);
+      }
+    });
+  });
+
   fixedPairsModeBtn.addEventListener("click", () => {
     pairingMode = !pairingMode;
     pairingFirstPick = null;
@@ -4384,7 +4447,6 @@
         renderManagePanel();
         renderPickPanel();
         renderTournamentPickPanels();
-        renderSavedNamesDatalist();
       });
       row.appendChild(btn);
       managePanel.appendChild(row);
@@ -4409,7 +4471,6 @@
     renderManagePanel();
     renderPickPanel();
     renderTournamentPickPanels();
-    renderSavedNamesDatalist();
   });
   newSavedFirstNameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") newSavedSurnameInput.focus();
@@ -5106,17 +5167,28 @@
     return tournament.teams.find((t) => t.id === id) || null;
   }
 
-  function tournamentTeamName(tournament, teamId) {
+  function tournamentTeamIdentityName(tournament, teamId) {
     if (!teamId) return "";
     const team = findTeamById(tournament, teamId);
     return team ? team.name : "?";
+  }
+
+  function tournamentTeamName(tournament, teamId) {
+    if (!teamId) return "";
+    const team = findTeamById(tournament, teamId);
+    if (!team) return "?";
+    if (!team.players || team.players.length === 0) return team.name;
+    const contextNames = tournament.teams.flatMap((t) => t.players || []);
+    return team.players.map((p) => displayNameFor(p, contextNames, config.tournamentNameDisplay)).join(" & ");
   }
 
   function courtCardCellNames(tournament, teamAId, teamBId) {
     const teamA = findTeamById(tournament, teamAId);
     const teamB = findTeamById(tournament, teamBId);
     if (teamA && teamB && teamA.players.length === 2 && teamB.players.length === 2) {
-      return [teamA.players[0], teamB.players[0], teamA.players[1], teamB.players[1]];
+      const contextNames = tournament.teams.flatMap((t) => t.players || []);
+      const dn = (p) => displayNameFor(p, contextNames, config.tournamentNameDisplay);
+      return [dn(teamA.players[0]), dn(teamB.players[0]), dn(teamA.players[1]), dn(teamB.players[1])];
     }
     return [tournamentTeamName(tournament, teamAId) || "TBD", tournamentTeamName(tournament, teamBId) || "TBD"];
   }
@@ -5225,7 +5297,7 @@
       const diffA = stats[a].pointsFor - stats[a].pointsAgainst;
       const diffB = stats[b].pointsFor - stats[b].pointsAgainst;
       if (diffB !== diffA) return diffB - diffA;
-      return tournamentTeamName(tournament, a).localeCompare(tournamentTeamName(tournament, b));
+      return tournamentTeamIdentityName(tournament, a).localeCompare(tournamentTeamIdentityName(tournament, b));
     };
     // Baseline order ignores head-to-head so 3+-way ties (where head-to-head can be a
     // non-transitive cycle, e.g. A beat B, B beat C, C beat A) fall straight through to
@@ -5384,7 +5456,7 @@
       tierTeams.sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
         if (b.diff !== a.diff) return b.diff - a.diff;
-        return tournamentTeamName(tournament, a.id).localeCompare(tournamentTeamName(tournament, b.id));
+        return tournamentTeamIdentityName(tournament, a.id).localeCompare(tournamentTeamIdentityName(tournament, b.id));
       });
       tiers.push(tierTeams.map((t) => t.id));
     }
@@ -5412,7 +5484,7 @@
       tierTeams.sort((a, b) => {
         if (b.wins !== a.wins) return b.wins - a.wins;
         if (b.diff !== a.diff) return b.diff - a.diff;
-        return tournamentTeamName(tournament, a.id).localeCompare(tournamentTeamName(tournament, b.id));
+        return tournamentTeamIdentityName(tournament, a.id).localeCompare(tournamentTeamIdentityName(tournament, b.id));
       });
       tiers.push(tierTeams.map((t) => t.id));
     }
@@ -6343,6 +6415,7 @@
     ladderNameDisplayField.style.display = isLadder && currentLadder ? "block" : "none";
     syncSessionNameDisplayButtons();
     syncLadderNameDisplayButtons();
+    syncTournamentNameDisplayButtons();
     tournamentSetupPanel.style.display = isTournament ? "block" : "none";
     sessionSetupFields.style.display = (isTournament || (isLadder && !currentLadder)) ? "none" : "block";
     playFormatField.style.display = isLadder && currentLadder ? "none" : "block";
@@ -9596,7 +9669,6 @@
   renderTodayChips();
   renderPickPanel();
   renderManagePanel();
-  renderSavedNamesDatalist();
   renderTournamentPickPanels();
   renderSessionsPanel();
   renderClubStatsPanel();
