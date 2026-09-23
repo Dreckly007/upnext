@@ -1970,200 +1970,254 @@
         </div>
 
         <div id="tournamentNewForm">
-          <label class="section-label">Competition Type</label>
-          <div class="format-toggle" id="tournamentCompetitionTypeToggle">
-            <button type="button" class="format-btn active" data-competition-type="standard">Standard Tournament</button>
-            <button type="button" class="format-btn" data-competition-type="clubs">Club Championship</button>
-            <button type="button" class="format-btn" data-competition-type="clubGroups">Inter-Club Groups</button>
-          </div>
-
-          <label class="section-label">Tournament name</label>
-          <input type="text" id="tournamentNameInput" placeholder="e.g. Spring Doubles" />
-
-          <label class="section-label">Format</label>
-          <div class="format-toggle" id="tournamentFormatToggle">
-            <button type="button" class="format-btn active" data-format="doubles">Doubles</button>
-            <button type="button" class="format-btn" data-format="singles">Singles</button>
-          </div>
-
-          <div id="tournamentClubsSection" style="display:none;">
-            <label class="section-label">Clubs</label>
-            <div class="inline-form" id="tournamentClubEntry">
-              <input type="text" id="tournamentClubNameInput" placeholder="Club name" />
-              <button class="small-btn add" id="tournamentAddClubBtn">Add club</button>
-            </div>
-            <div class="chips" id="tournamentClubChips"></div>
-          </div>
-
-          <label class="section-label">Teams</label>
-          <div class="format-toggle" id="tournamentDoublesEntryModeToggle">
-            <button type="button" class="format-btn active" data-entry-mode="players">Player names</button>
-            <button type="button" class="format-btn" data-entry-mode="teamnames">Pair Team Name</button>
-          </div>
-          <div class="field" id="tournamentTeamClubField" style="display:none;">
-            <label for="tournamentTeamClubSelect">Club</label>
-            <select id="tournamentTeamClubSelect">
-              <option value="" disabled selected>Add a club above first</option>
-            </select>
-          </div>
-          <div class="inline-form" id="tournamentTeamEntryDoubles">
-            <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" list="savedNamesDatalist" />
-            <input type="text" id="tournamentPlayer2Input" placeholder="Player 2" list="savedNamesDatalist" />
-            <input type="number" id="tournamentDuprDoublesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to auto-average the two players' saved DUPR ratings" />
-            <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
-          </div>
-          <div class="dropdown" id="tournamentPickDropdownDoubles">
-            <button type="button" class="dropdown-toggle" data-target="tournamentPickDropdownDoubles">
-              Pick from saved names <span class="arrow">▾</span>
+          <div class="dropdown open" id="setupTournamentBasicsSection">
+            <button class="dropdown-toggle" data-target="setupTournamentBasicsSection">
+              <span class="acc-toggle-text">
+                <span>Tournament Setup</span>
+                <span class="acc-summary" id="tournamentBasicsSummary"></span>
+              </span>
+              <span class="arrow">▾</span>
             </button>
-            <div class="dropdown-panel" id="tournamentPickPanelDoubles"></div>
-          </div>
-          <div class="inline-form" id="tournamentTeamEntryDoublesByName" style="display:none;">
-            <input type="text" id="tournamentTeamNameInput" placeholder="Team name" />
-            <input type="number" id="tournamentDuprTeamNameInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional pair DUPR rating" />
-            <button class="small-btn add" id="tournamentAddNamedTeamBtn">Add team</button>
-          </div>
-          <div class="inline-form" id="tournamentTeamEntrySingles" style="display:none;">
-            <input type="text" id="tournamentSinglesInput" placeholder="Player name" list="savedNamesDatalist" />
-            <input type="number" id="tournamentDuprSinglesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to use this player's saved DUPR rating" />
-            <button class="small-btn add" id="tournamentAddSinglesBtn">Add</button>
-          </div>
-          <div class="dropdown" id="tournamentPickDropdownSingles" style="display:none;">
-            <button type="button" class="dropdown-toggle" data-target="tournamentPickDropdownSingles">
-              Pick from saved names <span class="arrow">▾</span>
-            </button>
-            <div class="dropdown-panel" id="tournamentPickPanelSingles"></div>
-          </div>
-          <datalist id="savedNamesDatalist"></datalist>
-          <div class="chips" id="tournamentTeamChips"></div>
-
-          <div class="paired-grid">
-            <div class="field">
-              <label for="tournamentGroupsInput">Number of groups</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentGroupsInput" data-step="-1" aria-label="Decrease number of groups">−</button>
-                <input type="number" id="tournamentGroupsInput" min="1" value="2" />
-                <button type="button" class="stepper-btn" data-target="tournamentGroupsInput" data-step="1" aria-label="Increase number of groups">+</button>
+            <div class="dropdown-panel">
+              <label class="section-label">Competition Type</label>
+              <div class="format-toggle" id="tournamentCompetitionTypeToggle">
+                <button type="button" class="format-btn active" data-competition-type="standard">Standard Tournament</button>
+                <button type="button" class="format-btn" data-competition-type="clubs">Club Championship</button>
+                <button type="button" class="format-btn" data-competition-type="clubGroups">Inter-Club Groups</button>
               </div>
-            </div>
-            <div class="field">
-              <label for="tournamentAdvanceInput">Advance per group</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentAdvanceInput" data-step="-1" aria-label="Decrease advance per group">−</button>
-                <input type="number" id="tournamentAdvanceInput" min="1" value="2" />
-                <button type="button" class="stepper-btn" data-target="tournamentAdvanceInput" data-step="1" aria-label="Increase advance per group">+</button>
+
+              <label class="section-label">Tournament name</label>
+              <input type="text" id="tournamentNameInput" placeholder="e.g. Spring Doubles" />
+
+              <label class="section-label">Format</label>
+              <div class="format-toggle" id="tournamentFormatToggle">
+                <button type="button" class="format-btn active" data-format="doubles">Doubles</button>
+                <button type="button" class="format-btn" data-format="singles">Singles</button>
               </div>
-            </div>
-          </div>
 
-          <div class="field">
-            <label for="tournamentCourtsInput">Courts available</label>
-            <div class="number-stepper">
-              <button type="button" class="stepper-btn" data-target="tournamentCourtsInput" data-step="-1" aria-label="Decrease courts available">−</button>
-              <input type="number" id="tournamentCourtsInput" min="1" max="12" value="2" />
-              <button type="button" class="stepper-btn" data-target="tournamentCourtsInput" data-step="1" aria-label="Increase courts available">+</button>
-            </div>
-          </div>
-          <div class="courts-row" id="tournamentCourtLabelsRow"></div>
-
-          <div class="paired-grid">
-            <div class="field">
-              <label for="tournamentStartTimeInput">Start time</label>
-              <input type="time" id="tournamentStartTimeInput" />
-            </div>
-            <div class="field field-wide-mobile">
-              <label for="tournamentRoundMinutesInput">Round length</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentRoundMinutesInput" data-step="-1" aria-label="Decrease round length">−</button>
-                <div class="stepper-input-wrap has-unit">
-                  <input type="number" id="tournamentRoundMinutesInput" min="0" value="0" />
-                  <span class="unit-suffix">mins</span>
+              <div id="tournamentClubsSection" style="display:none;">
+                <label class="section-label">Clubs</label>
+                <div class="inline-form" id="tournamentClubEntry">
+                  <input type="text" id="tournamentClubNameInput" placeholder="Club name" />
+                  <button class="small-btn add" id="tournamentAddClubBtn">Add club</button>
                 </div>
-                <button type="button" class="stepper-btn" data-target="tournamentRoundMinutesInput" data-step="1" aria-label="Increase round length">+</button>
-              </div>
-              <div class="hint" id="tournamentRoundMinutesHint"></div>
-            </div>
-          </div>
-
-          <div class="paired-grid">
-            <div class="field">
-              <label for="tournamentHoursPerDayInput">Hours available per day</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentHoursPerDayInput" data-step="-0.5" aria-label="Decrease hours available per day">−</button>
-                <input type="number" id="tournamentHoursPerDayInput" min="0" step="0.5" value="0" />
-                <button type="button" class="stepper-btn" data-target="tournamentHoursPerDayInput" data-step="0.5" aria-label="Increase hours available per day">+</button>
-              </div>
-              <div class="hint">0 = single day, no limit</div>
-            </div>
-            <div class="field">
-              <label for="tournamentDaysAvailableInput">Days available</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentDaysAvailableInput" data-step="-1" aria-label="Decrease days available">−</button>
-                <input type="number" id="tournamentDaysAvailableInput" min="1" value="1" />
-                <button type="button" class="stepper-btn" data-target="tournamentDaysAvailableInput" data-step="1" aria-label="Increase days available">+</button>
+                <div class="chips" id="tournamentClubChips"></div>
               </div>
             </div>
           </div>
 
-          <div class="field estimate-field" id="tournamentEstimateField" style="display:none;">
-            <div class="estimate-box">
-              <div class="estimate-box-header">Estimated tournament duration</div>
-              <div class="estimate-box-panel">
-                <span class="estimate-number" id="tournamentEstimateNumber"></span>
-                <span class="estimate-reason" id="tournamentEstimateReason"></span>
+          <div class="dropdown" id="setupTournamentTeamsSection">
+            <button class="dropdown-toggle" data-target="setupTournamentTeamsSection">
+              <span class="acc-toggle-text">
+                <span><span class="acc-check" id="tournamentTeamsCheck" style="display:none;">✓</span>Teams</span>
+                <span class="acc-summary" id="tournamentTeamsSummary"></span>
+              </span>
+              <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel">
+              <div class="format-toggle" id="tournamentDoublesEntryModeToggle">
+                <button type="button" class="format-btn active" data-entry-mode="players">Player names</button>
+                <button type="button" class="format-btn" data-entry-mode="teamnames">Pair Team Name</button>
               </div>
+              <div class="field" id="tournamentTeamClubField" style="display:none;">
+                <label for="tournamentTeamClubSelect">Club</label>
+                <select id="tournamentTeamClubSelect">
+                  <option value="" disabled selected>Add a club above first</option>
+                </select>
+              </div>
+              <div class="inline-form" id="tournamentTeamEntryDoubles">
+                <input type="text" id="tournamentPlayer1Input" placeholder="Player 1" list="savedNamesDatalist" />
+                <input type="text" id="tournamentPlayer2Input" placeholder="Player 2" list="savedNamesDatalist" />
+                <input type="number" id="tournamentDuprDoublesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to auto-average the two players' saved DUPR ratings" />
+                <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
+              </div>
+              <div class="dropdown" id="tournamentPickDropdownDoubles">
+                <button type="button" class="dropdown-toggle" data-target="tournamentPickDropdownDoubles">
+                  Pick from saved names <span class="arrow">▾</span>
+                </button>
+                <div class="dropdown-panel" id="tournamentPickPanelDoubles"></div>
+              </div>
+              <div class="inline-form" id="tournamentTeamEntryDoublesByName" style="display:none;">
+                <input type="text" id="tournamentTeamNameInput" placeholder="Team name" />
+                <input type="number" id="tournamentDuprTeamNameInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional pair DUPR rating" />
+                <button class="small-btn add" id="tournamentAddNamedTeamBtn">Add team</button>
+              </div>
+              <div class="inline-form" id="tournamentTeamEntrySingles" style="display:none;">
+                <input type="text" id="tournamentSinglesInput" placeholder="Player name" list="savedNamesDatalist" />
+                <input type="number" id="tournamentDuprSinglesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to use this player's saved DUPR rating" />
+                <button class="small-btn add" id="tournamentAddSinglesBtn">Add</button>
+              </div>
+              <div class="dropdown" id="tournamentPickDropdownSingles" style="display:none;">
+                <button type="button" class="dropdown-toggle" data-target="tournamentPickDropdownSingles">
+                  Pick from saved names <span class="arrow">▾</span>
+                </button>
+                <div class="dropdown-panel" id="tournamentPickPanelSingles"></div>
+              </div>
+              <datalist id="savedNamesDatalist"></datalist>
+              <div class="chips" id="tournamentTeamChips"></div>
             </div>
-          </div>
-          <div class="field hint" id="tournamentBudgetSuggestionField" style="display:none;">
-            <span id="tournamentBudgetSuggestionText"></span>
-            <button type="button" class="small-btn" id="tournamentBudgetApplyBtn">Apply suggestion</button>
           </div>
 
-          <div class="paired-grid">
-            <div class="field">
-              <label for="tournamentTargetScoreInput">Points to win</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentTargetScoreInput" data-step="-1" aria-label="Decrease points to win">−</button>
-                <input type="number" id="tournamentTargetScoreInput" min="1" max="21" value="11" />
-                <button type="button" class="stepper-btn" data-target="tournamentTargetScoreInput" data-step="1" aria-label="Increase points to win">+</button>
+          <div class="dropdown" id="setupTournamentGroupsCourtsSection">
+            <button class="dropdown-toggle" data-target="setupTournamentGroupsCourtsSection">
+              <span class="acc-toggle-text">
+                <span>Groups &amp; Courts</span>
+                <span class="acc-summary" id="tournamentGroupsCourtsSummary"></span>
+              </span>
+              <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel">
+              <div class="paired-grid">
+                <div class="field">
+                  <label for="tournamentGroupsInput">Number of groups</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentGroupsInput" data-step="-1" aria-label="Decrease number of groups">−</button>
+                    <input type="number" id="tournamentGroupsInput" min="1" value="2" />
+                    <button type="button" class="stepper-btn" data-target="tournamentGroupsInput" data-step="1" aria-label="Increase number of groups">+</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="tournamentAdvanceInput">Advance per group</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentAdvanceInput" data-step="-1" aria-label="Decrease advance per group">−</button>
+                    <input type="number" id="tournamentAdvanceInput" min="1" value="2" />
+                    <button type="button" class="stepper-btn" data-target="tournamentAdvanceInput" data-step="1" aria-label="Increase advance per group">+</button>
+                  </div>
+                </div>
               </div>
+
+              <div class="field">
+                <label for="tournamentCourtsInput">Courts available</label>
+                <div class="number-stepper">
+                  <button type="button" class="stepper-btn" data-target="tournamentCourtsInput" data-step="-1" aria-label="Decrease courts available">−</button>
+                  <input type="number" id="tournamentCourtsInput" min="1" max="12" value="2" />
+                  <button type="button" class="stepper-btn" data-target="tournamentCourtsInput" data-step="1" aria-label="Increase courts available">+</button>
+                </div>
+              </div>
+              <div class="courts-row" id="tournamentCourtLabelsRow"></div>
             </div>
-            <div class="field">
-              <label>Win by 2 clear points</label>
-              <div class="yesno-toggle">
-                <button type="button" class="yesno-btn" id="tournamentWinByTwoYesBtn">Yes</button>
-                <button type="button" class="yesno-btn active" id="tournamentWinByTwoNoBtn">No</button>
+          </div>
+
+          <div class="dropdown" id="setupTournamentScheduleSection">
+            <button class="dropdown-toggle" data-target="setupTournamentScheduleSection">
+              <span class="acc-toggle-text">
+                <span>Schedule</span>
+                <span class="acc-summary" id="tournamentScheduleSummary"></span>
+              </span>
+              <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel">
+              <div class="paired-grid">
+                <div class="field">
+                  <label for="tournamentStartTimeInput">Start time</label>
+                  <input type="time" id="tournamentStartTimeInput" />
+                </div>
+                <div class="field field-wide-mobile">
+                  <label for="tournamentRoundMinutesInput">Round length</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentRoundMinutesInput" data-step="-1" aria-label="Decrease round length">−</button>
+                    <div class="stepper-input-wrap has-unit">
+                      <input type="number" id="tournamentRoundMinutesInput" min="0" value="0" />
+                      <span class="unit-suffix">mins</span>
+                    </div>
+                    <button type="button" class="stepper-btn" data-target="tournamentRoundMinutesInput" data-step="1" aria-label="Increase round length">+</button>
+                  </div>
+                  <div class="hint" id="tournamentRoundMinutesHint"></div>
+                </div>
+              </div>
+
+              <div class="paired-grid">
+                <div class="field">
+                  <label for="tournamentHoursPerDayInput">Hours available per day</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentHoursPerDayInput" data-step="-0.5" aria-label="Decrease hours available per day">−</button>
+                    <input type="number" id="tournamentHoursPerDayInput" min="0" step="0.5" value="0" />
+                    <button type="button" class="stepper-btn" data-target="tournamentHoursPerDayInput" data-step="0.5" aria-label="Increase hours available per day">+</button>
+                  </div>
+                  <div class="hint">0 = single day, no limit</div>
+                </div>
+                <div class="field">
+                  <label for="tournamentDaysAvailableInput">Days available</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentDaysAvailableInput" data-step="-1" aria-label="Decrease days available">−</button>
+                    <input type="number" id="tournamentDaysAvailableInput" min="1" value="1" />
+                    <button type="button" class="stepper-btn" data-target="tournamentDaysAvailableInput" data-step="1" aria-label="Increase days available">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field estimate-field" id="tournamentEstimateField" style="display:none;">
+                <div class="estimate-box">
+                  <div class="estimate-box-header">Estimated tournament duration</div>
+                  <div class="estimate-box-panel">
+                    <span class="estimate-number" id="tournamentEstimateNumber"></span>
+                    <span class="estimate-reason" id="tournamentEstimateReason"></span>
+                  </div>
+                </div>
+              </div>
+              <div class="field hint" id="tournamentBudgetSuggestionField" style="display:none;">
+                <span id="tournamentBudgetSuggestionText"></span>
+                <button type="button" class="small-btn" id="tournamentBudgetApplyBtn">Apply suggestion</button>
               </div>
             </div>
           </div>
 
-          <label class="section-label">Knockout Scoring</label>
-          <div class="format-toggle" id="tournamentKoSetupModeToggle">
-            <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
-            <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
-          </div>
-          <div class="paired-grid" id="tournamentKoSetupGrid">
-            <div class="field">
-              <label for="tournamentKoSetupTargetScoreInput">Points to win</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentKoSetupTargetScoreInput" data-step="-1" aria-label="Decrease knockout points to win">−</button>
-                <input type="number" id="tournamentKoSetupTargetScoreInput" min="1" max="21" value="11" />
-                <button type="button" class="stepper-btn" data-target="tournamentKoSetupTargetScoreInput" data-step="1" aria-label="Increase knockout points to win">+</button>
+          <div class="dropdown" id="setupTournamentScoringSection">
+            <button class="dropdown-toggle" data-target="setupTournamentScoringSection">
+              <span class="acc-toggle-text">
+                <span>Scoring</span>
+                <span class="acc-summary" id="tournamentScoringSummary"></span>
+              </span>
+              <span class="arrow">▾</span>
+            </button>
+            <div class="dropdown-panel">
+              <div class="paired-grid">
+                <div class="field">
+                  <label for="tournamentTargetScoreInput">Points to win</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentTargetScoreInput" data-step="-1" aria-label="Decrease points to win">−</button>
+                    <input type="number" id="tournamentTargetScoreInput" min="1" max="21" value="11" />
+                    <button type="button" class="stepper-btn" data-target="tournamentTargetScoreInput" data-step="1" aria-label="Increase points to win">+</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Win by 2 clear points</label>
+                  <div class="yesno-toggle">
+                    <button type="button" class="yesno-btn" id="tournamentWinByTwoYesBtn">Yes</button>
+                    <button type="button" class="yesno-btn active" id="tournamentWinByTwoNoBtn">No</button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="field">
-              <label>Win by 2 clear points</label>
-              <div class="yesno-toggle">
-                <button type="button" class="yesno-btn" id="tournamentKoSetupWinByTwoYesBtn">Yes</button>
-                <button type="button" class="yesno-btn active" id="tournamentKoSetupWinByTwoNoBtn">No</button>
+
+              <label class="section-label">Knockout Scoring</label>
+              <div class="format-toggle" id="tournamentKoSetupModeToggle">
+                <button type="button" class="format-btn active" data-ko-mode="single">Single Game</button>
+                <button type="button" class="format-btn" data-ko-mode="bestOf">Best of Games</button>
               </div>
-            </div>
-            <div class="field" id="tournamentKoSetupBestOfField" style="display:none;">
-              <label for="tournamentKoSetupBestOfInput">Best of (games)</label>
-              <div class="number-stepper">
-                <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
-                <input type="number" id="tournamentKoSetupBestOfInput" min="1" max="9" value="3" />
-                <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+              <div class="paired-grid" id="tournamentKoSetupGrid">
+                <div class="field">
+                  <label for="tournamentKoSetupTargetScoreInput">Points to win</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentKoSetupTargetScoreInput" data-step="-1" aria-label="Decrease knockout points to win">−</button>
+                    <input type="number" id="tournamentKoSetupTargetScoreInput" min="1" max="21" value="11" />
+                    <button type="button" class="stepper-btn" data-target="tournamentKoSetupTargetScoreInput" data-step="1" aria-label="Increase knockout points to win">+</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Win by 2 clear points</label>
+                  <div class="yesno-toggle">
+                    <button type="button" class="yesno-btn" id="tournamentKoSetupWinByTwoYesBtn">Yes</button>
+                    <button type="button" class="yesno-btn active" id="tournamentKoSetupWinByTwoNoBtn">No</button>
+                  </div>
+                </div>
+                <div class="field" id="tournamentKoSetupBestOfField" style="display:none;">
+                  <label for="tournamentKoSetupBestOfInput">Best of (games)</label>
+                  <div class="number-stepper">
+                    <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="-2" aria-label="Decrease best of games">−</button>
+                    <input type="number" id="tournamentKoSetupBestOfInput" min="1" max="9" value="3" />
+                    <button type="button" class="stepper-btn" data-target="tournamentKoSetupBestOfInput" data-step="2" aria-label="Increase best of games">+</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -3037,6 +3091,17 @@
   const sessionSetupFields = document.getElementById("sessionSetupFields");
   const tournamentSetupPanel = document.getElementById("tournamentSetupPanel");
   const tournamentsListPanel = document.getElementById("tournamentsListPanel");
+  const setupTournamentBasicsSection = document.getElementById("setupTournamentBasicsSection");
+  const setupTournamentTeamsSection = document.getElementById("setupTournamentTeamsSection");
+  const setupTournamentGroupsCourtsSection = document.getElementById("setupTournamentGroupsCourtsSection");
+  const setupTournamentScheduleSection = document.getElementById("setupTournamentScheduleSection");
+  const setupTournamentScoringSection = document.getElementById("setupTournamentScoringSection");
+  const tournamentBasicsSummary = document.getElementById("tournamentBasicsSummary");
+  const tournamentTeamsSummary = document.getElementById("tournamentTeamsSummary");
+  const tournamentTeamsCheck = document.getElementById("tournamentTeamsCheck");
+  const tournamentGroupsCourtsSummary = document.getElementById("tournamentGroupsCourtsSummary");
+  const tournamentScheduleSummary = document.getElementById("tournamentScheduleSummary");
+  const tournamentScoringSummary = document.getElementById("tournamentScoringSummary");
   const tournamentNameInput = document.getElementById("tournamentNameInput");
   const tournamentFormatButtons = document.querySelectorAll("#tournamentFormatToggle .format-btn");
   const tournamentCompetitionTypeToggle = document.getElementById("tournamentCompetitionTypeToggle");
@@ -3439,6 +3504,13 @@
     setupDropdownRow.classList.remove("expanded");
   }
 
+  function resetTournamentSetupAccordion() {
+    [setupTournamentTeamsSection, setupTournamentGroupsCourtsSection, setupTournamentScheduleSection, setupTournamentScoringSection]
+      .forEach((section) => section.classList.remove("open"));
+    setupTournamentBasicsSection.classList.add("open");
+    [tournamentPickDropdownDoubles, tournamentPickDropdownSingles].forEach((d) => d.classList.remove("open"));
+  }
+
   function persistConfig() {
     config.courts = Math.max(1, parseInt(courtsInput.value, 10) || 1);
     config.gamesToPlay = Math.max(0, parseInt(gamesToPlayInput.value, 10) || 0);
@@ -3776,6 +3848,7 @@
       tournamentTeamClubSelect.appendChild(opt);
     });
     if (tournamentClubs.some((c) => c.id === previousValue)) tournamentTeamClubSelect.value = previousValue;
+    updateTournamentAccordionSummaries();
   }
 
   tournamentAddClubBtn.addEventListener("click", () => {
@@ -5762,6 +5835,43 @@
 
   let lastBudgetSuggestion = null;
 
+  function updateTournamentAccordionSummaries() {
+    const typeLabel = { standard: "Standard Tournament", clubs: "Club Championship", clubGroups: "Inter-Club Groups" }[config.tournamentCompetitionType] || "Standard Tournament";
+    const formatLabel = config.format === "singles" ? "Singles" : "Doubles";
+    let basics = `${typeLabel} · ${formatLabel}`;
+    if (isClubCompetitionType()) {
+      const cc = tournamentClubs.length;
+      basics += ` · ${cc} club${cc === 1 ? "" : "s"}`;
+    }
+    tournamentBasicsSummary.textContent = basics;
+
+    const n = tournamentTeams.length;
+    tournamentTeamsSummary.textContent = n === 0 ? "No teams yet" : `${n} team${n === 1 ? "" : "s"} added`;
+    tournamentTeamsCheck.style.display = n >= 2 ? "inline" : "none";
+
+    const gcParts = [];
+    if (tournamentGroupsField.style.display !== "none") {
+      const g = Math.max(1, parseInt(tournamentGroupsInput.value, 10) || 1);
+      gcParts.push(`${g} group${g === 1 ? "" : "s"}`);
+    }
+    if (tournamentAdvanceField.style.display !== "none") {
+      const a = Math.max(1, parseInt(tournamentAdvanceInput.value, 10) || 1);
+      gcParts.push(`${a} advance per group`);
+    }
+    const courts = Math.max(1, parseInt(tournamentCourtsInput.value, 10) || 1);
+    gcParts.push(`${courts} court${courts === 1 ? "" : "s"}`);
+    tournamentGroupsCourtsSummary.textContent = gcParts.join(" · ");
+
+    tournamentScheduleSummary.textContent = tournamentEstimateField.style.display === "none"
+      ? "Not set yet"
+      : `About ${tournamentEstimateNumber.textContent}`;
+
+    const groupTarget = Math.max(1, Math.min(21, parseInt(tournamentTargetScoreInput.value, 10) || 11));
+    const ko = tournamentKnockoutFormatDraft;
+    const koPart = `KO to ${ko.targetScore}${ko.mode === "bestOf" ? ` (best of ${ko.bestOf})` : ""}`;
+    tournamentScoringSummary.textContent = `To ${groupTarget}, win by ${tournamentWinByTwo ? 2 : 1} · ${koPart}`;
+  }
+
   function updateTournamentSetupEstimate() {
     const numGroups = Math.max(1, parseInt(tournamentGroupsInput.value, 10) || 1);
     const advancePerGroup = Math.max(1, parseInt(tournamentAdvanceInput.value, 10) || 1);
@@ -5776,6 +5886,7 @@
     if (!groupEst) {
       tournamentEstimateField.style.display = "none";
       tournamentBudgetSuggestionField.style.display = "none";
+      updateTournamentAccordionSummaries();
       return;
     }
     const qualifierCount = projectQualifierCount(tournamentTeams.length, numGroups, advancePerGroup);
@@ -5809,6 +5920,7 @@
       tournamentBudgetSuggestionField.style.display = "none";
       lastBudgetSuggestion = null;
     }
+    updateTournamentAccordionSummaries();
   }
 
   tournamentBudgetApplyBtn.addEventListener("click", () => {
@@ -7317,6 +7429,8 @@
     syncFormatButtons();
     renderClubStatsPanel();
     resetSetupAccordion();
+    updateTournamentSetupEstimate();
+    resetTournamentSetupAccordion();
     renderContinueSessionBanner();
     if (config.mode === "ladder") renderLadderStandingsTable();
     if (config.mode === "tournament") renderPastTournamentsPanel();
