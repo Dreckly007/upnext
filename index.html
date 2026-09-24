@@ -2030,7 +2030,9 @@
                 <input type="text" id="tournamentPlayer1SurnameInput" placeholder="Player 1 surname" />
                 <input type="text" id="tournamentPlayer2FirstNameInput" placeholder="Player 2 first name" />
                 <input type="text" id="tournamentPlayer2SurnameInput" placeholder="Player 2 surname" />
-                <input type="number" id="tournamentDuprDoublesInput" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="DUPR" title="Optional -- leave blank to auto-average the two players' saved DUPR ratings" />
+                <input type="number" id="tournamentDupr1Input" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="P1 DUPR" title="Optional -- leave blank to use Player 1's saved DUPR rating" />
+                <input type="number" id="tournamentDupr2Input" class="tournament-dupr-input" min="2" max="8" step="0.01" placeholder="P2 DUPR" title="Optional -- leave blank to use Player 2's saved DUPR rating" />
+                <input type="number" id="tournamentDuprAverageInput" class="tournament-dupr-input" placeholder="Avg" title="Average of the two players' DUPR ratings (calculated automatically)" readonly />
                 <button class="small-btn add" id="tournamentAddTeamBtn">Add team</button>
               </div>
               <div class="dropdown" id="tournamentPickDropdownDoubles">
@@ -3193,7 +3195,9 @@
   const tournamentAddSinglesBtn = document.getElementById("tournamentAddSinglesBtn");
   const tournamentNameDisplayField = document.getElementById("tournamentNameDisplayField");
   const tournamentNameDisplayButtons = document.querySelectorAll("#tournamentNameDisplayToggle .format-btn");
-  const tournamentDuprDoublesInput = document.getElementById("tournamentDuprDoublesInput");
+  const tournamentDupr1Input = document.getElementById("tournamentDupr1Input");
+  const tournamentDupr2Input = document.getElementById("tournamentDupr2Input");
+  const tournamentDuprAverageInput = document.getElementById("tournamentDuprAverageInput");
   const tournamentDuprTeamNameInput = document.getElementById("tournamentDuprTeamNameInput");
   const tournamentDuprSinglesInput = document.getElementById("tournamentDuprSinglesInput");
   const tournamentPickPanelDoubles = document.getElementById("tournamentPickPanelDoubles");
@@ -3740,6 +3744,25 @@
     return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
   }
 
+  function updateTournamentDuprAverage() {
+    const d1 = tournamentDupr1Input.value.trim() === "" ? null : parseFloat(tournamentDupr1Input.value);
+    const d2 = tournamentDupr2Input.value.trim() === "" ? null : parseFloat(tournamentDupr2Input.value);
+    tournamentDuprAverageInput.value = (d1 != null && !isNaN(d1) && d2 != null && !isNaN(d2))
+      ? ((d1 + d2) / 2).toFixed(2)
+      : "";
+  }
+
+  function tournamentDuprAutofillForSlot(slot) {
+    const firstInput = slot === 1 ? tournamentPlayer1FirstNameInput : tournamentPlayer2FirstNameInput;
+    const surnameInput = slot === 1 ? tournamentPlayer1SurnameInput : tournamentPlayer2SurnameInput;
+    const duprInput = slot === 1 ? tournamentDupr1Input : tournamentDupr2Input;
+    const name = composeFullName(firstInput.value, surnameInput.value);
+    if (!name || duprInput.value.trim() !== "") return;
+    const saved = duprRatingFor(name);
+    if (saved != null) duprInput.value = saved.toFixed(2);
+    updateTournamentDuprAverage();
+  }
+
   function renderTournamentTeamChips() {
     tournamentTeamChips.innerHTML = "";
     tournamentTeams.forEach((team, idx) => {
@@ -3800,18 +3823,26 @@
     if (!ensureClubSelectedOrWarn()) return;
     const p1 = composeFullName(p1First, p1Surname);
     const p2 = composeFullName(p2First, p2Surname);
-    const duprOverride = tournamentDuprDoublesInput.value.trim() === "" ? undefined : parseFloat(tournamentDuprDoublesInput.value);
-    addTournamentTeam({ players: [p1, p2], clubId: clubIdForNextTeam(), duprOverride });
+    const d1 = tournamentDupr1Input.value.trim() === "" ? null : parseFloat(tournamentDupr1Input.value);
+    const d2 = tournamentDupr2Input.value.trim() === "" ? null : parseFloat(tournamentDupr2Input.value);
+    if (d1 != null && !isNaN(d1)) setDuprRating(p1, d1);
+    if (d2 != null && !isNaN(d2)) setDuprRating(p2, d2);
+    addTournamentTeam({ players: [p1, p2], clubId: clubIdForNextTeam() });
     setNameParts(p1, p1First, p1Surname);
     setNameParts(p2, p2First, p2Surname);
+    renderManagePanel();
+    renderPickPanel();
+    renderTournamentPickPanels();
     tournamentPlayer1FirstNameInput.value = "";
     tournamentPlayer1SurnameInput.value = "";
     tournamentPlayer2FirstNameInput.value = "";
     tournamentPlayer2SurnameInput.value = "";
-    tournamentDuprDoublesInput.value = "";
+    tournamentDupr1Input.value = "";
+    tournamentDupr2Input.value = "";
+    tournamentDuprAverageInput.value = "";
     tournamentPlayer1FirstNameInput.focus();
   });
-  const tournamentPlayerInputs = [tournamentPlayer1FirstNameInput, tournamentPlayer1SurnameInput, tournamentPlayer2FirstNameInput, tournamentPlayer2SurnameInput];
+  const tournamentPlayerInputs = [tournamentPlayer1FirstNameInput, tournamentPlayer1SurnameInput, tournamentPlayer2FirstNameInput, tournamentPlayer2SurnameInput, tournamentDupr1Input, tournamentDupr2Input];
   tournamentPlayerInputs.forEach((input) => {
     input.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
@@ -3819,6 +3850,11 @@
       if (idx < tournamentPlayerInputs.length - 1) tournamentPlayerInputs[idx + 1].focus();
       else tournamentAddTeamBtn.click();
     });
+  });
+  tournamentPlayer1SurnameInput.addEventListener("blur", () => tournamentDuprAutofillForSlot(1));
+  tournamentPlayer2SurnameInput.addEventListener("blur", () => tournamentDuprAutofillForSlot(2));
+  [tournamentDupr1Input, tournamentDupr2Input].forEach((input) => {
+    input.addEventListener("input", updateTournamentDuprAverage);
   });
 
   let tournamentLastFocusedPlayerSlot = 1;
@@ -3834,6 +3870,7 @@
     const surnameInput = slot === 1 ? tournamentPlayer1SurnameInput : tournamentPlayer2SurnameInput;
     firstInput.value = firstName;
     surnameInput.value = surname;
+    tournamentDuprAutofillForSlot(slot);
   }
   function tournamentPlayerSlotEmpty(slot) {
     const firstInput = slot === 1 ? tournamentPlayer1FirstNameInput : tournamentPlayer2FirstNameInput;
