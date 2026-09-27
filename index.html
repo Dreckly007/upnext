@@ -500,6 +500,8 @@
   .saved-row:last-child, .session-row:last-child { border-bottom: none; }
   .saved-row span { flex: 1; }
   .saved-row-dupr { width: 64px; padding: 6px 8px; text-align: center; margin: 0 8px; }
+  .saved-row-editing { flex-wrap: wrap; gap: 6px; }
+  .saved-row-edit-input { flex: 1 1 90px; min-width: 70px; padding: 6px 8px; }
   #managePanel {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -2959,6 +2961,81 @@
   function randomDebugRating(min, max, decimals) {
     return parseFloat((min + Math.random() * (max - min)).toFixed(decimals));
   }
+
+  // Replaces any element matching `oldName` (case-insensitive) with
+  // `newName`, preserving order/duplicates. Returns the same array
+  // reference unchanged if nothing matched.
+  function replaceNameInStringArray(arr, oldName, newName) {
+    if (!Array.isArray(arr)) return arr;
+    const oldKey = oldName.toLowerCase();
+    let changed = false;
+    const next = arr.map((n) => {
+      if ((n || "").toLowerCase() === oldKey) { changed = true; return newName; }
+      return n;
+    });
+    return changed ? next : arr;
+  }
+
+  // Corrects a saved player's name everywhere it's used as a live
+  // identifier: the saved-names list itself, their DUPR rating and
+  // first/surname split, any not-yet-generated session's draft roster and
+  // pairing, every ladder's roster/boxes/starting ratings (ladders are
+  // long-running, so a typo fix should stick), and the currently
+  // in-progress session if this player is part of it. Completed sessions
+  // and tournaments already in history are left untouched -- they're a
+  // frozen record of what actually happened, not a live reference.
+  function renamePlayerEverywhere(oldName, newName) {
+    const oldKey = oldName.toLowerCase();
+    const newKey = newName.toLowerCase();
+
+    if (oldKey !== newKey && oldKey in duprRatings) {
+      duprRatings[newKey] = duprRatings[oldKey];
+      delete duprRatings[oldKey];
+      save(STORAGE.duprRatings, duprRatings);
+    }
+    if (oldKey !== newKey && oldKey in nameParts) {
+      delete nameParts[oldKey];
+      save(STORAGE.nameParts, nameParts);
+    }
+
+    todayPlayers = replaceNameInStringArray(todayPlayers, oldName, newName);
+    save(STORAGE.today, todayPlayers);
+    fixedPairs = fixedPairs.map((p) => replaceNameInStringArray(p, oldName, newName));
+    save(STORAGE.fixedPairs, fixedPairs);
+
+    ladders.forEach((ladder) => {
+      ladder.roster = replaceNameInStringArray(ladder.roster, oldName, newName);
+      if (Array.isArray(ladder.boxes)) {
+        ladder.boxes = ladder.boxes.map((box) => replaceNameInStringArray(box, oldName, newName));
+      }
+      if (ladder.startingRatings) {
+        const match = Object.keys(ladder.startingRatings).find((k) => k.toLowerCase() === oldKey);
+        if (match && match !== newName) {
+          ladder.startingRatings[newName] = ladder.startingRatings[match];
+          delete ladder.startingRatings[match];
+        }
+      }
+    });
+    save(STORAGE.ladders, ladders);
+
+    if (currentSession && currentSession.players.some((p) => p.toLowerCase() === oldKey)) {
+      currentSession.players = replaceNameInStringArray(currentSession.players, oldName, newName);
+      if (Array.isArray(currentSession.fixedPairs)) {
+        currentSession.fixedPairs = currentSession.fixedPairs.map((p) => replaceNameInStringArray(p, oldName, newName));
+      }
+      currentSession.rounds.forEach((round) => {
+        round.sitOuts = replaceNameInStringArray(round.sitOuts, oldName, newName);
+        round.courts.forEach((court) => {
+          court.teamA = replaceNameInStringArray(court.teamA, oldName, newName);
+          court.teamB = replaceNameInStringArray(court.teamB, oldName, newName);
+        });
+      });
+      updateSessionInStorage();
+      renderAll();
+    }
+
+    renderLadderStandingsTable();
+  }
   let pastTournaments = load(STORAGE.tournaments, []);
   let ladders = load(STORAGE.ladders, []);
   let currentLadder = null;
@@ -4445,6 +4522,8 @@
     pickPanel.appendChild(list);
   }
 
+  let managePanelEditIndex = null;
+
   function renderManagePanel() {
     managePanel.innerHTML = "";
     if (savedPlayers.length === 0) {
@@ -4457,6 +4536,74 @@
     savedPlayers.forEach((name, i) => {
       const row = document.createElement("div");
       row.className = "saved-row";
+
+      if (managePanelEditIndex === i) {
+        row.classList.add("saved-row-editing");
+        const { firstName, surname } = getNameParts(name);
+        const firstInput = document.createElement("input");
+        firstInput.type = "text";
+        firstInput.className = "saved-row-edit-input";
+        firstInput.placeholder = "First name";
+        firstInput.value = firstName;
+        const surnameInput = document.createElement("input");
+        surnameInput.type = "text";
+        surnameInput.className = "saved-row-edit-input";
+        surnameInput.placeholder = "Surname";
+        surnameInput.value = surname;
+        row.appendChild(firstInput);
+        row.appendChild(surnameInput);
+
+        const save_ = () => {
+          const newFirst = firstInput.value.trim();
+          const newSurname = surnameInput.value.trim();
+          if (!newFirst || !newSurname) return;
+          const newName = composeFullName(newFirst, newSurname);
+          const collision = savedPlayers.some(
+            (p, j) => j !== i && p.toLowerCase() === newName.toLowerCase()
+          );
+          if (collision) {
+            alert(`A saved player named "${newName}" already exists.`);
+            return;
+          }
+          savedPlayers[i] = newName;
+          save(STORAGE.saved, savedPlayers);
+          setNameParts(newName, newFirst, newSurname);
+          renamePlayerEverywhere(name, newName);
+          managePanelEditIndex = null;
+          renderManagePanel();
+          renderPickPanel();
+          renderTournamentPickPanels();
+          renderTodayChips();
+        };
+        const cancel = () => {
+          managePanelEditIndex = null;
+          renderManagePanel();
+        };
+        firstInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") save_();
+          if (e.key === "Escape") cancel();
+        });
+        surnameInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") save_();
+          if (e.key === "Escape") cancel();
+        });
+
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "small-btn add";
+        saveBtn.textContent = "Save";
+        saveBtn.addEventListener("click", save_);
+        row.appendChild(saveBtn);
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.className = "small-btn";
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.addEventListener("click", cancel);
+        row.appendChild(cancelBtn);
+
+        managePanel.appendChild(row);
+        return;
+      }
+
       const span = document.createElement("span");
       span.textContent = name;
       row.appendChild(span);
@@ -4479,6 +4626,15 @@
         });
         row.appendChild(duprInput);
       }
+      const editBtn = document.createElement("button");
+      editBtn.className = "small-btn";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => {
+        managePanelEditIndex = i;
+        renderManagePanel();
+      });
+      row.appendChild(editBtn);
+
       const btn = document.createElement("button");
       btn.className = "small-btn remove";
       btn.textContent = "Remove";
