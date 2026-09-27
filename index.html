@@ -2806,6 +2806,9 @@
         <div class="modal-note" id="swapConfirmScoreNote" style="display:none;">
           This round already has a score entered — scores stay with the court, so they won't follow the swapped players.
         </div>
+        <div class="modal-note" id="swapConfirmPairNote" style="display:none;">
+          This breaks a fixed pair. "This round only" keeps them linked for every other round. "Update remaining rounds" unlinks them for good.
+        </div>
         <div class="modal-actions">
           <button class="modal-btn primary" id="swapThisRoundBtn">This round only</button>
           <button class="modal-btn outline" id="swapGoingForwardBtn">Update remaining rounds</button>
@@ -3320,6 +3323,7 @@
   const swapConfirmOverlay = document.getElementById("swapConfirmOverlay");
   const swapConfirmBody = document.getElementById("swapConfirmBody");
   const swapConfirmScoreNote = document.getElementById("swapConfirmScoreNote");
+  const swapConfirmPairNote = document.getElementById("swapConfirmPairNote");
   const swapThisRoundBtn = document.getElementById("swapThisRoundBtn");
   const swapGoingForwardBtn = document.getElementById("swapGoingForwardBtn");
   const swapCancelBtn = document.getElementById("swapCancelBtn");
@@ -7093,12 +7097,17 @@
     if (pairUnits.length === 2) {
       const [u1, u2] = pairUnits;
       const score = opponentScoreBetween(u1.members, u2.members) + unitOpponentScoreBetween(u1.members, u2.members);
-      return { split: { teamA: u1.members, teamB: u2.members }, score };
+      // Copy rather than reference the unit's members array -- a fixed pair's
+      // `members` array is the *same object* reused for every round it plays
+      // (units are built once, outside the round loop), so writing into a
+      // court's team array in place (e.g. a mid-session player swap) would
+      // otherwise silently corrupt every other round that pair appears in.
+      return { split: { teamA: u1.members.slice(), teamB: u2.members.slice() }, score };
     }
     if (pairUnits.length === 1) {
       const pairUnit = pairUnits[0];
       const singles = unitGroup.filter((u) => u.kind === "single").map((u) => u.members[0]);
-      const teamA = pairUnit.members;
+      const teamA = pairUnit.members.slice();
       const teamB = singles;
       let score = opponentScoreBetween(teamA, teamB) + unitOpponentScoreBetween(teamA, teamB);
       const k = pairKey(teamB[0], teamB[1]);
@@ -7202,17 +7211,20 @@
     const units = buildUnits(players, fixedPairMap);
     const fixedPairKeys = new Set(units.filter((u) => u.kind === "pair").map((u) => u.id));
 
-    // A pair unit's sit-out fairness is derived from its two members' own
-    // seeded values (conservative "max" merge) so a newly-declared pair
-    // doesn't get an unfair head start or deficit on rest.
-    const unitSitCount = {};
-    const unitLastRestRound = {};
-    units.forEach((u) => {
-      const sitVals = u.members.map((p) => (seed && p in seed.sitCount ? seed.sitCount[p] : 0));
-      const restVals = u.members.map((p) => (seed && p in seed.lastRestRound ? seed.lastRestRound[p] : -1));
-      unitSitCount[u.id] = Math.max(...sitVals);
-      unitLastRestRound[u.id] = Math.max(...restVals);
-    });
+    // Sit-out fairness is tracked per individual player (not per unit) so a
+    // fixed pair's two members can diverge in rest state within a round --
+    // needed for the pair-splitting fallback below. A unit's effective
+    // priority for the bye sort is derived fresh each round as the max over
+    // its members, which is equivalent to the old per-unit "max merge" seed
+    // but keeps working correctly after a pair splits mid-session.
+    const playerSitCount = {};
+    const playerLastRestRound = {};
+    units.forEach((u) => u.members.forEach((p) => {
+      playerSitCount[p] = seed && p in seed.sitCount ? seed.sitCount[p] : 0;
+      playerLastRestRound[p] = seed && p in seed.lastRestRound ? seed.lastRestRound[p] : -1;
+    }));
+    const unitSit = (u) => Math.max(...u.members.map((p) => playerSitCount[p]));
+    const unitRest = (u) => Math.max(...u.members.map((p) => playerLastRestRound[p]));
 
     const rounds = [];
     const actualCourts = Math.min(courtsCount, Math.floor(players.length / playersPerCourt));
@@ -7224,11 +7236,14 @@
       const sitOutNeeded = n - needed;
 
       const tiebreak = new Map(units.map((u) => [u.id, Math.random()]));
-      const orderedUnits = units.slice().sort((a, b) => {
-        if (unitSitCount[a.id] !== unitSitCount[b.id]) return unitSitCount[a.id] - unitSitCount[b.id];
-        if (unitLastRestRound[a.id] !== unitLastRestRound[b.id]) return unitLastRestRound[a.id] - unitLastRestRound[b.id];
+      const byFairness = (a, b) => {
+        const sa = unitSit(a), sb = unitSit(b);
+        if (sa !== sb) return sa - sb;
+        const ra = unitRest(a), rb = unitRest(b);
+        if (ra !== rb) return ra - rb;
         return tiebreak.get(a.id) - tiebreak.get(b.id);
-      });
+      };
+      const orderedUnits = units.slice().sort(byFairness);
 
       const sittingOutUnits = [];
       let sitRunning = 0;
@@ -7239,12 +7254,47 @@
           sitRunning += u.size;
         }
       }
+
+      // Pair-splitting fallback: with an odd headcount, a lone unpaired
+      // player can be the *only* unit that ever fits an odd sit-out slot --
+      // every fixed pair is structurally exempt (its size never fits an odd
+      // gap), so that single would otherwise be forced to sit every round
+      // forever with no rotation possible. When that happens, and some
+      // currently-playing pair has rested less than the starved single,
+      // split that pair for this round only: whichever partner has rested
+      // least takes the bye in the single's place, and the other partner
+      // fills in alongside the now-freed single. The pair stays fixed for
+      // every other round -- this only ever affects this round's units.
+      let roundUnits = units;
+      const trueSingleUnits = units.filter((u) => u.kind === "single");
+      if (trueSingleUnits.length === 1) {
+        const starvedSingle = sittingOutUnits.find((u) => u.kind === "single");
+        if (starvedSingle) {
+          const playingPairs = orderedUnits.filter(
+            (u) => u.kind === "pair" && !sittingOutUnits.includes(u)
+          );
+          const splitCandidate = playingPairs.slice().sort(byFairness)[0];
+          if (splitCandidate && unitSit(splitCandidate) < unitSit(starvedSingle)) {
+            const [m1, m2] = splitCandidate.members;
+            const benchedMember = playerSitCount[m1] <= playerSitCount[m2] ? m1 : m2;
+            const freedMember = benchedMember === m1 ? m2 : m1;
+            const benchedHalf = { id: `${splitCandidate.id}:${benchedMember}`, kind: "single", members: [benchedMember], size: 1 };
+            const freedHalf = { id: `${splitCandidate.id}:${freedMember}`, kind: "single", members: [freedMember], size: 1 };
+
+            sittingOutUnits.splice(sittingOutUnits.indexOf(starvedSingle), 1, benchedHalf);
+            roundUnits = units.map((u) => (u === splitCandidate ? freedHalf : u));
+          }
+        }
+      }
+
       sittingOutUnits.forEach((u) => {
-        unitSitCount[u.id] += 1;
-        unitLastRestRound[u.id] = r;
+        u.members.forEach((p) => {
+          playerSitCount[p] += 1;
+          playerLastRestRound[p] = r;
+        });
       });
       const sittingOutSet = new Set(sittingOutUnits);
-      const playingUnits = orderedUnits.filter((u) => !sittingOutSet.has(u));
+      const playingUnits = roundUnits.filter((u) => !sittingOutSet.has(u));
       const sittingOut = sittingOutUnits.flatMap((u) => u.members);
 
       const ctx = {
@@ -7555,6 +7605,12 @@
     const s = currentSession;
     const round = s.rounds[currentRoundIndex];
     if (!swapPlayersInRound(round, nameA, nameB)) return;
+    if (swapWouldSplitFixedPair(nameA, nameB)) {
+      const involvesEither = (pair) => pair.some(
+        (n) => n.toLowerCase() === nameA.toLowerCase() || n.toLowerCase() === nameB.toLowerCase()
+      );
+      s.fixedPairs = (s.fixedPairs || []).filter((pair) => !involvesEither(pair));
+    }
     regenerateRemainingRounds(s.players.slice());
   }
 
@@ -9320,6 +9376,7 @@
     swapConfirmBody.textContent = `Swap ${nameA} and ${nameB}?`;
     const round = currentSession.rounds[currentRoundIndex];
     swapConfirmScoreNote.style.display = swapAffectsScoredCourt(round, nameA, nameB) ? "block" : "none";
+    swapConfirmPairNote.style.display = swapWouldSplitFixedPair(nameA, nameB) ? "block" : "none";
     swapConfirmOverlay.style.display = "flex";
   }
 
@@ -9368,10 +9425,6 @@
     }
     if (swapSelection.length === 2) {
       swapSelection.shift().el.classList.remove("swap-selected");
-    }
-    if (swapSelection.length === 1 && swapWouldSplitFixedPair(swapSelection[0].name, name)) {
-      alert("That would split a fixed pair. Swap their partner too, or unpair them first.");
-      return;
     }
     el.classList.add("swap-selected");
     swapSelection.push({ name, el });
