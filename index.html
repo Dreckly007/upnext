@@ -854,6 +854,7 @@
   .generate-btn:disabled { background: #d9c79a; cursor: not-allowed; }
 
   .debug-btn {
+    display: none;
     width: 100%;
     margin-top: 12px;
     background: transparent;
@@ -1682,6 +1683,8 @@
       </svg>
       <div class="brand-text-col">
         <svg class="brand-wordmark" viewBox="210 30 300 160" role="img" aria-label="Up Next">
+          <rect id="wordmarkUHit" x="205" y="25" width="70" height="110" fill="none" pointer-events="all"/>
+          <rect id="wordmarkPHit" x="278" y="25" width="85" height="110" fill="none" pointer-events="all"/>
           <g fill="none" stroke="var(--green)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
             <path d="M218 40 V71 A25 25 0 0 0 268 71 V40"/>
             <circle cx="316" cy="68" r="30"/>
@@ -3389,6 +3392,21 @@
   const generateBtn = document.getElementById("generateBtn");
   const debugBtn = document.getElementById("debugBtn");
   const debugFillScoresBtn = document.getElementById("debugFillScoresBtn");
+
+  // The debug fill buttons are hidden (see .debug-btn { display: none }) but
+  // still fully wired up -- clicking the "U" or "p" of the wordmark logo in
+  // the header (present on every screen) triggers them instead, picking
+  // whichever one makes sense for the screen currently showing.
+  document.getElementById("wordmarkUHit").addEventListener("click", () => {
+    if (setupView.style.display === "none") return;
+    if (config.mode === "tournament") tournamentDebugBtn.click();
+    else debugBtn.click();
+  });
+  document.getElementById("wordmarkPHit").addEventListener("click", () => {
+    if (sessionView.style.display !== "none") debugFillScoresBtn.click();
+    else if (tournamentView.style.display !== "none") tournamentDebugScoresBtn.click();
+  });
+
   const newSavedFirstNameInput = document.getElementById("newSavedFirstNameInput");
   const newSavedSurnameInput = document.getElementById("newSavedSurnameInput");
   const addSavedBtn = document.getElementById("addSavedBtn");
