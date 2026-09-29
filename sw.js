@@ -1,4 +1,4 @@
-const CACHE_NAME = "pbscheduler-v6";
+const CACHE_NAME = "pbscheduler-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
