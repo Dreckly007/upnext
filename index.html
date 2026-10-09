@@ -931,10 +931,11 @@
 
   .timer-section { text-align: center; margin: 6px 0 24px; }
   .timer-display { font-size: 3.2rem; font-weight: 800; color: var(--green-dark); line-height: 1; }
-  .timer-buttons { display: flex; justify-content: center; gap: 10px; margin-top: 12px; }
+  .timer-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
   .timer-btn { padding: 10px 26px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
   .timer-btn.start { background: var(--green); color: var(--on-accent); border: none; }
   .timer-btn.reset { background: #fff; color: var(--text); border: 1px solid var(--card-border); }
+  .timer-btn.set { background: #fff; color: var(--text); border: 1px solid var(--card-border); }
   .timer-btn.fullscreen { background: var(--green-pale); color: var(--green-dark); border: 1px solid var(--green-pale-border); }
   .timer-sound-row {
     display: flex;
@@ -982,7 +983,7 @@
     white-space: nowrap;
     cursor: pointer;
   }
-  .timer-fullscreen-buttons { display: flex; gap: 16px; margin-top: 24px; }
+  .timer-fullscreen-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; margin-top: 24px; }
   .timer-fullscreen-buttons .timer-btn { font-size: 1.2rem; padding: 16px 36px; }
   .timer-fullscreen-exit {
     position: absolute;
@@ -1449,6 +1450,7 @@
     padding: 20px;
     z-index: 50;
   }
+  #timerSetOverlay { z-index: 70; }
   .modal-card {
     background: #fff;
     color: var(--text);
@@ -2602,6 +2604,7 @@
         <div class="timer-buttons">
           <button class="timer-btn start" id="timerStartBtn">Start</button>
           <button class="timer-btn reset" id="timerResetBtn">Reset</button>
+          <button class="timer-btn set" id="timerSetBtn">Set time</button>
           <button class="timer-btn fullscreen" id="timerFullscreenBtn">Full screen</button>
         </div>
         <div class="timer-sound-row">
@@ -2869,6 +2872,37 @@
       <div class="timer-fullscreen-buttons">
         <button class="timer-btn start" id="timerFullscreenPauseBtn">Pause</button>
         <button class="timer-btn reset" id="timerFullscreenResetBtn">Reset</button>
+        <button class="timer-btn set" id="timerFullscreenSetBtn">Set time</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay no-print" id="timerSetOverlay" style="display:none;">
+      <div class="modal-card">
+        <div class="modal-title">Set timer</div>
+        <div class="modal-body">
+          <div class="paired-grid">
+            <div class="field">
+              <label for="timerSetMinutesInput">Minutes</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="timerSetMinutesInput" data-step="-1" aria-label="Decrease minutes">−</button>
+                <input type="number" id="timerSetMinutesInput" min="0" max="180" value="10" />
+                <button type="button" class="stepper-btn" data-target="timerSetMinutesInput" data-step="1" aria-label="Increase minutes">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="timerSetSecondsInput">Seconds</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="timerSetSecondsInput" data-step="-5" aria-label="Decrease seconds">−</button>
+                <input type="number" id="timerSetSecondsInput" min="0" max="55" step="5" value="0" />
+                <button type="button" class="stepper-btn" data-target="timerSetSecondsInput" data-step="5" aria-label="Increase seconds">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn primary" id="timerSetConfirmBtn">Set</button>
+          <button class="modal-btn cancel" id="timerSetCancelBtn">Cancel</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3146,6 +3180,7 @@
   let isSharedReadOnlyView = false;
   let timerSeconds = 0;
   let timerInterval = null;
+  let timerRenderedRoundKey = null;
 
   const homeView = document.getElementById("homeView");
   const sectionTitleBar = document.getElementById("sectionTitleBar");
@@ -3453,6 +3488,13 @@
   const timerFullscreenResetBtn = document.getElementById("timerFullscreenResetBtn");
   const timerFullscreenExitBtn = document.getElementById("timerFullscreenExitBtn");
   const timerFullscreenBtn = document.getElementById("timerFullscreenBtn");
+  const timerSetBtn = document.getElementById("timerSetBtn");
+  const timerFullscreenSetBtn = document.getElementById("timerFullscreenSetBtn");
+  const timerSetOverlay = document.getElementById("timerSetOverlay");
+  const timerSetMinutesInput = document.getElementById("timerSetMinutesInput");
+  const timerSetSecondsInput = document.getElementById("timerSetSecondsInput");
+  const timerSetConfirmBtn = document.getElementById("timerSetConfirmBtn");
+  const timerSetCancelBtn = document.getElementById("timerSetCancelBtn");
   const timerSoundSelect = document.getElementById("timerSoundSelect");
   const timerSoundTestBtn = document.getElementById("timerSoundTestBtn");
   const courtsContainer = document.getElementById("courtsContainer");
@@ -8030,6 +8072,26 @@
   timerFullscreenDisplay.addEventListener("click", closeTimerFullscreen);
   timerFullscreenBtn.addEventListener("click", openTimerFullscreen);
 
+  function openTimerSet() {
+    stopTimer();
+    timerSetMinutesInput.value = Math.floor(timerSeconds / 60);
+    timerSetSecondsInput.value = timerSeconds % 60;
+    timerSetOverlay.style.display = "flex";
+  }
+  function closeTimerSet() {
+    timerSetOverlay.style.display = "none";
+  }
+  timerSetBtn.addEventListener("click", openTimerSet);
+  timerFullscreenSetBtn.addEventListener("click", openTimerSet);
+  timerSetCancelBtn.addEventListener("click", closeTimerSet);
+  timerSetConfirmBtn.addEventListener("click", () => {
+    const minutes = Math.max(0, parseInt(timerSetMinutesInput.value, 10) || 0);
+    const seconds = Math.max(0, Math.min(59, parseInt(timerSetSecondsInput.value, 10) || 0));
+    timerSeconds = minutes * 60 + seconds;
+    updateTimerDisplay();
+    closeTimerSet();
+  });
+
   function updateSessionInStorage() {
     const idx = pastSessions.findIndex((s) => s.id === currentSession.id);
     if (idx !== -1) {
@@ -8585,7 +8647,15 @@
     prevBtn.disabled = currentRoundIndex === 0;
     nextBtn.disabled = currentRoundIndex === s.rounds.length - 1;
 
-    resetTimer();
+    // Only reset the timer when the round actually changes (or a different
+    // session loads) -- renderRound() also runs for unrelated re-renders
+    // (a swap, a roster edit, a score correction) that shouldn't wipe out a
+    // running or manually-set timer for the round still in progress.
+    const roundKey = s.id + ":" + currentRoundIndex;
+    if (roundKey !== timerRenderedRoundKey) {
+      timerRenderedRoundKey = roundKey;
+      resetTimer();
+    }
   }
 
   function renderFullSchedule() {
