@@ -1430,7 +1430,8 @@
   .remove-mode-hint { font-size: 0.85rem; color: var(--green-dark); margin-bottom: 8px; }
   #rosterStagingPanel { border-radius: 10px; border-top: 1px solid var(--card-border); margin-top: 8px; margin-bottom: 10px; }
   .roster-panel-top { display: flex; flex-wrap: wrap; gap: 10px; }
-  .roster-panel-top .inline-form { flex: 1 1 220px; margin-top: 0; }
+  #rosterAddForm { display: flex; flex-direction: column; gap: 10px; flex: 1 1 220px; }
+  .roster-add-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .roster-courts-row {
     display: flex;
     align-items: center;
@@ -2551,9 +2552,17 @@
       </div>
       <div class="dropdown-panel no-print no-share" id="rosterStagingPanel" style="display:none;">
         <div class="roster-panel-top">
-          <div class="inline-form" id="rosterAddForm" style="display:none;">
-            <input type="text" id="rosterAddInput" placeholder="Add player name..." />
-            <button class="small-btn add" id="rosterAddBtn">Add</button>
+          <div id="rosterAddForm" style="display:none;">
+            <div class="roster-add-row" id="rosterAddModeRow">
+              <button type="button" class="small-btn" id="rosterAddNewBtn">New player</button>
+              <button type="button" class="small-btn" id="rosterAddSavedBtn">Saved player</button>
+            </div>
+            <div class="roster-add-row" id="rosterAddNewPanel" style="display:none;">
+              <input type="text" id="rosterNewFirstNameInput" placeholder="First name" />
+              <input type="text" id="rosterNewSurnameInput" placeholder="Surname" />
+              <button class="small-btn add" id="rosterNewAddBtn">Add</button>
+            </div>
+            <div class="pick-chip-list" id="rosterAddSavedPanel" style="display:none;"></div>
           </div>
           <div class="roster-courts-row" id="rosterCourtsRow" style="display:none;">
             <label for="rosterCourtsInput">Courts available</label>
@@ -3475,8 +3484,13 @@
   const rosterRemoveModeBtn = document.getElementById("rosterRemoveModeBtn");
   const rosterAddForm = document.getElementById("rosterAddForm");
   const rosterRemoveHint = document.getElementById("rosterRemoveHint");
-  const rosterAddInput = document.getElementById("rosterAddInput");
-  const rosterAddBtn = document.getElementById("rosterAddBtn");
+  const rosterAddNewBtn = document.getElementById("rosterAddNewBtn");
+  const rosterAddSavedBtn = document.getElementById("rosterAddSavedBtn");
+  const rosterAddNewPanel = document.getElementById("rosterAddNewPanel");
+  const rosterAddSavedPanel = document.getElementById("rosterAddSavedPanel");
+  const rosterNewFirstNameInput = document.getElementById("rosterNewFirstNameInput");
+  const rosterNewSurnameInput = document.getElementById("rosterNewSurnameInput");
+  const rosterNewAddBtn = document.getElementById("rosterNewAddBtn");
   const rosterCourtsRow = document.getElementById("rosterCourtsRow");
   const rosterCourtsInput = document.getElementById("rosterCourtsInput");
   const rosterUpdateBtn = document.getElementById("rosterUpdateBtn");
@@ -7743,6 +7757,7 @@
     rosterUpdateBtn.disabled = !hasChanges;
     rosterCancelBtn.disabled = !hasChanges;
     updateStagingPanelVisibility();
+    renderRosterSavedPickList();
   }
 
   function updateStagingPanelVisibility() {
@@ -7750,6 +7765,31 @@
     const removeOpen = courtTapMode === "remove";
     rosterCourtsRow.style.display = (addOpen || removeOpen) ? "flex" : "none";
     rosterStagingPanel.style.display = (addOpen || removeOpen || hasPendingRosterChanges()) ? "block" : "none";
+  }
+
+  function renderRosterSavedPickList() {
+    if (rosterAddSavedPanel.style.display === "none") return;
+    rosterAddSavedPanel.innerHTML = "";
+    const available = savedPlayers.filter(
+      (name) => !pendingRoster.some((p) => p.toLowerCase() === name.toLowerCase())
+    );
+    if (available.length === 0) {
+      const note = document.createElement("div");
+      note.className = "empty-note";
+      note.textContent = savedPlayers.length === 0
+        ? "No saved players yet."
+        : "All saved players are already in this session.";
+      rosterAddSavedPanel.appendChild(note);
+      return;
+    }
+    available.forEach((name) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pick-chip";
+      btn.textContent = name;
+      btn.addEventListener("click", () => addPlayerMidSession(name));
+      rosterAddSavedPanel.appendChild(btn);
+    });
   }
 
   function addPlayerMidSession(name) {
@@ -7836,21 +7876,46 @@
     regenerateRemainingRounds(s.players.slice());
   }
 
-  function submitRosterAdd() {
-    addPlayerMidSession(rosterAddInput.value);
-    rosterAddInput.value = "";
+  function setRosterAddMode(mode) {
+    rosterAddNewPanel.style.display = mode === "new" ? "flex" : "none";
+    rosterAddSavedPanel.style.display = mode === "saved" ? "flex" : "none";
+    rosterAddNewBtn.classList.toggle("active", mode === "new");
+    rosterAddSavedBtn.classList.toggle("active", mode === "saved");
+    if (mode === "new") rosterNewFirstNameInput.focus();
+    if (mode === "saved") renderRosterSavedPickList();
   }
-  rosterAddInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") submitRosterAdd();
+  rosterAddNewBtn.addEventListener("click", () => setRosterAddMode("new"));
+  rosterAddSavedBtn.addEventListener("click", () => setRosterAddMode("saved"));
+
+  function submitRosterNewPlayer() {
+    const firstName = rosterNewFirstNameInput.value.trim();
+    const surname = rosterNewSurnameInput.value.trim();
+    if (!firstName || !surname) return;
+    const name = composeFullName(firstName, surname);
+    if (!savedPlayers.some((p) => p.toLowerCase() === name.toLowerCase())) {
+      savedPlayers.push(name);
+      save(STORAGE.saved, savedPlayers);
+      setNameParts(name, firstName, surname);
+    }
+    addPlayerMidSession(name);
+    rosterNewFirstNameInput.value = "";
+    rosterNewSurnameInput.value = "";
+    rosterNewFirstNameInput.focus();
+  }
+  rosterNewFirstNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") rosterNewSurnameInput.focus();
   });
-  rosterAddBtn.addEventListener("click", submitRosterAdd);
+  rosterNewSurnameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") submitRosterNewPlayer();
+  });
+  rosterNewAddBtn.addEventListener("click", submitRosterNewPlayer);
 
   function toggleAddForm() {
     const showing = rosterAddForm.style.display !== "none";
     if (!showing) setCourtTapMode(null);
     rosterAddForm.style.display = showing ? "none" : "flex";
     rosterAddModeBtn.classList.toggle("active", !showing);
-    if (!showing) rosterAddInput.focus();
+    setRosterAddMode(null);
     updateStagingPanelVisibility();
   }
   rosterAddModeBtn.addEventListener("click", toggleAddForm);
