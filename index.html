@@ -8707,6 +8707,7 @@
       cellNames.forEach((name) => {
         const cell = document.createElement("div");
         cell.className = "team-cell";
+        cell.dataset.name = name;
         const isFixed = (pendingFixedPairs || []).some((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
         const displayName = displayNameFor(name, s.players, nameDisplayMode);
         cell.textContent = isFixed ? `🔗 ${displayName}` : displayName;
@@ -8768,7 +8769,10 @@
       round.sitOuts.forEach((name) => {
         const pill = document.createElement("span");
         pill.className = "resting-pill";
-        pill.textContent = displayNameFor(name, s.players, nameDisplayMode);
+        pill.dataset.name = name;
+        const isFixedResting = (pendingFixedPairs || []).some((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+        const restingDisplayName = displayNameFor(name, s.players, nameDisplayMode);
+        pill.textContent = isFixedResting ? `🔗 ${restingDisplayName}` : restingDisplayName;
         if (courtTapMode === "remove" && !pendingRoster.includes(name)) pill.classList.add("remove-marked");
         if (courtTapMode === "link" && linkSelection && linkSelection.name === name) pill.classList.add("link-selected");
         pill.addEventListener("click", () => handleCourtTap(name, pill));
@@ -9728,7 +9732,7 @@
 
   function applyRemoveMarks() {
     document.querySelectorAll("#courtsContainer .team-cell, #restingBar .resting-pill").forEach((el) => {
-      el.classList.toggle("remove-marked", !pendingRoster.includes(el.textContent));
+      el.classList.toggle("remove-marked", !pendingRoster.includes(el.dataset.name));
     });
   }
 
