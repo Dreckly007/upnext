@@ -410,6 +410,10 @@
   .dropdown-row.no-print { margin-top: 0; margin-bottom: 10px; }
   .dropdown-row .dropdown { flex: 1 1 160px; min-width: 0; margin-top: 0; }
   .dropdown-row.expanded .dropdown { flex: 1 1 100%; }
+  #sessionSectionsRow > .dropdown-panel,
+  #sessionSectionsRow > .timer-section {
+    flex: 1 1 100%;
+  }
   #setupDropdownRow { display: block; }
   #setupDropdownRow .dropdown { margin-top: 12px; }
   .dropdown-toggle {
@@ -2530,6 +2534,7 @@
 
       <button class="debug-btn no-print no-share" id="debugFillScoresBtn">Debug: fill in scores</button>
 
+      <div class="dropdown-row no-print" id="sessionSectionsRow">
       <div class="dropdown no-print no-share" id="sessionManageSection">
         <button class="dropdown-toggle" data-target="sessionManageSection">
           <span class="acc-toggle-text"><span>Manage Players</span></span>
@@ -2666,6 +2671,7 @@
           </select>
           <button class="timer-sound-test" id="timerSoundTestBtn">🔊 Test</button>
         </div>
+      </div>
       </div>
 
       <div class="info-bar panel-collapsed" id="infoBar"></div>
