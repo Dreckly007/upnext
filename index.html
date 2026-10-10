@@ -2530,31 +2530,39 @@
 
       <button class="debug-btn no-print no-share" id="debugFillScoresBtn">Debug: fill in scores</button>
 
-      <div class="icon-btn-row cols-3 no-print no-share" id="actionButtonsRow">
-        <button class="icon-btn" id="startOverLink" aria-label="Start Over">
-          <span class="icon-glyph" aria-hidden="true">↺</span>
-          <span class="icon-label">Start Over</span>
+      <div class="dropdown no-print no-share" id="sessionManageSection">
+        <button class="dropdown-toggle" data-target="sessionManageSection">
+          <span class="acc-toggle-text"><span>Manage Players</span></span>
+          <span class="arrow">▾</span>
         </button>
-        <button class="icon-btn" id="editPlayersLink" aria-label="Edit Players">
-          <span class="icon-glyph" aria-hidden="true">✎</span>
-          <span class="icon-label">Edit Players</span>
-        </button>
-        <button class="icon-btn" id="rosterAddModeBtn" aria-label="Add Player">
-          <span class="icon-glyph" aria-hidden="true">＋</span>
-          <span class="icon-label">Add Player</span>
-        </button>
-        <button class="icon-btn" id="rosterRemoveModeBtn" aria-label="Remove Player">
-          <span class="icon-glyph" aria-hidden="true">−</span>
-          <span class="icon-label">Remove Player</span>
-        </button>
-        <button class="icon-btn" id="swapPlayersLink" aria-label="Swap Player Positions">
-          <span class="icon-glyph" aria-hidden="true">⇄</span>
-          <span class="icon-label">Swap Positions</span>
-        </button>
-        <button class="icon-btn" id="rosterLinkModeBtn" aria-label="Link Players">
-          <span class="icon-glyph" aria-hidden="true">🔗</span>
-          <span class="icon-label">Link Players</span>
-        </button>
+        <div class="dropdown-panel">
+          <div class="icon-btn-row cols-3" id="actionButtonsRow">
+            <button class="icon-btn" id="startOverLink" aria-label="Start Over">
+              <span class="icon-glyph" aria-hidden="true">↺</span>
+              <span class="icon-label">Start Over</span>
+            </button>
+            <button class="icon-btn" id="editPlayersLink" aria-label="Edit Players">
+              <span class="icon-glyph" aria-hidden="true">✎</span>
+              <span class="icon-label">Edit Players</span>
+            </button>
+            <button class="icon-btn" id="rosterAddModeBtn" aria-label="Add Player">
+              <span class="icon-glyph" aria-hidden="true">＋</span>
+              <span class="icon-label">Add Player</span>
+            </button>
+            <button class="icon-btn" id="rosterRemoveModeBtn" aria-label="Remove Player">
+              <span class="icon-glyph" aria-hidden="true">−</span>
+              <span class="icon-label">Remove Player</span>
+            </button>
+            <button class="icon-btn" id="swapPlayersLink" aria-label="Swap Player Positions">
+              <span class="icon-glyph" aria-hidden="true">⇄</span>
+              <span class="icon-label">Swap Positions</span>
+            </button>
+            <button class="icon-btn" id="rosterLinkModeBtn" aria-label="Link Players">
+              <span class="icon-glyph" aria-hidden="true">🔗</span>
+              <span class="icon-label">Link Players</span>
+            </button>
+          </div>
+        </div>
       </div>
       <div class="dropdown-panel no-print no-share" id="rosterStagingPanel" style="display:none;">
         <div class="roster-panel-top">
@@ -2591,38 +2599,55 @@
         </div>
       </div>
 
-      <div class="icon-btn-row cols-3 no-print" id="printButtonsRow">
-        <button class="icon-btn" id="printBtn" aria-label="Print full record">
-          <span class="icon-glyph" aria-hidden="true">🖨</span>
-          <span class="icon-label">Full record</span>
+      <div class="dropdown no-print" id="sessionPrintSection">
+        <button class="dropdown-toggle" data-target="sessionPrintSection">
+          <span class="acc-toggle-text"><span>Print &amp; Share</span></span>
+          <span class="arrow">▾</span>
         </button>
-        <button class="icon-btn" id="printCourtsBtn" aria-label="Print court sheets">
-          <span class="icon-glyph" aria-hidden="true">🧾</span>
-          <span class="icon-label">Court sheets</span>
-        </button>
-        <button class="icon-btn" id="printScoreSheetBtn" aria-label="Print score sheet">
-          <span class="icon-glyph" aria-hidden="true">📝</span>
-          <span class="icon-label">Score sheet</span>
-        </button>
-        <button class="icon-btn" id="printLeaderboardBtn" aria-label="Print leaderboard">
-          <span class="icon-glyph" aria-hidden="true">🏆</span>
-          <span class="icon-label">Leaderboard</span>
-        </button>
-        <button class="icon-btn no-share" id="printSessionStatsBtn" aria-label="Print session stats">
-          <span class="icon-glyph" aria-hidden="true">📊</span>
-          <span class="icon-label">Session stats</span>
-        </button>
-        <button class="icon-btn" id="shareBtn" aria-label="Share schedule">
-          <span class="icon-glyph" aria-hidden="true">🔗</span>
-          <span class="icon-label">Share</span>
-        </button>
+        <div class="dropdown-panel">
+          <div class="icon-btn-row cols-3" id="printButtonsRow">
+            <button class="icon-btn" id="printBtn" aria-label="Print full record">
+              <span class="icon-glyph" aria-hidden="true">🖨</span>
+              <span class="icon-label">Full record</span>
+            </button>
+            <button class="icon-btn" id="printCourtsBtn" aria-label="Print court sheets">
+              <span class="icon-glyph" aria-hidden="true">🧾</span>
+              <span class="icon-label">Court sheets</span>
+            </button>
+            <button class="icon-btn" id="printScoreSheetBtn" aria-label="Print score sheet">
+              <span class="icon-glyph" aria-hidden="true">📝</span>
+              <span class="icon-label">Score sheet</span>
+            </button>
+            <button class="icon-btn" id="printLeaderboardBtn" aria-label="Print leaderboard">
+              <span class="icon-glyph" aria-hidden="true">🏆</span>
+              <span class="icon-label">Leaderboard</span>
+            </button>
+            <button class="icon-btn no-share" id="printSessionStatsBtn" aria-label="Print session stats">
+              <span class="icon-glyph" aria-hidden="true">📊</span>
+              <span class="icon-label">Session stats</span>
+            </button>
+            <button class="icon-btn" id="shareBtn" aria-label="Share schedule">
+              <span class="icon-glyph" aria-hidden="true">🔗</span>
+              <span class="icon-label">Share</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="icon-btn-row cols-3 no-print" id="utilityButtonsRow">
-        <button class="outline-btn no-share" id="timerToggleBtn">Timer</button>
-        <button class="outline-btn no-share" id="regenerateBtn">Regenerate Schedule</button>
-        <button class="outline-btn" id="criteriaToggleBtn" aria-expanded="false">Criteria</button>
+      <div class="dropdown no-print" id="sessionToolsSection">
+        <button class="dropdown-toggle" data-target="sessionToolsSection">
+          <span class="acc-toggle-text"><span>Session Tools</span></span>
+          <span class="arrow">▾</span>
+        </button>
+        <div class="dropdown-panel">
+          <div class="icon-btn-row cols-3" id="utilityButtonsRow">
+            <button class="outline-btn no-share" id="timerToggleBtn">Timer</button>
+            <button class="outline-btn no-share" id="regenerateBtn">Regenerate Schedule</button>
+            <button class="outline-btn" id="criteriaToggleBtn" aria-expanded="false">Criteria</button>
+          </div>
+        </div>
       </div>
+
       <div class="timer-section no-print no-share" id="timerSection" style="display:none;">
         <div class="timer-display" id="timerDisplay">10:00</div>
         <div class="timer-buttons">
