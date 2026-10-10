@@ -1423,8 +1423,10 @@
   .schedule-table .resting-cell { color: var(--green-dark); font-size: 0.8rem; }
 
   .swap-mode .team-cell, .swap-mode .resting-pill,
-  .remove-mode .team-cell, .remove-mode .resting-pill { cursor: pointer; }
+  .remove-mode .team-cell, .remove-mode .resting-pill,
+  .link-mode .team-cell, .link-mode .resting-pill { cursor: pointer; }
   .swap-selected { box-shadow: inset 0 0 0 3px rgba(0,0,0,0.55); }
+  .link-selected { box-shadow: inset 0 0 0 3px var(--green-dark); }
   .remove-marked { text-decoration: line-through; opacity: 0.55; }
 
   .remove-mode-hint { font-size: 0.85rem; color: var(--green-dark); margin-bottom: 8px; }
@@ -2528,7 +2530,7 @@
 
       <button class="debug-btn no-print no-share" id="debugFillScoresBtn">Debug: fill in scores</button>
 
-      <div class="icon-btn-row cols-5 no-print no-share" id="actionButtonsRow">
+      <div class="icon-btn-row cols-3 no-print no-share" id="actionButtonsRow">
         <button class="icon-btn" id="startOverLink" aria-label="Start Over">
           <span class="icon-glyph" aria-hidden="true">↺</span>
           <span class="icon-label">Start Over</span>
@@ -2548,6 +2550,10 @@
         <button class="icon-btn" id="swapPlayersLink" aria-label="Swap Player Positions">
           <span class="icon-glyph" aria-hidden="true">⇄</span>
           <span class="icon-label">Swap Positions</span>
+        </button>
+        <button class="icon-btn" id="rosterLinkModeBtn" aria-label="Link Players">
+          <span class="icon-glyph" aria-hidden="true">🔗</span>
+          <span class="icon-label">Link Players</span>
         </button>
       </div>
       <div class="dropdown-panel no-print no-share" id="rosterStagingPanel" style="display:none;">
@@ -2575,6 +2581,9 @@
         </div>
         <div class="remove-mode-hint" id="rosterRemoveHint" style="display:none;">
           Tap a player on the court (or resting) below to remove them.
+        </div>
+        <div class="remove-mode-hint" id="rosterLinkHint" style="display:none;">
+          Tap two players to link them as a fixed pair, or tap a linked player to unlink.
         </div>
         <div class="roster-confirm-row">
           <button class="roster-update-btn" id="rosterUpdateBtn">Apply changes</button>
@@ -3187,11 +3196,13 @@
   let tournamentTeams = [];
   let tournamentClubs = [];
   let currentRoundIndex = 0;
-  let courtTapMode = null; // null | "swap" | "remove"
+  let courtTapMode = null; // null | "swap" | "remove" | "link"
   let swapSelection = [];
   let pendingSwap = null;
   let pendingRoster = [];
   let pendingCourts = 1;
+  let pendingFixedPairs = [];
+  let linkSelection = null;
   let isSharedReadOnlyView = false;
   let timerSeconds = 0;
   let timerInterval = null;
@@ -3482,8 +3493,10 @@
   const rosterStagingPanel = document.getElementById("rosterStagingPanel");
   const rosterAddModeBtn = document.getElementById("rosterAddModeBtn");
   const rosterRemoveModeBtn = document.getElementById("rosterRemoveModeBtn");
+  const rosterLinkModeBtn = document.getElementById("rosterLinkModeBtn");
   const rosterAddForm = document.getElementById("rosterAddForm");
   const rosterRemoveHint = document.getElementById("rosterRemoveHint");
+  const rosterLinkHint = document.getElementById("rosterLinkHint");
   const rosterAddNewBtn = document.getElementById("rosterAddNewBtn");
   const rosterAddSavedBtn = document.getElementById("rosterAddSavedBtn");
   const rosterAddNewPanel = document.getElementById("rosterAddNewPanel");
@@ -7723,6 +7736,7 @@
   function resetPendingRoster() {
     pendingRoster = currentSession.players.slice();
     pendingCourts = currentSession.config.courts;
+    pendingFixedPairs = (currentSession.fixedPairs || []).map((p) => p.slice());
     rosterCourtsInput.value = pendingCourts;
   }
 
@@ -7740,16 +7754,39 @@
     };
   }
 
-  function describeRosterDiff({ added, removed }, courtsChange) {
+  function fixedPairKey(pair) {
+    return pair.slice().map((n) => n.toLowerCase()).sort().join("||");
+  }
+
+  function fixedPairsEqual(a, b) {
+    const na = (a || []).map(fixedPairKey).sort();
+    const nb = (b || []).map(fixedPairKey).sort();
+    return na.length === nb.length && na.every((v, i) => v === nb[i]);
+  }
+
+  function computeFixedPairsDiff(committed, draft) {
+    const committedKeys = new Set((committed || []).map(fixedPairKey));
+    const draftKeys = new Set((draft || []).map(fixedPairKey));
+    return {
+      linked: (draft || []).filter((p) => !committedKeys.has(fixedPairKey(p))),
+      unlinked: (committed || []).filter((p) => !draftKeys.has(fixedPairKey(p))),
+    };
+  }
+
+  function describeRosterDiff({ added, removed }, courtsChange, pairsDiff) {
     const parts = [];
     if (removed.length) parts.push(`Remove: ${removed.join(", ")}.`);
     if (added.length) parts.push(`Add: ${added.join(", ")}.`);
     if (courtsChange) parts.push(`Courts: ${courtsChange.from} → ${courtsChange.to}.`);
+    if (pairsDiff && pairsDiff.linked.length) parts.push(`Link: ${pairsDiff.linked.map((p) => p.join(" & ")).join(", ")}.`);
+    if (pairsDiff && pairsDiff.unlinked.length) parts.push(`Unlink: ${pairsDiff.unlinked.map((p) => p.join(" & ")).join(", ")}.`);
     return parts.join(" ") || "No changes.";
   }
 
   function hasPendingRosterChanges() {
-    return !rostersEqual(pendingRoster, currentSession.players) || pendingCourts !== currentSession.config.courts;
+    return !rostersEqual(pendingRoster, currentSession.players)
+      || pendingCourts !== currentSession.config.courts
+      || !fixedPairsEqual(pendingFixedPairs, currentSession.fixedPairs || []);
   }
 
   function updateRosterPanelState() {
@@ -7763,8 +7800,9 @@
   function updateStagingPanelVisibility() {
     const addOpen = rosterAddForm.style.display !== "none";
     const removeOpen = courtTapMode === "remove";
+    const linkOpen = courtTapMode === "link";
     rosterCourtsRow.style.display = (addOpen || removeOpen) ? "flex" : "none";
-    rosterStagingPanel.style.display = (addOpen || removeOpen || hasPendingRosterChanges()) ? "block" : "none";
+    rosterStagingPanel.style.display = (addOpen || removeOpen || linkOpen || hasPendingRosterChanges()) ? "block" : "none";
   }
 
   function renderRosterSavedPickList() {
@@ -7930,6 +7968,16 @@
   }
   rosterRemoveModeBtn.addEventListener("click", toggleRemoveMode);
 
+  function toggleLinkMode() {
+    if (courtTapMode !== "link") {
+      rosterAddForm.style.display = "none";
+      rosterAddModeBtn.classList.remove("active");
+    }
+    setCourtTapMode(courtTapMode === "link" ? null : "link");
+    updateStagingPanelVisibility();
+  }
+  rosterLinkModeBtn.addEventListener("click", toggleLinkMode);
+
   function resetRosterPanelUI() {
     rosterAddForm.style.display = "none";
     rosterAddModeBtn.classList.remove("active");
@@ -7938,11 +7986,16 @@
   }
 
   rosterUpdateBtn.addEventListener("click", () => {
-    if (rostersEqual(pendingRoster, currentSession.players) && pendingCourts === currentSession.config.courts) return;
+    if (
+      rostersEqual(pendingRoster, currentSession.players) &&
+      pendingCourts === currentSession.config.courts &&
+      fixedPairsEqual(pendingFixedPairs, currentSession.fixedPairs || [])
+    ) return;
     openRosterConfirm();
   });
   rosterCancelBtn.addEventListener("click", () => {
     resetPendingRoster();
+    renderRound();
     updateRosterPanelState();
     resetRosterPanelUI();
   });
@@ -7957,6 +8010,7 @@
   rosterAllRemainingBtn.addEventListener("click", () => {
     const newRoster = pendingRoster.slice();
     const newCourts = pendingCourts;
+    currentSession.fixedPairs = pendingFixedPairs.map((p) => p.slice());
     closeRosterConfirm();
     regenerateRemainingRounds(newRoster, { freezeAt: currentRoundIndex, resetMaxRoundReached: true, newCourts });
     resetPendingRoster();
@@ -7966,6 +8020,7 @@
   rosterUpdateRemainingBtn.addEventListener("click", () => {
     const newRoster = pendingRoster.slice();
     const newCourts = pendingCourts;
+    currentSession.fixedPairs = pendingFixedPairs.map((p) => p.slice());
     closeRosterConfirm();
     regenerateRemainingRounds(newRoster, { newCourts });
     resetPendingRoster();
@@ -8618,6 +8673,13 @@
   function renderRound() {
     resetSwapSelection();
     const s = currentSession;
+    // Keep the draft pairing in sync with the committed one except while the
+    // user is actively mid-edit in Link mode -- any other code path that
+    // changes s.fixedPairs directly (e.g. swapGoingForward's auto-unlink)
+    // doesn't need to remember to update the draft too.
+    if (courtTapMode !== "link") {
+      pendingFixedPairs = (s.fixedPairs || []).map((p) => p.slice());
+    }
     if (currentRoundIndex > (s.maxRoundReached ?? 0)) {
       s.maxRoundReached = currentRoundIndex;
       updateSessionInStorage();
@@ -8645,10 +8707,11 @@
       cellNames.forEach((name) => {
         const cell = document.createElement("div");
         cell.className = "team-cell";
-        const isFixed = (s.fixedPairs || []).some((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+        const isFixed = (pendingFixedPairs || []).some((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
         const displayName = displayNameFor(name, s.players, nameDisplayMode);
         cell.textContent = isFixed ? `🔗 ${displayName}` : displayName;
         if (courtTapMode === "remove" && !pendingRoster.includes(name)) cell.classList.add("remove-marked");
+        if (courtTapMode === "link" && linkSelection && linkSelection.name === name) cell.classList.add("link-selected");
         cell.addEventListener("click", () => handleCourtTap(name, cell));
         teamBox.appendChild(cell);
       });
@@ -8707,6 +8770,7 @@
         pill.className = "resting-pill";
         pill.textContent = displayNameFor(name, s.players, nameDisplayMode);
         if (courtTapMode === "remove" && !pendingRoster.includes(name)) pill.classList.add("remove-marked");
+        if (courtTapMode === "link" && linkSelection && linkSelection.name === name) pill.classList.add("link-selected");
         pill.addEventListener("click", () => handleCourtTap(name, pill));
         restingBar.appendChild(pill);
       });
@@ -8831,6 +8895,7 @@
     renderLeaderboard();
     updateRosterPanelState();
     sessionLaddersBtn.style.display = currentSession.ladderId ? "" : "none";
+    rosterLinkModeBtn.style.display = currentSession.config.format === "singles" ? "none" : "";
   }
 
   document.querySelectorAll("#panelToggleRow .dropdown-toggle").forEach((btn) => {
@@ -9671,13 +9736,18 @@
     courtTapMode = mode;
     resetSwapSelection();
     clearRemoveMarks();
+    linkSelection = null;
     courtsContainer.classList.toggle("swap-mode", mode === "swap");
     restingBar.classList.toggle("swap-mode", mode === "swap");
     courtsContainer.classList.toggle("remove-mode", mode === "remove");
     restingBar.classList.toggle("remove-mode", mode === "remove");
+    courtsContainer.classList.toggle("link-mode", mode === "link");
+    restingBar.classList.toggle("link-mode", mode === "link");
     swapPlayersLink.classList.toggle("active", mode === "swap");
     rosterRemoveModeBtn.classList.toggle("active", mode === "remove");
+    rosterLinkModeBtn.classList.toggle("active", mode === "link");
     rosterRemoveHint.style.display = mode === "remove" ? "block" : "none";
+    rosterLinkHint.style.display = mode === "link" ? "block" : "none";
     if (mode === "remove") applyRemoveMarks();
   }
 
@@ -9705,10 +9775,12 @@
     const diff = computeRosterDiff(currentSession.players, pendingRoster);
     const courtsChanged = pendingCourts !== currentSession.config.courts;
     const courtsChange = courtsChanged ? { from: currentSession.config.courts, to: pendingCourts } : null;
-    rosterConfirmBody.textContent = describeRosterDiff(diff, courtsChange);
+    const pairsDiff = computeFixedPairsDiff(currentSession.fixedPairs || [], pendingFixedPairs);
+    const pairsChanged = pairsDiff.linked.length > 0 || pairsDiff.unlinked.length > 0;
+    rosterConfirmBody.textContent = describeRosterDiff(diff, courtsChange, pairsDiff);
     rosterConfirmScoreNote.style.display =
       roundsHaveScoresFrom(currentSession.rounds, currentRoundIndex) ? "block" : "none";
-    rosterThisGameBtn.style.display = courtsChanged ? "none" : "";
+    rosterThisGameBtn.style.display = (courtsChanged || pairsChanged) ? "none" : "";
     rosterConfirmOverlay.style.display = "flex";
   }
 
@@ -9719,6 +9791,7 @@
   function handleCourtTap(name, el) {
     if (courtTapMode === "swap") handleSwapTap(name, el);
     else if (courtTapMode === "remove") handleRemoveTap(name, el);
+    else if (courtTapMode === "link") handleLinkTap(name, el);
   }
 
   function swapWouldSplitFixedPair(nameA, nameB) {
@@ -9744,6 +9817,34 @@
     el.classList.add("swap-selected");
     swapSelection.push({ name, el });
     if (swapSelection.length === 2) openSwapConfirm(swapSelection[0].name, swapSelection[1].name);
+  }
+
+  function handleLinkTap(name, el) {
+    const existingPair = pendingFixedPairs.find((p) => p.some((n) => n.toLowerCase() === name.toLowerCase()));
+    if (existingPair) {
+      const partner = existingPair.find((n) => n.toLowerCase() !== name.toLowerCase());
+      if (confirm(`Unpair ${name} and ${partner}?`)) {
+        pendingFixedPairs.splice(pendingFixedPairs.indexOf(existingPair), 1);
+        updateRosterPanelState();
+        renderRound();
+      }
+      return;
+    }
+    if (linkSelection && linkSelection.name === name) {
+      linkSelection.el.classList.remove("link-selected");
+      linkSelection = null;
+      return;
+    }
+    if (linkSelection) {
+      pendingFixedPairs.push([linkSelection.name, name]);
+      linkSelection.el.classList.remove("link-selected");
+      linkSelection = null;
+      updateRosterPanelState();
+      renderRound();
+      return;
+    }
+    linkSelection = { name, el };
+    el.classList.add("link-selected");
   }
 
   function handleRemoveTap(name, el) {
