@@ -818,9 +818,15 @@
   }
   .custom-color-row {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-top: 10px;
+  }
+  .custom-color-field {
+    display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: 10px;
   }
   .custom-color-row input[type="color"] {
     width: 44px;
@@ -1742,8 +1748,14 @@
           <div class="dropdown-panel">
             <div class="theme-swatches" id="themeSwatches"></div>
             <div class="custom-color-row" id="customColorRow" style="display:none;">
-              <input type="color" id="customColorInput" value="#b8860b" />
-              <span class="hint">Pick your own colour</span>
+              <div class="custom-color-field">
+                <input type="color" id="customColorInput" value="#b8860b" />
+                <span class="hint">Main colour</span>
+              </div>
+              <div class="custom-color-field">
+                <input type="color" id="customBgColorInput" value="#eef1f4" />
+                <span class="hint">Background colour</span>
+              </div>
             </div>
           </div>
         </div>
@@ -3176,6 +3188,7 @@
     courtLabels: ["1"],
     theme: "cornish-gold",
     customColor: "#b8860b",
+    customBgColor: "#eef1f4",
     timerSound: "beep",
     mode: "session",
     useLadderHistory: true,
@@ -3192,6 +3205,7 @@
   config.targetScore = config.targetScore ?? 11;
   config.theme = config.theme || "cornish-gold";
   config.customColor = config.customColor || "#b8860b";
+  config.customBgColor = config.customBgColor || "#eef1f4";
   config.winByTwo = config.winByTwo ?? false;
   config.format = config.format === "singles" ? "singles" : "doubles";
   config.timerSound = config.timerSound || "beep";
@@ -3272,6 +3286,7 @@
   const themeSwatchesContainer = document.getElementById("themeSwatches");
   const customColorRow = document.getElementById("customColorRow");
   const customColorInput = document.getElementById("customColorInput");
+  const customBgColorInput = document.getElementById("customBgColorInput");
   const themeToggleDot = document.getElementById("themeToggleDot");
   const themeToggleName = document.getElementById("themeToggleName");
   const formatButtons = document.querySelectorAll("#formatToggle .format-btn");
@@ -7014,36 +7029,63 @@
 
   function clearCustomOverrides() {
     const root = document.documentElement.style;
-    ["--green", "--green-dark", "--green-pale", "--green-pale-border", "--on-accent"].forEach((prop) => {
+    ["--green", "--green-dark", "--green-pale", "--green-pale-border", "--on-accent", "--bg", "--body-text", "--muted", "--card-border"].forEach((prop) => {
       root.removeProperty(prop);
     });
   }
 
-  function applyCustomColor(hex) {
-    const { r, g, b } = hexToRgb(hex);
+  function applyCustomColor(mainHex, bgHex) {
+    const { r, g, b } = hexToRgb(mainHex);
     const { h, s, l } = rgbToHsl(r, g, b);
-    const green = hex;
-    const greenDark = hslToHex(h, s, Math.max(0, l - 18));
-    const greenPale = hslToHex(h, Math.min(s, 45), 92);
-    const greenPaleBorder = hslToHex(h, Math.min(s, 55), 80);
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    const onAccent = luminance > 0.6 ? "#1f2937" : "#ffffff";
+    const accentLuminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const onAccent = accentLuminance > 0.6 ? "#1f2937" : "#ffffff";
+
+    const bgRgb = hexToRgb(bgHex);
+    const bgHsl = rgbToHsl(bgRgb.r, bgRgb.g, bgRgb.b);
+    const bgLuminance = (0.299 * bgRgb.r + 0.587 * bgRgb.g + 0.114 * bgRgb.b) / 255;
+    const isDarkBg = bgLuminance <= 0.5;
+
+    // --green-dark doubles as text color on --green-pale surfaces, so on a dark
+    // background it must stay bright enough to read, not just "darker than green".
+    const greenDark = isDarkBg
+      ? hslToHex(h, Math.min(s, 70), Math.max(l, 50))
+      : hslToHex(h, s, Math.max(0, l - 18));
+
+    const paleL = isDarkBg ? Math.min(bgHsl.l + 8, 22) : 92;
+    const paleBorderL = isDarkBg ? Math.min(paleL + 12, 34) : 80;
+    const greenPale = hslToHex(h, Math.min(s, 45), paleL);
+    const greenPaleBorder = hslToHex(h, Math.min(s, 55), paleBorderL);
+
+    const bodyText = isDarkBg
+      ? hslToHex(bgHsl.h, Math.min(bgHsl.s, 20), 92)
+      : hslToHex(bgHsl.h, Math.min(bgHsl.s, 35), 18);
+    const muted = isDarkBg
+      ? hslToHex(bgHsl.h, Math.min(bgHsl.s, 15), 65)
+      : hslToHex(bgHsl.h, Math.min(bgHsl.s, 25), 45);
+    const cardBorder = isDarkBg
+      ? hslToHex(bgHsl.h, Math.min(bgHsl.s, 50), Math.min(bgHsl.l + 14, 35))
+      : hslToHex(bgHsl.h, Math.min(bgHsl.s, 40), Math.max(bgHsl.l - 10, 70));
 
     const root = document.documentElement.style;
-    root.setProperty("--green", green);
+    root.setProperty("--green", mainHex);
     root.setProperty("--green-dark", greenDark);
     root.setProperty("--green-pale", greenPale);
     root.setProperty("--green-pale-border", greenPaleBorder);
     root.setProperty("--on-accent", onAccent);
+    root.setProperty("--bg", bgHex);
+    root.setProperty("--body-text", bodyText);
+    root.setProperty("--muted", muted);
+    root.setProperty("--card-border", cardBorder);
 
     config.theme = "custom";
-    config.customColor = hex;
+    config.customColor = mainHex;
+    config.customBgColor = bgHex;
     save(STORAGE.config, config);
   }
 
   function applyTheme(themeKey) {
     if (themeKey === "custom") {
-      applyCustomColor(config.customColor);
+      applyCustomColor(config.customColor, config.customBgColor);
       document.documentElement.setAttribute("data-theme", "custom");
     } else {
       clearCustomOverrides();
@@ -7075,6 +7117,7 @@
     });
     customColorRow.style.display = config.theme === "custom" ? "flex" : "none";
     customColorInput.value = config.customColor;
+    customBgColorInput.value = config.customBgColor;
 
     const activeTheme = THEMES.find((t) => t.key === config.theme) || THEMES[0];
     const activeColor = config.theme === "custom" ? config.customColor : activeTheme.swatch;
@@ -7083,7 +7126,12 @@
   }
 
   customColorInput.addEventListener("input", () => {
-    applyCustomColor(customColorInput.value);
+    applyCustomColor(customColorInput.value, customBgColorInput.value);
+    renderThemeSwatches();
+  });
+
+  customBgColorInput.addEventListener("input", () => {
+    applyCustomColor(customColorInput.value, customBgColorInput.value);
     renderThemeSwatches();
   });
 
