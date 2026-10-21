@@ -296,32 +296,6 @@
     padding: 8px 14px;
     margin: 0 0 16px;
   }
-  .club-logo {
-    display: block;
-    max-width: 160px;
-    max-height: 90px;
-    margin: -14px auto 22px;
-    object-fit: contain;
-  }
-  .logo-upload-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .logo-preview {
-    width: 48px;
-    height: 48px;
-    border: 1px solid var(--card-border);
-    border-radius: 8px;
-    background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  .logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
   label.section-label {
     display: block;
     font-weight: 700;
@@ -419,6 +393,7 @@
   .dropdown-toggle {
     width: 100%;
     text-align: left;
+    text-decoration: none;
     background: var(--green-pale);
     border: 1px solid var(--green-pale-border);
     color: var(--green-dark);
@@ -1519,13 +1494,6 @@
   }
 
   #printSheetsView { display: none; }
-  .print-logo {
-    display: block;
-    max-width: 45mm;
-    max-height: 22mm;
-    object-fit: contain;
-    margin: 0 auto 3mm;
-  }
   .print-sheets-header {
     font-weight: 800;
     font-size: 13pt;
@@ -1721,7 +1689,6 @@
         <div class="h1-subtitle">Scheduler</div>
       </div>
     </div>
-    <img id="clubLogoImg" class="club-logo" alt="Club logo" style="display:none;" />
 
     <div class="install-tip no-print" id="installTip" style="display:none;">
       <span>Tip: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>, to install this as an app.</span>
@@ -1760,23 +1727,10 @@
           </div>
         </div>
 
-        <div class="dropdown no-print" id="logoDropdown">
-          <button class="dropdown-toggle" data-target="logoDropdown">
-            Change logo <span class="arrow">▾</span>
-          </button>
-          <div class="dropdown-panel">
-            <div class="logo-upload-row">
-              <div class="logo-preview" id="logoPreviewWrap" style="display:none;">
-                <img id="logoPreviewImg" alt="Club logo preview" />
-              </div>
-              <input type="file" id="logoFileInput" accept="image/*" style="display:none;" />
-              <button class="small-btn add" id="logoUploadBtn">Upload logo</button>
-              <button class="small-btn remove" id="logoRemoveBtn" style="display:none;">Remove logo</button>
-            </div>
-            <div class="hint">
-              Shows at the top of the app and on printed sheets. Also becomes the icon for anyone installing the app from now on — if you've already added it to a home screen, remove and re-add it there to pick up a new logo.
-            </div>
-          </div>
+        <div class="dropdown no-print" id="guideDropdown">
+          <a class="dropdown-toggle" href="guide.html" target="_blank" rel="noopener">
+            User Guide
+          </a>
         </div>
       </div>
 
@@ -2983,7 +2937,6 @@
     fixedPairs: "pbs_fixedPairs",
     config: "pbs_config",
     installTipDismissed: "pbs_installTipDismissed",
-    logo: "pbs_clubLogo",
     ladderStartingRatings: "pbs_ladderStartingRatings",
     tournaments: "pbs_tournaments",
     ladders: "pbs_ladders",
@@ -3591,12 +3544,6 @@
   const printLadderStandingsView = document.getElementById("printLadderStandingsView");
   const printSessionStatsBtn = document.getElementById("printSessionStatsBtn");
   const printSessionStatsView = document.getElementById("printSessionStatsView");
-  const clubLogoImg = document.getElementById("clubLogoImg");
-  const logoFileInput = document.getElementById("logoFileInput");
-  const logoUploadBtn = document.getElementById("logoUploadBtn");
-  const logoRemoveBtn = document.getElementById("logoRemoveBtn");
-  const logoPreviewWrap = document.getElementById("logoPreviewWrap");
-  const logoPreviewImg = document.getElementById("logoPreviewImg");
   const installTip = document.getElementById("installTip");
   const installTipDismiss = document.getElementById("installTipDismiss");
   const androidInstallBanner = document.getElementById("androidInstallBanner");
@@ -9024,11 +8971,6 @@
     window.print();
   }
 
-  function printLogoHtml() {
-    const logo = load(STORAGE.logo, null);
-    return logo ? `<img class="print-logo" src="${logo}" alt="Club logo" />` : "";
-  }
-
   function buildPrintRoundsHtml(showScoreLine) {
     const s = currentSession;
     const nameDisplayMode = s.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
@@ -9036,7 +8978,7 @@
     const formatLabel = (s.ladderId ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
     const scoreBox = `<span class="print-score-box"></span>`;
 
-    let html = `${printLogoHtml()}<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${maxCourts} courts · ${s.rounds.length} rounds</div>`;
+    let html = `<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${maxCourts} courts · ${s.rounds.length} rounds</div>`;
     s.rounds.forEach((round) => {
       html += `<div class="print-round">`;
       html += `<div class="print-round-top">Round ${round.round}</div>`;
@@ -9077,7 +9019,7 @@
   function buildPrintLeaderboardHtml() {
     const s = currentSession;
     const formatLabel = (s.ladderId ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
-    const header = `${printLogoHtml()}<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${s.rounds.length} rounds · Leaderboard</div>`;
+    const header = `<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${s.rounds.length} rounds · Leaderboard</div>`;
     return `${header}<table class="schedule-table">${buildLeaderboardTableHtml(s)}</table>`;
   }
 
@@ -9111,7 +9053,7 @@
   }
 
   function buildPrintLadderStandingsHtml(ladder) {
-    const header = `${printLogoHtml()}<div class="print-sheets-header">${ladder.name} · Ladder Standings</div>`;
+    const header = `<div class="print-sheets-header">${ladder.name} · Ladder Standings</div>`;
     const boxesEnabled = !!ladder.boxesEnabled && Array.isArray(ladder.boxes) && ladder.boxes.length > 0;
     let html = boxesEnabled
       ? `${header}${buildPrintLadderBoxesHtml(ladder)}`
@@ -9131,7 +9073,7 @@
   function buildPrintSessionStatsHtml() {
     const stats = computeClubStats();
     const names = getSortedClubStatsNames(stats);
-    const header = `${printLogoHtml()}<div class="print-sheets-header">Session Stats · ${names.length} players · ${pastSessions.length} sessions</div>`;
+    const header = `<div class="print-sheets-header">Session Stats · ${names.length} players · ${pastSessions.length} sessions</div>`;
     const nameDisplayMode = config.mode === "ladder" ? config.ladderNameDisplay : config.sessionNameDisplay;
     let html = `${header}<table class="schedule-table"><thead><tr><th>Player</th><th>Sessions</th><th>Games</th><th>Wins</th></tr></thead><tbody>`;
     names.forEach((name) => {
@@ -9217,7 +9159,7 @@
 
   function buildPrintTournamentGroupsHtml() {
     const t = currentTournament;
-    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Group Stage</div>`;
+    let html = `<div class="print-sheets-header">${t.name} · Group Stage</div>`;
     t.groups.forEach((group) => {
       html += `<div class="print-round"><div class="print-round-top">Group ${group.name}</div>`;
       html += `<table class="schedule-table">${buildGroupStandingsTableHtml(t, group.index)}</table>`;
@@ -9240,7 +9182,7 @@
     const schedule = buildGroupStageCourtSchedule(t);
     const perRound = tournamentPerRoundMinutes(t.targetScore, t.roundMinutes);
     const days = splitScheduleIntoDays(schedule, perRound, t.hoursPerDay);
-    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Court Schedule</div>`;
+    let html = `<div class="print-sheets-header">${t.name} · Court Schedule</div>`;
     days.forEach((dayGroup) => {
       if (days.length > 1) html += `<div class="court-schedule-day-header">Day ${dayGroup.day}</div>`;
       dayGroup.entries.forEach(({ entry, waveInDay }) => {
@@ -9267,7 +9209,7 @@
     const schedule = buildKnockoutCourtSchedule(t);
     const perRound = formatPerRoundMinutes(t.knockoutFormat, t.roundMinutes);
     const days = splitScheduleIntoDays(schedule, perRound, t.hoursPerDay);
-    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
+    let html = `<div class="print-sheets-header">${t.name} · Knockout Bracket</div>`;
     days.forEach((dayGroup) => {
       if (days.length > 1) html += `<div class="court-schedule-day-header">Day ${dayGroup.day}</div>`;
       dayGroup.entries.forEach(({ entry, waveInDay }) => {
@@ -9299,7 +9241,7 @@
   function buildPrintTournamentMedalGamesHtml() {
     const t = currentTournament;
     const ko = t.knockout;
-    let html = `${printLogoHtml()}<div class="print-sheets-header">${t.name} · Medal Games</div>`;
+    let html = `<div class="print-sheets-header">${t.name} · Medal Games</div>`;
     const finalRound = ko.rounds[ko.rounds.length - 1];
     const finalMatch = finalRound.matches[0];
     html += `<div class="print-round"><div class="print-round-top">Final</div><div class="print-courts-row">`;
@@ -10293,118 +10235,6 @@
   });
   equalizeDropdownToggleHeights(setupDropdownRow);
   equalizeDropdownToggleHeights(brandingDropdownRow);
-
-  function loadImageFromDataUrl(dataUrl) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
-  }
-
-  function makeSquareCanvas(img, size, paddingRatio, background) {
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = background;
-    ctx.fillRect(0, 0, size, size);
-    const avail = size * (1 - paddingRatio * 2);
-    const scale = Math.min(avail / img.width, avail / img.height);
-    const w = img.width * scale;
-    const h = img.height * scale;
-    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-    return canvas;
-  }
-
-  function showClubLogo(dataUrl) {
-    clubLogoImg.src = dataUrl;
-    clubLogoImg.style.display = "block";
-    logoPreviewImg.src = dataUrl;
-    logoPreviewWrap.style.display = "flex";
-    logoRemoveBtn.style.display = "inline-block";
-  }
-
-  function hideClubLogo() {
-    clubLogoImg.style.display = "none";
-    clubLogoImg.removeAttribute("src");
-    logoPreviewWrap.style.display = "none";
-    logoRemoveBtn.style.display = "none";
-  }
-
-  async function applyClubLogoToIcons(dataUrl) {
-    let img;
-    try {
-      img = await loadImageFromDataUrl(dataUrl);
-    } catch (e) {
-      return;
-    }
-    const appleTouch = makeSquareCanvas(img, 180, 0.1, "#ffffff").toDataURL("image/png");
-    const favicon32 = makeSquareCanvas(img, 32, 0.05, "#ffffff").toDataURL("image/png");
-    const icon192 = makeSquareCanvas(img, 192, 0.08, "#ffffff").toDataURL("image/png");
-    const icon512 = makeSquareCanvas(img, 512, 0.08, "#ffffff").toDataURL("image/png");
-    const icon192Maskable = makeSquareCanvas(img, 192, 0.24, "#ffffff").toDataURL("image/png");
-    const icon512Maskable = makeSquareCanvas(img, 512, 0.24, "#ffffff").toDataURL("image/png");
-
-    const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
-    if (appleLink) appleLink.href = appleTouch;
-    const faviconLink = document.querySelector('link[rel="icon"]');
-    if (faviconLink) faviconLink.href = favicon32;
-
-    try {
-      const res = await fetch("./manifest.json");
-      const manifest = await res.json();
-      manifest.icons = [
-        { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
-        { src: icon512, sizes: "512x512", type: "image/png", purpose: "any" },
-        { src: icon192Maskable, sizes: "192x192", type: "image/png", purpose: "maskable" },
-        { src: icon512Maskable, sizes: "512x512", type: "image/png", purpose: "maskable" },
-      ];
-      const blob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
-      const manifestUrl = URL.createObjectURL(blob);
-      const manifestLink = document.querySelector('link[rel="manifest"]');
-      if (manifestLink) manifestLink.href = manifestUrl;
-    } catch (e) {
-      // Manifest fetch/swap failed - the apple-touch-icon swap above still applies.
-    }
-  }
-
-  function revertIconsToDefault() {
-    const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
-    if (appleLink) appleLink.href = "./icons/apple-touch-icon.png";
-    const faviconLink = document.querySelector('link[rel="icon"]');
-    if (faviconLink) faviconLink.href = "./icons/favicon-32.png";
-    const manifestLink = document.querySelector('link[rel="manifest"]');
-    if (manifestLink) manifestLink.href = "./manifest.json";
-  }
-
-  const storedLogo = load(STORAGE.logo, null);
-  if (storedLogo) {
-    showClubLogo(storedLogo);
-    applyClubLogoToIcons(storedLogo);
-  }
-
-  logoUploadBtn.addEventListener("click", () => logoFileInput.click());
-  logoFileInput.addEventListener("change", () => {
-    const file = logoFileInput.files[0];
-    logoFileInput.value = "";
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const img = await loadImageFromDataUrl(reader.result);
-      const display = makeSquareCanvas(img, 480, 0.06, "#ffffff").toDataURL("image/png");
-      save(STORAGE.logo, display);
-      showClubLogo(display);
-      applyClubLogoToIcons(display);
-    };
-    reader.readAsDataURL(file);
-  });
-  logoRemoveBtn.addEventListener("click", () => {
-    localStorage.removeItem(STORAGE.logo);
-    hideClubLogo();
-    revertIconsToDefault();
-  });
 
   function isRunningStandalone() {
     return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
