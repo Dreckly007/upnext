@@ -498,6 +498,8 @@
     padding: 10px;
   }
   #managePanel .empty-note { grid-column: 1 / -1; }
+  .saved-sort-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .saved-sort-label { font-weight: 700; font-size: 0.85rem; color: var(--green-dark); }
   .tournament-dupr-input { flex: 0 0 76px; width: 76px; text-align: center; }
   .small-btn {
     border: 1px solid var(--card-border);
@@ -2300,6 +2302,11 @@
                 Manage saved names <span class="arrow">▾</span>
               </button>
               <div class="dropdown-panel">
+                <div class="saved-sort-row">
+                  <span class="saved-sort-label">Sort by</span>
+                  <button type="button" class="small-btn active" id="savedSortFirstBtn">First name</button>
+                  <button type="button" class="small-btn" id="savedSortSurnameBtn">Surname</button>
+                </div>
                 <div id="managePanel"></div>
                 <div class="inline-form">
                   <input type="text" id="newSavedFirstNameInput" placeholder="First name" />
@@ -3142,6 +3149,7 @@
     theme: "cornish-gold",
     customColor: "#b8860b",
     customBgColor: "#eef1f4",
+    savedNamesSort: "first",
     timerSound: "beep",
     mode: "session",
     useLadderHistory: true,
@@ -3159,6 +3167,7 @@
   config.theme = config.theme || "cornish-gold";
   config.customColor = config.customColor || "#b8860b";
   config.customBgColor = config.customBgColor || "#eef1f4";
+  config.savedNamesSort = config.savedNamesSort === "surname" ? "surname" : "first";
   config.winByTwo = config.winByTwo ?? false;
   config.format = config.format === "singles" ? "singles" : "doubles";
   config.timerSound = config.timerSound || "beep";
@@ -3230,6 +3239,8 @@
   const fixedPairsHint = document.getElementById("fixedPairsHint");
   const pickPanel = document.getElementById("pickPanel");
   const managePanel = document.getElementById("managePanel");
+  const savedSortFirstBtn = document.getElementById("savedSortFirstBtn");
+  const savedSortSurnameBtn = document.getElementById("savedSortSurnameBtn");
   const sessionsPanel = document.getElementById("sessionsPanel");
   const sessionsDropdownLabel = document.getElementById("sessionsDropdownLabel");
   const continueSessionBanner = document.getElementById("continueSessionBanner");
@@ -4619,7 +4630,16 @@
       managePanel.appendChild(note);
       return;
     }
-    savedPlayers.forEach((name, i) => {
+    const order = savedPlayers.map((_, i) => i);
+    order.sort((a, b) => {
+      const pa = getNameParts(savedPlayers[a]);
+      const pb = getNameParts(savedPlayers[b]);
+      const ka = config.savedNamesSort === "surname" ? pa.surname : pa.firstName;
+      const kb = config.savedNamesSort === "surname" ? pb.surname : pb.firstName;
+      return ka.localeCompare(kb, undefined, { sensitivity: "base" }) || savedPlayers[a].localeCompare(savedPlayers[b]);
+    });
+    order.forEach((i) => {
+      const name = savedPlayers[i];
       const row = document.createElement("div");
       row.className = "saved-row";
 
@@ -4735,6 +4755,23 @@
       managePanel.appendChild(row);
     });
   }
+
+  function syncSavedSortButtons() {
+    savedSortFirstBtn.classList.toggle("active", config.savedNamesSort !== "surname");
+    savedSortSurnameBtn.classList.toggle("active", config.savedNamesSort === "surname");
+  }
+  savedSortFirstBtn.addEventListener("click", () => {
+    config.savedNamesSort = "first";
+    save(STORAGE.config, config);
+    syncSavedSortButtons();
+    renderManagePanel();
+  });
+  savedSortSurnameBtn.addEventListener("click", () => {
+    config.savedNamesSort = "surname";
+    save(STORAGE.config, config);
+    syncSavedSortButtons();
+    renderManagePanel();
+  });
 
   addSavedBtn.addEventListener("click", () => {
     const firstName = newSavedFirstNameInput.value.trim();
@@ -10199,6 +10236,7 @@
   applyTheme(config.theme);
   renderTodayChips();
   renderPickPanel();
+  syncSavedSortButtons();
   renderManagePanel();
   renderTournamentPickPanels();
   renderSessionsPanel();
