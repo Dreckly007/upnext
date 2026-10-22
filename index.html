@@ -2995,6 +2995,13 @@
   function composeFullName(firstName, surname) {
     return `${(firstName || "").trim()} ${(surname || "").trim()}`.trim();
   }
+  function compareSavedNames(nameA, nameB) {
+    const pa = getNameParts(nameA);
+    const pb = getNameParts(nameB);
+    const ka = config.savedNamesSort === "surname" ? pa.surname : pa.firstName;
+    const kb = config.savedNamesSort === "surname" ? pb.surname : pb.firstName;
+    return ka.localeCompare(kb, undefined, { sensitivity: "base" }) || nameA.localeCompare(nameB);
+  }
   function displayNameFor(fullName, contextNames, mode) {
     if (mode !== "first") return fullName;
     const { firstName, surname } = getNameParts(fullName);
@@ -4067,7 +4074,7 @@
     }
     const list = document.createElement("div");
     list.className = "pick-chip-list";
-    savedPlayers.forEach((name) => {
+    savedPlayers.slice().sort(compareSavedNames).forEach((name) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pick-chip";
@@ -4603,7 +4610,7 @@
     }
     const list = document.createElement("div");
     list.className = "pick-chip-list";
-    savedPlayers.forEach((name) => {
+    savedPlayers.slice().sort(compareSavedNames).forEach((name) => {
       const selected = todayPlayers.some((t) => t.toLowerCase() === name.toLowerCase());
       const btn = document.createElement("button");
       btn.type = "button";
@@ -4631,13 +4638,7 @@
       return;
     }
     const order = savedPlayers.map((_, i) => i);
-    order.sort((a, b) => {
-      const pa = getNameParts(savedPlayers[a]);
-      const pb = getNameParts(savedPlayers[b]);
-      const ka = config.savedNamesSort === "surname" ? pa.surname : pa.firstName;
-      const kb = config.savedNamesSort === "surname" ? pb.surname : pb.firstName;
-      return ka.localeCompare(kb, undefined, { sensitivity: "base" }) || savedPlayers[a].localeCompare(savedPlayers[b]);
-    });
+    order.sort((a, b) => compareSavedNames(savedPlayers[a], savedPlayers[b]));
     order.forEach((i) => {
       const name = savedPlayers[i];
       const row = document.createElement("div");
@@ -4760,17 +4761,23 @@
     savedSortFirstBtn.classList.toggle("active", config.savedNamesSort !== "surname");
     savedSortSurnameBtn.classList.toggle("active", config.savedNamesSort === "surname");
   }
+  function refreshSavedNameLists() {
+    renderManagePanel();
+    renderPickPanel();
+    renderTournamentPickPanels();
+    renderRosterSavedPickList();
+  }
   savedSortFirstBtn.addEventListener("click", () => {
     config.savedNamesSort = "first";
     save(STORAGE.config, config);
     syncSavedSortButtons();
-    renderManagePanel();
+    refreshSavedNameLists();
   });
   savedSortSurnameBtn.addEventListener("click", () => {
     config.savedNamesSort = "surname";
     save(STORAGE.config, config);
     syncSavedSortButtons();
-    renderManagePanel();
+    refreshSavedNameLists();
   });
 
   addSavedBtn.addEventListener("click", () => {
@@ -7883,7 +7890,7 @@
       rosterAddSavedPanel.appendChild(note);
       return;
     }
-    available.forEach((name) => {
+    available.sort(compareSavedNames).forEach((name) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pick-chip";
