@@ -2293,7 +2293,14 @@
             <button class="dropdown-toggle" data-target="pickDropdown">
               Pick from all saved players <span class="arrow">▾</span>
             </button>
-            <div class="dropdown-panel" id="pickPanel"></div>
+            <div class="dropdown-panel">
+              <div class="saved-sort-row">
+                <span class="saved-sort-label">Sort by</span>
+                <button type="button" class="small-btn active" id="pickSortFirstBtn">First name</button>
+                <button type="button" class="small-btn" id="pickSortSurnameBtn">Surname</button>
+              </div>
+              <div id="pickPanel"></div>
+            </div>
           </div>
 
           <div class="dropdown-row" id="setupDropdownRow">
@@ -3248,6 +3255,8 @@
   const managePanel = document.getElementById("managePanel");
   const savedSortFirstBtn = document.getElementById("savedSortFirstBtn");
   const savedSortSurnameBtn = document.getElementById("savedSortSurnameBtn");
+  const pickSortFirstBtn = document.getElementById("pickSortFirstBtn");
+  const pickSortSurnameBtn = document.getElementById("pickSortSurnameBtn");
   const sessionsPanel = document.getElementById("sessionsPanel");
   const sessionsDropdownLabel = document.getElementById("sessionsDropdownLabel");
   const continueSessionBanner = document.getElementById("continueSessionBanner");
@@ -4758,8 +4767,11 @@
   }
 
   function syncSavedSortButtons() {
-    savedSortFirstBtn.classList.toggle("active", config.savedNamesSort !== "surname");
-    savedSortSurnameBtn.classList.toggle("active", config.savedNamesSort === "surname");
+    const bySurname = config.savedNamesSort === "surname";
+    savedSortFirstBtn.classList.toggle("active", !bySurname);
+    savedSortSurnameBtn.classList.toggle("active", bySurname);
+    pickSortFirstBtn.classList.toggle("active", !bySurname);
+    pickSortSurnameBtn.classList.toggle("active", bySurname);
   }
   function refreshSavedNameLists() {
     renderManagePanel();
@@ -4767,18 +4779,16 @@
     renderTournamentPickPanels();
     renderRosterSavedPickList();
   }
-  savedSortFirstBtn.addEventListener("click", () => {
-    config.savedNamesSort = "first";
+  function setSavedNamesSort(mode) {
+    config.savedNamesSort = mode;
     save(STORAGE.config, config);
     syncSavedSortButtons();
     refreshSavedNameLists();
-  });
-  savedSortSurnameBtn.addEventListener("click", () => {
-    config.savedNamesSort = "surname";
-    save(STORAGE.config, config);
-    syncSavedSortButtons();
-    refreshSavedNameLists();
-  });
+  }
+  savedSortFirstBtn.addEventListener("click", () => setSavedNamesSort("first"));
+  savedSortSurnameBtn.addEventListener("click", () => setSavedNamesSort("surname"));
+  pickSortFirstBtn.addEventListener("click", () => setSavedNamesSort("first"));
+  pickSortSurnameBtn.addEventListener("click", () => setSavedNamesSort("surname"));
 
   addSavedBtn.addEventListener("click", () => {
     const firstName = newSavedFirstNameInput.value.trim();
