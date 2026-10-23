@@ -1128,6 +1128,28 @@
   .score-stepper { flex: 0 0 auto; }
   .score-stepper .stepper-btn { flex-shrink: 0; }
 
+  .fairdeal-result-wrap {
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    margin-top: 12px;
+  }
+  .fairdeal-result-row.format-toggle { margin-top: 0; }
+  .fairdeal-result-row .format-btn { font-size: 0.85rem; padding: 10px 8px; }
+  .fairdeal-close-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .fairdeal-close-row .yesno-toggle { flex: 0 0 auto; width: 140px; }
+  .fairdeal-recorded-note {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--green-dark);
+    margin-top: 10px;
+  }
+
   .fixture-row {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -8501,6 +8523,82 @@
     return wrap;
   }
 
+  function buildFairDealResultRow(court) {
+    const wrap = document.createElement("div");
+    wrap.className = "fairdeal-result-wrap";
+
+    const activeGameType = court.fdResult ? (court.fdGameType || config.fdGameType) : config.fdGameType;
+    const options = [{ key: "A", label: `${court.teamA.join(" & ")} won` }];
+    if (activeGameType === "timed") options.push({ key: "draw", label: "Draw" });
+    options.push({ key: "B", label: `${court.teamB.join(" & ")} won` });
+
+    const resultRow = document.createElement("div");
+    resultRow.className = "format-toggle fairdeal-result-row";
+    options.forEach(({ key, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "format-btn" + (court.fdResult === key ? " active" : "");
+      btn.textContent = label;
+      btn.disabled = isSharedReadOnlyView;
+      btn.addEventListener("click", () => {
+        if (court.fdResult === key) {
+          court.fdResult = "";
+          court.fdClose = null;
+          court.fdGameType = "";
+        } else {
+          court.fdResult = key;
+          court.fdClose = key === "draw" ? null : false;
+          court.fdGameType = config.fdGameType;
+        }
+        updateSessionInStorage();
+        renderRound();
+        renderFullSchedule();
+        renderLeaderboard();
+      });
+      resultRow.appendChild(btn);
+    });
+    wrap.appendChild(resultRow);
+
+    if (court.fdResult === "A" || court.fdResult === "B") {
+      const closeRow = document.createElement("div");
+      closeRow.className = "fairdeal-close-row";
+      const label = document.createElement("span");
+      label.className = "saved-sort-label";
+      label.textContent = "Close game?";
+      closeRow.appendChild(label);
+      const toggle = document.createElement("div");
+      toggle.className = "yesno-toggle";
+      const yesBtn = document.createElement("button");
+      yesBtn.type = "button";
+      yesBtn.className = "yesno-btn" + (court.fdClose === true ? " active" : "");
+      yesBtn.textContent = "Yes";
+      yesBtn.disabled = isSharedReadOnlyView;
+      yesBtn.addEventListener("click", () => {
+        court.fdClose = true;
+        updateSessionInStorage();
+        renderRound();
+        renderLeaderboard();
+      });
+      const noBtn = document.createElement("button");
+      noBtn.type = "button";
+      noBtn.className = "yesno-btn" + (court.fdClose !== true ? " active" : "");
+      noBtn.textContent = "No";
+      noBtn.disabled = isSharedReadOnlyView;
+      noBtn.addEventListener("click", () => {
+        court.fdClose = false;
+        updateSessionInStorage();
+        renderRound();
+        renderLeaderboard();
+      });
+      toggle.appendChild(yesBtn);
+      toggle.appendChild(noBtn);
+      closeRow.appendChild(toggle);
+      wrap.appendChild(closeRow);
+    }
+
+    return wrap;
+  }
+
   function buildCollapsibleSection(titleText, contentEl, startOpen) {
     const wrap = document.createElement("div");
     wrap.className = "dropdown" + (startOpen ? " open" : "");
@@ -8927,41 +9025,53 @@
       teamBox.appendChild(netDivider);
       card.appendChild(teamBox);
 
-      const scoreRow = document.createElement("div");
-      scoreRow.className = "score-row";
-      const scoreA = document.createElement("input");
-      scoreA.type = "number";
-      scoreA.min = "0";
-      if (scoreMax != null) scoreA.max = String(scoreMax);
-      scoreA.value = court.scoreA;
-      scoreA.disabled = isSharedReadOnlyView;
-      scoreA.addEventListener("input", () => {
-        sanitizeScoreInput(scoreA, scoreMax);
-        court.scoreA = scoreA.value;
-        updateSessionInStorage();
-        renderFullSchedule();
-        renderLeaderboard();
-      });
-      const scoreB = document.createElement("input");
-      scoreB.type = "number";
-      scoreB.min = "0";
-      if (scoreMax != null) scoreB.max = String(scoreMax);
-      scoreB.value = court.scoreB;
-      scoreB.disabled = isSharedReadOnlyView;
-      scoreB.addEventListener("input", () => {
-        sanitizeScoreInput(scoreB, scoreMax);
-        court.scoreB = scoreB.value;
-        updateSessionInStorage();
-        renderFullSchedule();
-        renderLeaderboard();
-      });
-      const scoreLabel = document.createElement("div");
-      scoreLabel.className = "score-label";
-      scoreLabel.textContent = "Score";
-      scoreRow.appendChild(buildScoreStepperGroup(scoreA, court.teamA.join(" & "), scoreMax));
-      scoreRow.appendChild(scoreLabel);
-      scoreRow.appendChild(buildScoreStepperGroup(scoreB, court.teamB.join(" & "), scoreMax));
-      card.appendChild(scoreRow);
+      if (s.config.scoringStyle === "fairDeal") {
+        card.appendChild(buildFairDealResultRow(court));
+      } else if (s.config.scoringStyle !== "none") {
+        if (court.fdResult === "A" || court.fdResult === "B" || court.fdResult === "draw") {
+          const note = document.createElement("div");
+          note.className = "fairdeal-recorded-note";
+          note.textContent = court.fdResult === "draw"
+            ? "Recorded: Draw (no score)"
+            : `Recorded: ${(court.fdResult === "A" ? court.teamA : court.teamB).join(" & ")} won (no score)`;
+          card.appendChild(note);
+        }
+        const scoreRow = document.createElement("div");
+        scoreRow.className = "score-row";
+        const scoreA = document.createElement("input");
+        scoreA.type = "number";
+        scoreA.min = "0";
+        if (scoreMax != null) scoreA.max = String(scoreMax);
+        scoreA.value = court.scoreA;
+        scoreA.disabled = isSharedReadOnlyView;
+        scoreA.addEventListener("input", () => {
+          sanitizeScoreInput(scoreA, scoreMax);
+          court.scoreA = scoreA.value;
+          updateSessionInStorage();
+          renderFullSchedule();
+          renderLeaderboard();
+        });
+        const scoreB = document.createElement("input");
+        scoreB.type = "number";
+        scoreB.min = "0";
+        if (scoreMax != null) scoreB.max = String(scoreMax);
+        scoreB.value = court.scoreB;
+        scoreB.disabled = isSharedReadOnlyView;
+        scoreB.addEventListener("input", () => {
+          sanitizeScoreInput(scoreB, scoreMax);
+          court.scoreB = scoreB.value;
+          updateSessionInStorage();
+          renderFullSchedule();
+          renderLeaderboard();
+        });
+        const scoreLabel = document.createElement("div");
+        scoreLabel.className = "score-label";
+        scoreLabel.textContent = "Score";
+        scoreRow.appendChild(buildScoreStepperGroup(scoreA, court.teamA.join(" & "), scoreMax));
+        scoreRow.appendChild(scoreLabel);
+        scoreRow.appendChild(buildScoreStepperGroup(scoreB, court.teamB.join(" & "), scoreMax));
+        card.appendChild(scoreRow);
+      }
 
       courtsContainer.appendChild(card);
     });
