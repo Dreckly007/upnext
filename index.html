@@ -385,7 +385,8 @@
   .dropdown-row .dropdown { flex: 1 1 160px; min-width: 0; margin-top: 0; }
   .dropdown-row.expanded .dropdown { flex: 1 1 100%; }
   #sessionSectionsRow > .dropdown-panel,
-  #sessionSectionsRow > .timer-section {
+  #sessionSectionsRow > .timer-section,
+  #sessionSectionsRow > .mid-session-scoring-panel {
     flex: 1 1 100%;
   }
   #setupDropdownRow { display: block; }
@@ -923,6 +924,8 @@
   .install-tip .small-btn { flex-shrink: 0; white-space: nowrap; }
 
   .timer-section { text-align: center; margin: 6px 0 24px; }
+  .mid-session-scoring-panel { margin: 6px 0 24px; }
+  .mid-session-scoring-panel #midFdGameTypeField { margin-top: 14px; }
   .timer-display { font-size: 3.2rem; font-weight: 800; color: var(--green-dark); line-height: 1; }
   .timer-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
   .timer-btn { padding: 10px 26px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
@@ -1127,6 +1130,28 @@
   }
   .score-stepper { flex: 0 0 auto; }
   .score-stepper .stepper-btn { flex-shrink: 0; }
+
+  .fairdeal-result-wrap {
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    margin-top: 12px;
+  }
+  .fairdeal-result-row.format-toggle { margin-top: 0; }
+  .fairdeal-result-row .format-btn { font-size: 0.85rem; padding: 10px 8px; }
+  .fairdeal-close-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .fairdeal-close-row .yesno-toggle { flex: 0 0 auto; width: 140px; }
+  .fairdeal-recorded-note {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--green-dark);
+    margin-top: 10px;
+  }
 
   .fixture-row {
     display: grid;
@@ -1408,6 +1433,24 @@
   .schedule-table .vs { text-align: center; color: var(--muted); font-size: 0.72rem; margin: 2px 0; }
   .schedule-table .score { text-align: center; color: var(--green-dark); font-weight: 700; font-size: 0.82rem; margin: 2px 0; }
   .schedule-table .resting-cell { color: var(--green-dark); font-size: 0.8rem; }
+  .schedule-table .leaderboard-section-label {
+    background: #faf2dc;
+    color: var(--green-dark);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .fairdeal-stats-heading {
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--green-dark);
+    margin: 14px 0 6px;
+    padding-top: 10px;
+    border-top: 1px solid var(--card-border);
+  }
 
   .swap-mode .team-cell, .swap-mode .resting-pill,
   .remove-mode .team-cell, .remove-mode .resting-pill,
@@ -1748,6 +1791,10 @@
         <button type="button" class="format-btn" data-mode="tournament">
           <span class="mode-btn-title">Tournament</span>
           <span class="mode-btn-desc">Groups, seeding, and a knockout bracket</span>
+        </button>
+        <button type="button" class="format-btn" data-mode="fairDeal">
+          <span class="mode-btn-title">Fair Deal</span>
+          <span class="mode-btn-desc">Fair rotation with a points table. Tap the winner, crown a champion.</span>
         </button>
       </div>
 
@@ -2449,6 +2496,15 @@
           <span class="arrow">▾</span>
         </button>
         <div class="dropdown-panel">
+          <div class="field" id="scoringStyleField">
+            <label class="section-label">Scoring style</label>
+            <div class="format-toggle" id="scoringStyleToggle">
+              <button type="button" class="format-btn active" data-scoring-style="full">Full scores</button>
+              <button type="button" class="format-btn" data-scoring-style="fairDeal">Fair Deal</button>
+              <button type="button" class="format-btn" data-scoring-style="none">No scoring</button>
+            </div>
+          </div>
+
           <div class="paired-grid">
             <div class="field" id="targetScoreField" style="display:none;">
               <label for="targetScoreInput">Points to win</label>
@@ -2474,6 +2530,32 @@
                   <span class="estimate-number" id="targetScoreEstimateNumber"></span>
                   <span class="estimate-reason" id="targetScoreEstimateReason"></span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="paired-grid cols-3" id="fairDealSettingsFields" style="display:none;">
+            <div class="field">
+              <label class="section-label">Game type</label>
+              <div class="format-toggle" id="fdGameTypeToggle">
+                <button type="button" class="format-btn active" data-fd-game-type="timed">Timed</button>
+                <button type="button" class="format-btn" data-fd-game-type="to11">Play to 11</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="fdCloseMarginInput">Close-loss margin</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="fdCloseMarginInput" data-step="-1" aria-label="Decrease close-loss margin">−</button>
+                <input type="number" id="fdCloseMarginInput" min="1" max="5" value="3" />
+                <button type="button" class="stepper-btn" data-target="fdCloseMarginInput" data-step="1" aria-label="Increase close-loss margin">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="fdQualifyPctInput">Qualifying minimum (%)</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="fdQualifyPctInput" data-step="-5" aria-label="Decrease qualifying minimum">−</button>
+                <input type="number" id="fdQualifyPctInput" min="10" max="100" value="50" />
+                <button type="button" class="stepper-btn" data-target="fdQualifyPctInput" data-step="5" aria-label="Increase qualifying minimum">+</button>
               </div>
             </div>
           </div>
@@ -2629,6 +2711,7 @@
             <button class="outline-btn no-share" id="timerToggleBtn">Timer</button>
             <button class="outline-btn no-share" id="regenerateBtn">Regenerate Schedule</button>
             <button class="outline-btn" id="criteriaToggleBtn" aria-expanded="false">Criteria</button>
+          <button class="outline-btn no-share" id="midSessionScoringBtn" style="display:none;">Scoring</button>
           </div>
         </div>
       </div>
@@ -2652,9 +2735,32 @@
           <button class="timer-sound-test" id="timerSoundTestBtn">🔊 Test</button>
         </div>
       </div>
+
+      <div class="mid-session-scoring-panel no-print no-share" id="midSessionScoringPanel" style="display:none;">
+        <label class="section-label">Scoring style</label>
+        <div class="format-toggle" id="midScoringStyleToggle">
+          <button type="button" class="format-btn" data-scoring-style="full">Full scores</button>
+          <button type="button" class="format-btn" data-scoring-style="fairDeal">Fair Deal</button>
+          <button type="button" class="format-btn" data-scoring-style="none">No scoring</button>
+        </div>
+        <div id="midFdGameTypeField" style="display:none;">
+          <label class="section-label">Game type</label>
+          <div class="format-toggle" id="midFdGameTypeToggle">
+            <button type="button" class="format-btn" data-fd-game-type="timed">Timed</button>
+            <button type="button" class="format-btn" data-fd-game-type="to11">Play to 11</button>
+          </div>
+        </div>
+      </div>
       </div>
 
       <div class="info-bar panel-collapsed" id="infoBar"></div>
+
+      <button class="outline-btn no-print no-share" id="fairDealFinishBtn" style="display:none;">🏆 Finish Session &amp; See Winner</button>
+
+      <div class="panel" id="fairDealPodiumPanel" style="display:none;">
+        <div class="panel-header"><span>Fair Deal — Final Result</span></div>
+        <div id="fairDealPodiumContent"></div>
+      </div>
 
       <div class="dropdown-row no-print" id="panelToggleRow">
         <div class="dropdown">
@@ -3170,6 +3276,10 @@
     tournamentGroups: 2,
     tournamentAdvance: 2,
     syncWorkerUrl: "",
+    scoringStyle: "full",
+    fdGameType: "timed",
+    fdCloseMargin: 3,
+    fdQualifyPct: 50,
     schemaVersion: CONFIG_SCHEMA_VERSION,
   });
   config.syncWorkerUrl = config.syncWorkerUrl || "";
@@ -3196,6 +3306,10 @@
   config.tournamentCompetitionType = ["clubs", "clubGroups"].includes(config.tournamentCompetitionType)
     ? config.tournamentCompetitionType
     : "standard";
+  config.scoringStyle = ["fairDeal", "none"].includes(config.scoringStyle) ? config.scoringStyle : "full";
+  config.fdGameType = config.fdGameType === "to11" ? "to11" : "timed";
+  config.fdCloseMargin = Math.min(5, Math.max(1, config.fdCloseMargin || 3));
+  config.fdQualifyPct = Math.min(100, Math.max(1, config.fdQualifyPct || 50));
   config.tournamentHoursPerDay = config.tournamentHoursPerDay ?? 0;
   config.tournamentDaysAvailable = config.tournamentDaysAvailable ?? 1;
   config.sessionNameDisplay = config.sessionNameDisplay === "first" ? "first" : "both";
@@ -3210,6 +3324,23 @@
     config.courtLabels = ["1"];
     config.schemaVersion = CONFIG_SCHEMA_VERSION;
     save(STORAGE.config, config);
+  }
+
+  function ensureFairDealSessionDefaults(session) {
+    if (!session || !session.config) return session;
+    const c = session.config;
+    c.scoringStyle = ["fairDeal", "none"].includes(c.scoringStyle) ? c.scoringStyle : "full";
+    c.fdGameType = c.fdGameType === "to11" ? "to11" : "timed";
+    c.fdCloseMargin = Math.min(5, Math.max(1, c.fdCloseMargin || 3));
+    c.fdQualifyPct = Math.min(100, Math.max(1, c.fdQualifyPct || 50));
+    (session.rounds || []).forEach((round) => {
+      round.courts.forEach((court) => {
+        if (court.fdResult === undefined) court.fdResult = "";
+        if (court.fdClose === undefined) court.fdClose = null;
+        if (court.fdGameType === undefined) court.fdGameType = "";
+      });
+    });
+    return session;
   }
 
   let currentSession = null;
@@ -3466,6 +3597,11 @@
   const setupFormatSection = document.getElementById("setupFormatSection");
   const setupTimingSection = document.getElementById("setupTimingSection");
   const setupScoringSection = document.getElementById("setupScoringSection");
+  const scoringStyleButtons = document.querySelectorAll("#scoringStyleToggle .format-btn");
+  const fairDealSettingsFields = document.getElementById("fairDealSettingsFields");
+  const fdGameTypeButtons = document.querySelectorAll("#fdGameTypeToggle .format-btn");
+  const fdCloseMarginInput = document.getElementById("fdCloseMarginInput");
+  const fdQualifyPctInput = document.getElementById("fdQualifyPctInput");
   const pickDropdown = document.getElementById("pickDropdown");
   const manageDropdown = document.getElementById("manageDropdown");
   const sessionsDropdown = document.getElementById("sessionsDropdown");
@@ -3538,6 +3674,11 @@
   const criteriaToggleBtn = document.getElementById("criteriaToggleBtn");
   const timerToggleBtn = document.getElementById("timerToggleBtn");
   const timerSection = document.getElementById("timerSection");
+  const midSessionScoringBtn = document.getElementById("midSessionScoringBtn");
+  const midSessionScoringPanel = document.getElementById("midSessionScoringPanel");
+  const midScoringStyleButtons = document.querySelectorAll("#midScoringStyleToggle .format-btn");
+  const midFdGameTypeField = document.getElementById("midFdGameTypeField");
+  const midFdGameTypeButtons = document.querySelectorAll("#midFdGameTypeToggle .format-btn");
   const timerDisplay = document.getElementById("timerDisplay");
   const timerStartBtn = document.getElementById("timerStartBtn");
   const timerResetBtn = document.getElementById("timerResetBtn");
@@ -3594,6 +3735,9 @@
   const fullScheduleMeta = document.getElementById("fullScheduleMeta");
   const fullScheduleTable = document.getElementById("fullScheduleTable");
   const leaderboardTable = document.getElementById("leaderboardTable");
+  const fairDealFinishBtn = document.getElementById("fairDealFinishBtn");
+  const fairDealPodiumPanel = document.getElementById("fairDealPodiumPanel");
+  const fairDealPodiumContent = document.getElementById("fairDealPodiumContent");
 
   courtsInput.value = config.courts;
   tournamentCourtsInput.value = config.tournamentCourts;
@@ -3714,11 +3858,11 @@
       btn.classList.toggle("active", btn.dataset.planningMode === config.planningMode);
     });
 
-    setupScoringSection.style.display = gamesMode ? "block" : "none";
-    targetScoreField.style.display = gamesMode ? "block" : "none";
-    winByTwoField.style.display = gamesMode ? "block" : "none";
-    targetScoreEstimateField.style.display = gamesMode ? "block" : "none";
-    if (gamesMode) {
+    const showFullScoring = gamesMode && config.scoringStyle === "full";
+    targetScoreField.style.display = showFullScoring ? "block" : "none";
+    winByTwoField.style.display = showFullScoring ? "block" : "none";
+    targetScoreEstimateField.style.display = showFullScoring ? "block" : "none";
+    if (showFullScoring) {
       const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
       const perGame = estimateMinutesForTarget(target);
       const total = gamesToPlay * (perGame + CHANGEOVER_MINUTES);
@@ -3726,8 +3870,21 @@
       targetScoreEstimateReason.textContent =
         `for ${gamesToPlay} game${gamesToPlay === 1 ? "" : "s"} · ${perGame} min/game + ${CHANGEOVER_MINUTES} min changeover`;
     }
+    fairDealSettingsFields.style.display = config.scoringStyle === "fairDeal" ? "grid" : "none";
+    syncScoringStyleButtons();
     updateRoundsHint();
     updateAccordionSummaries();
+  }
+
+  function syncScoringStyleButtons() {
+    scoringStyleButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.scoringStyle === config.scoringStyle);
+    });
+    fdGameTypeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.fdGameType === config.fdGameType);
+    });
+    fdCloseMarginInput.value = config.fdCloseMargin;
+    fdQualifyPctInput.value = config.fdQualifyPct;
   }
 
   function updateAccordionSummaries() {
@@ -3760,8 +3917,14 @@
         : "Not set yet";
     }
 
-    const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
-    scoringSummary.textContent = `To ${target}, win by ${config.winByTwo ? 2 : 1}`;
+    if (config.scoringStyle === "fairDeal") {
+      scoringSummary.textContent = `Fair Deal · ${config.fdGameType === "to11" ? "Play to 11" : "Timed"}`;
+    } else if (config.scoringStyle === "none") {
+      scoringSummary.textContent = "No scoring";
+    } else {
+      const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
+      scoringSummary.textContent = `To ${target}, win by ${config.winByTwo ? 2 : 1}`;
+    }
   }
 
   function resetSetupAccordion() {
@@ -4855,6 +5018,7 @@
         if (session.maxRoundReached === undefined) {
           session.maxRoundReached = session.rounds.length - 1;
         }
+        ensureFairDealSessionDefaults(session);
         currentSession = session;
         currentRoundIndex = session.maxRoundReached ?? 0;
         resetPendingRoster();
@@ -4905,6 +5069,7 @@
     continueSessionBanner.style.display = "flex";
     continueSessionText.textContent = `Session in progress — Round ${(unfinished.maxRoundReached ?? 0) + 1} of ${unfinished.rounds.length}`;
     continueSessionBtn.onclick = () => {
+      ensureFairDealSessionDefaults(unfinished);
       currentSession = unfinished;
       currentRoundIndex = unfinished.maxRoundReached ?? 0;
       resetPendingRoster();
@@ -4974,6 +5139,64 @@
       row.appendChild(span);
       row.appendChild(stat);
       clubStatsPanel.appendChild(row);
+    });
+    renderFairDealClubStatsSection(clubStatsPanel);
+  }
+
+  function computeFairDealClubStats() {
+    const stats = {};
+    pastSessions.forEach((session) => {
+      if (session.fdFinalStyle !== "fairDeal") return;
+      const sessionStats = computeFairDealStats(session);
+      const podium = session.fdFinalStats || {};
+      const goldNames = new Set(podium.gold || []);
+      Object.keys(sessionStats).forEach((name) => {
+        const st = sessionStats[name];
+        if (st.games === 0) return;
+        if (!stats[name]) stats[name] = { sessions: new Set(), games: 0, points: 0, nightsWon: 0 };
+        stats[name].sessions.add(session.id);
+        stats[name].games += st.games;
+        stats[name].points += st.points;
+        if (goldNames.has(name)) stats[name].nightsWon += 1;
+      });
+    });
+    return stats;
+  }
+
+  function getSortedFairDealClubStatsNames(stats) {
+    return Object.keys(stats).sort((a, b) => {
+      if (stats[b].nightsWon !== stats[a].nightsWon) return stats[b].nightsWon - stats[a].nightsWon;
+      const avgA = stats[a].games > 0 ? stats[a].points / stats[a].games : 0;
+      const avgB = stats[b].games > 0 ? stats[b].points / stats[b].games : 0;
+      if (avgB !== avgA) return avgB - avgA;
+      if (stats[b].games !== stats[a].games) return stats[b].games - stats[a].games;
+      return a.localeCompare(b);
+    });
+  }
+
+  function renderFairDealClubStatsSection(container) {
+    const stats = computeFairDealClubStats();
+    const names = getSortedFairDealClubStatsNames(stats);
+    if (names.length === 0) return;
+    const heading = document.createElement("div");
+    heading.className = "leaderboard-section-label fairdeal-stats-heading";
+    heading.textContent = "Fair Deal (all-time)";
+    container.appendChild(heading);
+    const nameDisplayMode = config.mode === "ladder" ? config.ladderNameDisplay : config.sessionNameDisplay;
+    names.forEach((name) => {
+      const st = stats[name];
+      const avg = st.games > 0 ? (st.points / st.games).toFixed(2) : "0.00";
+      const row = document.createElement("div");
+      row.className = "saved-row";
+      const span = document.createElement("span");
+      span.textContent = displayNameFor(name, names, nameDisplayMode);
+      const stat = document.createElement("span");
+      const nightWord = st.sessions.size === 1 ? "night" : "nights";
+      const wonWord = st.nightsWon === 1 ? "win" : "wins";
+      stat.textContent = `${st.sessions.size} ${nightWord} · ${st.nightsWon} ${wonWord} · ${st.games} games · ${avg} avg pts`;
+      row.appendChild(span);
+      row.appendChild(stat);
+      container.appendChild(row);
     });
   }
 
@@ -6740,8 +6963,11 @@
   }
 
   function syncModeUI() {
+    const fairDealActive = config.mode === "session" && config.scoringStyle === "fairDeal";
     modeButtons.forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.mode === config.mode);
+      btn.classList.toggle("active", btn.dataset.mode === "fairDeal"
+        ? fairDealActive
+        : btn.dataset.mode === config.mode && !fairDealActive);
     });
     const isLadder = config.mode === "ladder";
     const isTournament = config.mode === "tournament";
@@ -6780,9 +7006,15 @@
   }
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      config.mode = btn.dataset.mode;
+      if (btn.dataset.mode === "fairDeal") {
+        config.mode = "session";
+        config.scoringStyle = "fairDeal";
+      } else {
+        config.mode = btn.dataset.mode;
+      }
       save(STORAGE.config, config);
       syncModeUI();
+      updateGamesModeUI();
       showSetupView();
     });
   });
@@ -6888,6 +7120,7 @@
           selectLadder(ladder);
           const unfinished = findUnfinishedSession(ladder.id);
           if (unfinished) {
+            ensureFairDealSessionDefaults(unfinished);
             currentSession = unfinished;
             currentRoundIndex = unfinished.maxRoundReached ?? 0;
             resetPendingRoster();
@@ -7194,6 +7427,29 @@
   winByTwoNoBtn.addEventListener("click", () => {
     config.winByTwo = false;
     syncWinByTwoButtons();
+    save(STORAGE.config, config);
+  });
+
+  scoringStyleButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.scoringStyle = btn.dataset.scoringStyle;
+      save(STORAGE.config, config);
+      updateGamesModeUI();
+    });
+  });
+  fdGameTypeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.fdGameType = btn.dataset.fdGameType;
+      save(STORAGE.config, config);
+      syncScoringStyleButtons();
+    });
+  });
+  fdCloseMarginInput.addEventListener("input", () => {
+    config.fdCloseMargin = Math.min(5, Math.max(1, parseInt(fdCloseMarginInput.value, 10) || 3));
+    save(STORAGE.config, config);
+  });
+  fdQualifyPctInput.addEventListener("input", () => {
+    config.fdQualifyPct = Math.min(100, Math.max(10, parseInt(fdQualifyPctInput.value, 10) || 50));
     save(STORAGE.config, config);
   });
 
@@ -7704,6 +7960,9 @@
         teamB: res.split.teamB,
         scoreA: "",
         scoreB: "",
+        fdResult: "",
+        fdClose: null,
+        fdGameType: "",
       }));
 
       rounds.push({ round: r + 1, courts, sitOuts: sittingOut });
@@ -8245,6 +8504,38 @@
     timerSection.style.display = showing ? "none" : "block";
   });
 
+  function syncMidScoringPanel() {
+    const c = currentSession.config;
+    midScoringStyleButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.scoringStyle === c.scoringStyle);
+    });
+    midFdGameTypeField.style.display = c.scoringStyle === "fairDeal" ? "block" : "none";
+    midFdGameTypeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.fdGameType === c.fdGameType);
+    });
+  }
+  midScoringStyleButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      currentSession.config.scoringStyle = btn.dataset.scoringStyle;
+      updateSessionInStorage();
+      syncMidScoringPanel();
+      renderAll();
+    });
+  });
+  midFdGameTypeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      currentSession.config.fdGameType = btn.dataset.fdGameType;
+      updateSessionInStorage();
+      syncMidScoringPanel();
+      renderAll();
+    });
+  });
+  midSessionScoringBtn.addEventListener("click", () => {
+    const showing = midSessionScoringPanel.style.display !== "none";
+    midSessionScoringPanel.style.display = showing ? "none" : "block";
+    if (!showing) syncMidScoringPanel();
+  });
+
   criteriaToggleBtn.addEventListener("click", () => {
     const collapsed = infoBar.classList.toggle("panel-collapsed");
     criteriaToggleBtn.classList.toggle("active", !collapsed);
@@ -8372,6 +8663,82 @@
     wrap.appendChild(minus);
     wrap.appendChild(inputEl);
     wrap.appendChild(plus);
+    return wrap;
+  }
+
+  function buildFairDealResultRow(court) {
+    const wrap = document.createElement("div");
+    wrap.className = "fairdeal-result-wrap";
+
+    const activeGameType = court.fdResult ? (court.fdGameType || currentSession.config.fdGameType) : currentSession.config.fdGameType;
+    const options = [{ key: "A", label: `${court.teamA.join(" & ")} won` }];
+    if (activeGameType === "timed") options.push({ key: "draw", label: "Draw" });
+    options.push({ key: "B", label: `${court.teamB.join(" & ")} won` });
+
+    const resultRow = document.createElement("div");
+    resultRow.className = "format-toggle fairdeal-result-row";
+    options.forEach(({ key, label }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "format-btn" + (court.fdResult === key ? " active" : "");
+      btn.textContent = label;
+      btn.disabled = isSharedReadOnlyView;
+      btn.addEventListener("click", () => {
+        if (court.fdResult === key) {
+          court.fdResult = "";
+          court.fdClose = null;
+          court.fdGameType = "";
+        } else {
+          court.fdResult = key;
+          court.fdClose = key === "draw" ? null : false;
+          court.fdGameType = currentSession.config.fdGameType;
+        }
+        updateSessionInStorage();
+        renderRound();
+        renderFullSchedule();
+        renderLeaderboard();
+      });
+      resultRow.appendChild(btn);
+    });
+    wrap.appendChild(resultRow);
+
+    if (court.fdResult === "A" || court.fdResult === "B") {
+      const closeRow = document.createElement("div");
+      closeRow.className = "fairdeal-close-row";
+      const label = document.createElement("span");
+      label.className = "saved-sort-label";
+      label.textContent = "Close game?";
+      closeRow.appendChild(label);
+      const toggle = document.createElement("div");
+      toggle.className = "yesno-toggle";
+      const yesBtn = document.createElement("button");
+      yesBtn.type = "button";
+      yesBtn.className = "yesno-btn" + (court.fdClose === true ? " active" : "");
+      yesBtn.textContent = "Yes";
+      yesBtn.disabled = isSharedReadOnlyView;
+      yesBtn.addEventListener("click", () => {
+        court.fdClose = true;
+        updateSessionInStorage();
+        renderRound();
+        renderLeaderboard();
+      });
+      const noBtn = document.createElement("button");
+      noBtn.type = "button";
+      noBtn.className = "yesno-btn" + (court.fdClose !== true ? " active" : "");
+      noBtn.textContent = "No";
+      noBtn.disabled = isSharedReadOnlyView;
+      noBtn.addEventListener("click", () => {
+        court.fdClose = false;
+        updateSessionInStorage();
+        renderRound();
+        renderLeaderboard();
+      });
+      toggle.appendChild(yesBtn);
+      toggle.appendChild(noBtn);
+      closeRow.appendChild(toggle);
+      wrap.appendChild(closeRow);
+    }
+
     return wrap;
   }
 
@@ -8801,41 +9168,53 @@
       teamBox.appendChild(netDivider);
       card.appendChild(teamBox);
 
-      const scoreRow = document.createElement("div");
-      scoreRow.className = "score-row";
-      const scoreA = document.createElement("input");
-      scoreA.type = "number";
-      scoreA.min = "0";
-      if (scoreMax != null) scoreA.max = String(scoreMax);
-      scoreA.value = court.scoreA;
-      scoreA.disabled = isSharedReadOnlyView;
-      scoreA.addEventListener("input", () => {
-        sanitizeScoreInput(scoreA, scoreMax);
-        court.scoreA = scoreA.value;
-        updateSessionInStorage();
-        renderFullSchedule();
-        renderLeaderboard();
-      });
-      const scoreB = document.createElement("input");
-      scoreB.type = "number";
-      scoreB.min = "0";
-      if (scoreMax != null) scoreB.max = String(scoreMax);
-      scoreB.value = court.scoreB;
-      scoreB.disabled = isSharedReadOnlyView;
-      scoreB.addEventListener("input", () => {
-        sanitizeScoreInput(scoreB, scoreMax);
-        court.scoreB = scoreB.value;
-        updateSessionInStorage();
-        renderFullSchedule();
-        renderLeaderboard();
-      });
-      const scoreLabel = document.createElement("div");
-      scoreLabel.className = "score-label";
-      scoreLabel.textContent = "Score";
-      scoreRow.appendChild(buildScoreStepperGroup(scoreA, court.teamA.join(" & "), scoreMax));
-      scoreRow.appendChild(scoreLabel);
-      scoreRow.appendChild(buildScoreStepperGroup(scoreB, court.teamB.join(" & "), scoreMax));
-      card.appendChild(scoreRow);
+      if (s.config.scoringStyle === "fairDeal") {
+        card.appendChild(buildFairDealResultRow(court));
+      } else if (s.config.scoringStyle !== "none") {
+        if (court.fdResult === "A" || court.fdResult === "B" || court.fdResult === "draw") {
+          const note = document.createElement("div");
+          note.className = "fairdeal-recorded-note";
+          note.textContent = court.fdResult === "draw"
+            ? "Recorded: Draw (no score)"
+            : `Recorded: ${(court.fdResult === "A" ? court.teamA : court.teamB).join(" & ")} won (no score)`;
+          card.appendChild(note);
+        }
+        const scoreRow = document.createElement("div");
+        scoreRow.className = "score-row";
+        const scoreA = document.createElement("input");
+        scoreA.type = "number";
+        scoreA.min = "0";
+        if (scoreMax != null) scoreA.max = String(scoreMax);
+        scoreA.value = court.scoreA;
+        scoreA.disabled = isSharedReadOnlyView;
+        scoreA.addEventListener("input", () => {
+          sanitizeScoreInput(scoreA, scoreMax);
+          court.scoreA = scoreA.value;
+          updateSessionInStorage();
+          renderFullSchedule();
+          renderLeaderboard();
+        });
+        const scoreB = document.createElement("input");
+        scoreB.type = "number";
+        scoreB.min = "0";
+        if (scoreMax != null) scoreB.max = String(scoreMax);
+        scoreB.value = court.scoreB;
+        scoreB.disabled = isSharedReadOnlyView;
+        scoreB.addEventListener("input", () => {
+          sanitizeScoreInput(scoreB, scoreMax);
+          court.scoreB = scoreB.value;
+          updateSessionInStorage();
+          renderFullSchedule();
+          renderLeaderboard();
+        });
+        const scoreLabel = document.createElement("div");
+        scoreLabel.className = "score-label";
+        scoreLabel.textContent = "Score";
+        scoreRow.appendChild(buildScoreStepperGroup(scoreA, court.teamA.join(" & "), scoreMax));
+        scoreRow.appendChild(scoreLabel);
+        scoreRow.appendChild(buildScoreStepperGroup(scoreB, court.teamB.join(" & "), scoreMax));
+        card.appendChild(scoreRow);
+      }
 
       courtsContainer.appendChild(card);
     });
@@ -8968,8 +9347,210 @@
     return html;
   }
 
+  function computeFairDealResult(court, sessionConfig) {
+    if (court.fdResult === "A" || court.fdResult === "B" || court.fdResult === "draw") {
+      return { result: court.fdResult, close: court.fdClose === true, unfinished: false };
+    }
+    if (court.scoreA !== "" && court.scoreB !== "") {
+      const scoreA = parseInt(court.scoreA, 10);
+      const scoreB = parseInt(court.scoreB, 10);
+      if (isNaN(scoreA) || isNaN(scoreB)) return null;
+      const gameType = sessionConfig.fdGameType === "to11" ? "to11" : "timed";
+      if (scoreA === scoreB) {
+        if (gameType === "timed") return { result: "draw", close: false, unfinished: false };
+        return { result: null, close: false, unfinished: true };
+      }
+      const result = scoreA > scoreB ? "A" : "B";
+      const margin = Math.abs(scoreA - scoreB);
+      const close = margin <= (sessionConfig.fdCloseMargin || 3);
+      return { result, close, unfinished: false };
+    }
+    return null;
+  }
+
+  function fairDealPointsFor(info, isTeamA) {
+    if (!info || info.unfinished) return 0;
+    if (info.result === "draw") return 1;
+    const won = (info.result === "A" && isTeamA) || (info.result === "B" && !isTeamA);
+    if (won) return 3;
+    return info.close ? 1 : 0;
+  }
+
+  function computeFairDealStats(session) {
+    const stats = {};
+    getAllPlayersEver(session).forEach((p) => {
+      stats[p] = { points: 0, games: 0, wins: 0, draws: 0, losses: 0 };
+    });
+    session.rounds.forEach((round) => {
+      round.courts.forEach((court) => {
+        const info = computeFairDealResult(court, session.config);
+        if (!info || info.unfinished) return;
+        court.teamA.forEach((p) => {
+          stats[p].games += 1;
+          stats[p].points += fairDealPointsFor(info, true);
+          if (info.result === "draw") stats[p].draws += 1;
+          else if (info.result === "A") stats[p].wins += 1;
+          else stats[p].losses += 1;
+        });
+        court.teamB.forEach((p) => {
+          stats[p].games += 1;
+          stats[p].points += fairDealPointsFor(info, false);
+          if (info.result === "draw") stats[p].draws += 1;
+          else if (info.result === "B") stats[p].wins += 1;
+          else stats[p].losses += 1;
+        });
+      });
+    });
+    return stats;
+  }
+
+  function fairDealOrdinal(n) {
+    const rem100 = n % 100;
+    if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+    switch (n % 10) {
+      case 1: return `${n}st`;
+      case 2: return `${n}nd`;
+      case 3: return `${n}rd`;
+      default: return `${n}th`;
+    }
+  }
+
+  function buildFairDealRankedList(session) {
+    const stats = computeFairDealStats(session);
+    const names = getAllPlayersEver(session);
+    const maxGames = names.reduce((m, p) => Math.max(m, stats[p].games), 0);
+    const qualifyPct = session.config.fdQualifyPct || 50;
+    const minGames = Math.max(1, Math.ceil((qualifyPct / 100) * maxGames));
+
+    const withAvg = names.map((name) => {
+      const st = stats[name];
+      return { name, ...st, avg: st.games > 0 ? st.points / st.games : 0 };
+    });
+
+    const played = withAvg.filter((p) => p.games > 0);
+    const qualified = played.filter((p) => p.games >= minGames);
+    const unqualified = played.filter((p) => p.games < minGames);
+
+    qualified.sort((a, b) => b.avg - a.avg || b.games - a.games || a.name.localeCompare(b.name));
+    unqualified.sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+
+    let i = 0;
+    let rank = 1;
+    while (i < qualified.length) {
+      let j = i;
+      while (j < qualified.length - 1 && qualified[j + 1].avg === qualified[i].avg && qualified[j + 1].games === qualified[i].games) j++;
+      const groupSize = j - i + 1;
+      const label = groupSize > 1 ? `Joint ${fairDealOrdinal(rank)}` : fairDealOrdinal(rank);
+      for (let k = i; k <= j; k++) qualified[k].rankLabel = label;
+      rank += groupSize;
+      i = j + 1;
+    }
+
+    return { qualified, unqualified, minGames };
+  }
+
+  function buildFairDealLeaderboardHtml(session) {
+    const { qualified, unqualified, minGames } = buildFairDealRankedList(session);
+    const nameDisplayMode = session.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
+    const allNames = getAllPlayersEver(session);
+    const rowHtml = (p, rankLabel) =>
+      `<tr><td>${rankLabel}</td><td>${displayNameFor(p.name, allNames, nameDisplayMode)}</td><td>${p.avg.toFixed(2)}</td><td>${p.games}</td><td>${p.points}</td><td>${p.wins}-${p.draws}-${p.losses}</td></tr>`;
+
+    let html = `<thead><tr><th>Rank</th><th>Player</th><th>Avg pts</th><th>Games</th><th>Total pts</th><th>W-D-L</th></tr></thead><tbody>`;
+    if (qualified.length === 0) {
+      html += `<tr><td colspan="6" class="empty-note">No qualifying results yet.</td></tr>`;
+    } else {
+      qualified.forEach((p) => { html += rowHtml(p, p.rankLabel); });
+    }
+    html += "</tbody>";
+    if (unqualified.length > 0) {
+      html += `<tbody><tr><td colspan="6" class="leaderboard-section-label">Not yet qualified (fewer than ${minGames} game${minGames === 1 ? "" : "s"})</td></tr>`;
+      unqualified.forEach((p) => { html += rowHtml(p, "—"); });
+      html += "</tbody>";
+    }
+    return html;
+  }
+
+  function computeFairDealPodium(session) {
+    const { qualified } = buildFairDealRankedList(session);
+    const groups = [];
+    let i = 0;
+    while (i < qualified.length && groups.length < 3) {
+      let j = i;
+      while (j < qualified.length - 1 && qualified[j + 1].rankLabel === qualified[i].rankLabel) j++;
+      groups.push(qualified.slice(i, j + 1).map((p) => p.name));
+      i = j + 1;
+    }
+    return { gold: groups[0] || null, silver: groups[1] || null, bronze: groups[2] || null };
+  }
+
+  function fairDealPodiumNames(session, names) {
+    const allNames = getAllPlayersEver(session);
+    const nameDisplayMode = session.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
+    return names.map((n) => displayNameFor(n, allNames, nameDisplayMode)).join(" & ");
+  }
+
+  function buildFairDealPodiumBoxes(session, fdFinalStats) {
+    const wrap = document.createElement("div");
+    wrap.className = "medal-boxes";
+    const entries = [
+      ["🥇", "Winner", "gold", fdFinalStats.gold],
+      ["🥈", "Second", "silver", fdFinalStats.silver],
+      ["🥉", "Third", "bronze", fdFinalStats.bronze],
+    ];
+    entries.forEach(([icon, label, className, names]) => {
+      if (!names || names.length === 0) return;
+      const box = document.createElement("div");
+      box.className = `medal-box medal-box-${className}`;
+      const iconEl = document.createElement("span");
+      iconEl.className = "medal-box-icon";
+      iconEl.textContent = icon;
+      const labelEl = document.createElement("span");
+      labelEl.className = "medal-box-label";
+      labelEl.textContent = names.length > 1 ? `Joint ${label}` : label;
+      const teamEl = document.createElement("span");
+      teamEl.className = "medal-box-team";
+      teamEl.textContent = fairDealPodiumNames(session, names);
+      box.appendChild(iconEl);
+      box.appendChild(labelEl);
+      box.appendChild(teamEl);
+      wrap.appendChild(box);
+    });
+    return wrap;
+  }
+
+  function buildFairDealPrintPodiumHtml(session, fdFinalStats) {
+    let html = `<div class="print-medals-summary">`;
+    if (fdFinalStats.gold && fdFinalStats.gold.length) html += `<div>🥇 ${fdFinalStats.gold.length > 1 ? "Joint Winners" : "Winner"}: ${fairDealPodiumNames(session, fdFinalStats.gold)}</div>`;
+    if (fdFinalStats.silver && fdFinalStats.silver.length) html += `<div>🥈 ${fdFinalStats.silver.length > 1 ? "Joint Second" : "Second"}: ${fairDealPodiumNames(session, fdFinalStats.silver)}</div>`;
+    if (fdFinalStats.bronze && fdFinalStats.bronze.length) html += `<div>🥉 ${fdFinalStats.bronze.length > 1 ? "Joint Third" : "Third"}: ${fairDealPodiumNames(session, fdFinalStats.bronze)}</div>`;
+    html += `</div>`;
+    return html;
+  }
+
+  function renderFairDealPodiumPanel() {
+    const s = currentSession;
+    if (s.config.scoringStyle === "fairDeal" && s.fdFinalStats) {
+      fairDealPodiumPanel.style.display = "block";
+      fairDealPodiumContent.innerHTML = "";
+      fairDealPodiumContent.appendChild(buildFairDealPodiumBoxes(s, s.fdFinalStats));
+    } else {
+      fairDealPodiumPanel.style.display = "none";
+    }
+  }
+
+  fairDealFinishBtn.addEventListener("click", () => {
+    const s = currentSession;
+    s.fdFinalStyle = s.config.scoringStyle;
+    s.fdFinalStats = computeFairDealPodium(s);
+    updateSessionInStorage();
+    renderFairDealPodiumPanel();
+  });
+
   function renderLeaderboard() {
-    leaderboardTable.innerHTML = buildLeaderboardTableHtml(currentSession);
+    leaderboardTable.innerHTML = currentSession.config.scoringStyle === "fairDeal"
+      ? buildFairDealLeaderboardHtml(currentSession)
+      : buildLeaderboardTableHtml(currentSession);
   }
 
   function renderAll() {
@@ -8980,6 +9561,9 @@
     updateRosterPanelState();
     sessionLaddersBtn.style.display = currentSession.ladderId ? "" : "none";
     rosterLinkModeBtn.style.display = currentSession.config.format === "singles" ? "none" : "";
+    midSessionScoringBtn.style.display = currentSession.ladderId ? "none" : "";
+    fairDealFinishBtn.style.display = currentSession.config.scoringStyle === "fairDeal" ? "" : "none";
+    renderFairDealPodiumPanel();
   }
 
   document.querySelectorAll("#panelToggleRow .dropdown-toggle").forEach((btn) => {
@@ -9074,7 +9658,9 @@
     const s = currentSession;
     const formatLabel = (s.ladderId ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
     const header = `<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${s.rounds.length} rounds · Leaderboard</div>`;
-    return `${header}<table class="schedule-table">${buildLeaderboardTableHtml(s)}</table>`;
+    const tableHtml = s.config.scoringStyle === "fairDeal" ? buildFairDealLeaderboardHtml(s) : buildLeaderboardTableHtml(s);
+    const podiumHtml = s.fdFinalStats ? buildFairDealPrintPodiumHtml(s, s.fdFinalStats) : "";
+    return `${header}<table class="schedule-table">${tableHtml}</table>${podiumHtml}`;
   }
 
   printLeaderboardBtn.addEventListener("click", () => {
@@ -9135,6 +9721,17 @@
       html += `<tr><td>${displayNameFor(name, names, nameDisplayMode)}</td><td>${st.sessions.size}</td><td>${st.games}</td><td>${st.wins}</td></tr>`;
     });
     html += "</tbody></table>";
+    const fdStats = computeFairDealClubStats();
+    const fdNames = getSortedFairDealClubStatsNames(fdStats);
+    if (fdNames.length > 0) {
+      html += `<div class="print-sheets-header">Fair Deal (all-time)</div><table class="schedule-table"><thead><tr><th>Player</th><th>Nights</th><th>Nights Won</th><th>Games</th><th>Avg pts</th></tr></thead><tbody>`;
+      fdNames.forEach((name) => {
+        const st = fdStats[name];
+        const avg = st.games > 0 ? (st.points / st.games).toFixed(2) : "0.00";
+        html += `<tr><td>${displayNameFor(name, fdNames, nameDisplayMode)}</td><td>${st.sessions.size}</td><td>${st.nightsWon}</td><td>${st.games}</td><td>${avg}</td></tr>`;
+      });
+      html += "</tbody></table>";
+    }
     return html;
   }
 
@@ -9422,6 +10019,10 @@
         gamesToPlay: s.config.gamesToPlay,
         targetScore: s.config.targetScore,
         winByTwo: s.config.winByTwo,
+        scoringStyle: s.config.scoringStyle,
+        fdGameType: s.config.fdGameType,
+        fdCloseMargin: s.config.fdCloseMargin,
+        fdQualifyPct: s.config.fdQualifyPct,
       },
       rounds: s.rounds,
     };
@@ -9611,6 +10212,7 @@
       maxUnitOpponent: Object.values(combined.unitOpponentCount).reduce((m, v) => Math.max(m, v), 0),
       flipCount: countRoleFlips(data.rounds, data.config.format),
     };
+    ensureFairDealSessionDefaults(currentSession);
     currentRoundIndex = 0;
     isSharedReadOnlyView = true;
     document.body.classList.add("shared-view");
