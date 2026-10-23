@@ -1430,6 +1430,14 @@
   .schedule-table .vs { text-align: center; color: var(--muted); font-size: 0.72rem; margin: 2px 0; }
   .schedule-table .score { text-align: center; color: var(--green-dark); font-weight: 700; font-size: 0.82rem; margin: 2px 0; }
   .schedule-table .resting-cell { color: var(--green-dark); font-size: 0.8rem; }
+  .schedule-table .leaderboard-section-label {
+    background: #faf2dc;
+    color: var(--green-dark);
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
 
   .swap-mode .team-cell, .swap-mode .resting-pill,
   .remove-mode .team-cell, .remove-mode .resting-pill,
@@ -9204,8 +9212,134 @@
     return html;
   }
 
+  function computeFairDealResult(court, sessionConfig) {
+    if (court.fdResult === "A" || court.fdResult === "B" || court.fdResult === "draw") {
+      return { result: court.fdResult, close: court.fdClose === true, unfinished: false };
+    }
+    if (court.scoreA !== "" && court.scoreB !== "") {
+      const scoreA = parseInt(court.scoreA, 10);
+      const scoreB = parseInt(court.scoreB, 10);
+      if (isNaN(scoreA) || isNaN(scoreB)) return null;
+      const gameType = sessionConfig.fdGameType === "to11" ? "to11" : "timed";
+      if (scoreA === scoreB) {
+        if (gameType === "timed") return { result: "draw", close: false, unfinished: false };
+        return { result: null, close: false, unfinished: true };
+      }
+      const result = scoreA > scoreB ? "A" : "B";
+      const margin = Math.abs(scoreA - scoreB);
+      const close = margin <= (sessionConfig.fdCloseMargin || 3);
+      return { result, close, unfinished: false };
+    }
+    return null;
+  }
+
+  function fairDealPointsFor(info, isTeamA) {
+    if (!info || info.unfinished) return 0;
+    if (info.result === "draw") return 1;
+    const won = (info.result === "A" && isTeamA) || (info.result === "B" && !isTeamA);
+    if (won) return 3;
+    return info.close ? 1 : 0;
+  }
+
+  function computeFairDealStats(session) {
+    const stats = {};
+    getAllPlayersEver(session).forEach((p) => {
+      stats[p] = { points: 0, games: 0, wins: 0, draws: 0, losses: 0 };
+    });
+    session.rounds.forEach((round) => {
+      round.courts.forEach((court) => {
+        const info = computeFairDealResult(court, session.config);
+        if (!info || info.unfinished) return;
+        court.teamA.forEach((p) => {
+          stats[p].games += 1;
+          stats[p].points += fairDealPointsFor(info, true);
+          if (info.result === "draw") stats[p].draws += 1;
+          else if (info.result === "A") stats[p].wins += 1;
+          else stats[p].losses += 1;
+        });
+        court.teamB.forEach((p) => {
+          stats[p].games += 1;
+          stats[p].points += fairDealPointsFor(info, false);
+          if (info.result === "draw") stats[p].draws += 1;
+          else if (info.result === "B") stats[p].wins += 1;
+          else stats[p].losses += 1;
+        });
+      });
+    });
+    return stats;
+  }
+
+  function fairDealOrdinal(n) {
+    const rem100 = n % 100;
+    if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+    switch (n % 10) {
+      case 1: return `${n}st`;
+      case 2: return `${n}nd`;
+      case 3: return `${n}rd`;
+      default: return `${n}th`;
+    }
+  }
+
+  function buildFairDealRankedList(session) {
+    const stats = computeFairDealStats(session);
+    const names = getAllPlayersEver(session);
+    const maxGames = names.reduce((m, p) => Math.max(m, stats[p].games), 0);
+    const qualifyPct = session.config.fdQualifyPct || 50;
+    const minGames = Math.max(1, Math.ceil((qualifyPct / 100) * maxGames));
+
+    const withAvg = names.map((name) => {
+      const st = stats[name];
+      return { name, ...st, avg: st.games > 0 ? st.points / st.games : 0 };
+    });
+
+    const played = withAvg.filter((p) => p.games > 0);
+    const qualified = played.filter((p) => p.games >= minGames);
+    const unqualified = played.filter((p) => p.games < minGames);
+
+    qualified.sort((a, b) => b.avg - a.avg || b.games - a.games || a.name.localeCompare(b.name));
+    unqualified.sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+
+    let i = 0;
+    let rank = 1;
+    while (i < qualified.length) {
+      let j = i;
+      while (j < qualified.length - 1 && qualified[j + 1].avg === qualified[i].avg && qualified[j + 1].games === qualified[i].games) j++;
+      const groupSize = j - i + 1;
+      const label = groupSize > 1 ? `Joint ${fairDealOrdinal(rank)}` : fairDealOrdinal(rank);
+      for (let k = i; k <= j; k++) qualified[k].rankLabel = label;
+      rank += groupSize;
+      i = j + 1;
+    }
+
+    return { qualified, unqualified, minGames };
+  }
+
+  function buildFairDealLeaderboardHtml(session) {
+    const { qualified, unqualified, minGames } = buildFairDealRankedList(session);
+    const nameDisplayMode = session.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
+    const allNames = getAllPlayersEver(session);
+    const rowHtml = (p, rankLabel) =>
+      `<tr><td>${rankLabel}</td><td>${displayNameFor(p.name, allNames, nameDisplayMode)}</td><td>${p.avg.toFixed(2)}</td><td>${p.games}</td><td>${p.points}</td><td>${p.wins}-${p.draws}-${p.losses}</td></tr>`;
+
+    let html = `<thead><tr><th>Rank</th><th>Player</th><th>Avg pts</th><th>Games</th><th>Total pts</th><th>W-D-L</th></tr></thead><tbody>`;
+    if (qualified.length === 0) {
+      html += `<tr><td colspan="6" class="empty-note">No qualifying results yet.</td></tr>`;
+    } else {
+      qualified.forEach((p) => { html += rowHtml(p, p.rankLabel); });
+    }
+    html += "</tbody>";
+    if (unqualified.length > 0) {
+      html += `<tbody><tr><td colspan="6" class="leaderboard-section-label">Not yet qualified (fewer than ${minGames} game${minGames === 1 ? "" : "s"})</td></tr>`;
+      unqualified.forEach((p) => { html += rowHtml(p, "—"); });
+      html += "</tbody>";
+    }
+    return html;
+  }
+
   function renderLeaderboard() {
-    leaderboardTable.innerHTML = buildLeaderboardTableHtml(currentSession);
+    leaderboardTable.innerHTML = currentSession.config.scoringStyle === "fairDeal"
+      ? buildFairDealLeaderboardHtml(currentSession)
+      : buildLeaderboardTableHtml(currentSession);
   }
 
   function renderAll() {
@@ -9658,6 +9792,10 @@
         gamesToPlay: s.config.gamesToPlay,
         targetScore: s.config.targetScore,
         winByTwo: s.config.winByTwo,
+        scoringStyle: s.config.scoringStyle,
+        fdGameType: s.config.fdGameType,
+        fdCloseMargin: s.config.fdCloseMargin,
+        fdQualifyPct: s.config.fdQualifyPct,
       },
       rounds: s.rounds,
     };
