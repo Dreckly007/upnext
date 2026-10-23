@@ -2745,6 +2745,13 @@
 
       <div class="info-bar panel-collapsed" id="infoBar"></div>
 
+      <button class="outline-btn no-print no-share" id="fairDealFinishBtn" style="display:none;">🏆 Finish Session &amp; See Winner</button>
+
+      <div class="panel" id="fairDealPodiumPanel" style="display:none;">
+        <div class="panel-header"><span>Fair Deal — Final Result</span></div>
+        <div id="fairDealPodiumContent"></div>
+      </div>
+
       <div class="dropdown-row no-print" id="panelToggleRow">
         <div class="dropdown">
           <button class="dropdown-toggle" id="toggleFullScheduleBtn" data-panel="fullSchedulePanel" data-label="Full Schedule">View Full Schedule</button>
@@ -3718,6 +3725,9 @@
   const fullScheduleMeta = document.getElementById("fullScheduleMeta");
   const fullScheduleTable = document.getElementById("fullScheduleTable");
   const leaderboardTable = document.getElementById("leaderboardTable");
+  const fairDealFinishBtn = document.getElementById("fairDealFinishBtn");
+  const fairDealPodiumPanel = document.getElementById("fairDealPodiumPanel");
+  const fairDealPodiumContent = document.getElementById("fairDealPodiumContent");
 
   courtsInput.value = config.courts;
   tournamentCourtsInput.value = config.tournamentCourts;
@@ -9393,6 +9403,82 @@
     return html;
   }
 
+  function computeFairDealPodium(session) {
+    const { qualified } = buildFairDealRankedList(session);
+    const groups = [];
+    let i = 0;
+    while (i < qualified.length && groups.length < 3) {
+      let j = i;
+      while (j < qualified.length - 1 && qualified[j + 1].rankLabel === qualified[i].rankLabel) j++;
+      groups.push(qualified.slice(i, j + 1).map((p) => p.name));
+      i = j + 1;
+    }
+    return { gold: groups[0] || null, silver: groups[1] || null, bronze: groups[2] || null };
+  }
+
+  function fairDealPodiumNames(session, names) {
+    const allNames = getAllPlayersEver(session);
+    const nameDisplayMode = session.ladderId ? config.ladderNameDisplay : config.sessionNameDisplay;
+    return names.map((n) => displayNameFor(n, allNames, nameDisplayMode)).join(" & ");
+  }
+
+  function buildFairDealPodiumBoxes(session, fdFinalStats) {
+    const wrap = document.createElement("div");
+    wrap.className = "medal-boxes";
+    const entries = [
+      ["🥇", "Winner", "gold", fdFinalStats.gold],
+      ["🥈", "Second", "silver", fdFinalStats.silver],
+      ["🥉", "Third", "bronze", fdFinalStats.bronze],
+    ];
+    entries.forEach(([icon, label, className, names]) => {
+      if (!names || names.length === 0) return;
+      const box = document.createElement("div");
+      box.className = `medal-box medal-box-${className}`;
+      const iconEl = document.createElement("span");
+      iconEl.className = "medal-box-icon";
+      iconEl.textContent = icon;
+      const labelEl = document.createElement("span");
+      labelEl.className = "medal-box-label";
+      labelEl.textContent = names.length > 1 ? `Joint ${label}` : label;
+      const teamEl = document.createElement("span");
+      teamEl.className = "medal-box-team";
+      teamEl.textContent = fairDealPodiumNames(session, names);
+      box.appendChild(iconEl);
+      box.appendChild(labelEl);
+      box.appendChild(teamEl);
+      wrap.appendChild(box);
+    });
+    return wrap;
+  }
+
+  function buildFairDealPrintPodiumHtml(session, fdFinalStats) {
+    let html = `<div class="print-medals-summary">`;
+    if (fdFinalStats.gold && fdFinalStats.gold.length) html += `<div>🥇 ${fdFinalStats.gold.length > 1 ? "Joint Winners" : "Winner"}: ${fairDealPodiumNames(session, fdFinalStats.gold)}</div>`;
+    if (fdFinalStats.silver && fdFinalStats.silver.length) html += `<div>🥈 ${fdFinalStats.silver.length > 1 ? "Joint Second" : "Second"}: ${fairDealPodiumNames(session, fdFinalStats.silver)}</div>`;
+    if (fdFinalStats.bronze && fdFinalStats.bronze.length) html += `<div>🥉 ${fdFinalStats.bronze.length > 1 ? "Joint Third" : "Third"}: ${fairDealPodiumNames(session, fdFinalStats.bronze)}</div>`;
+    html += `</div>`;
+    return html;
+  }
+
+  function renderFairDealPodiumPanel() {
+    const s = currentSession;
+    if (s.config.scoringStyle === "fairDeal" && s.fdFinalStats) {
+      fairDealPodiumPanel.style.display = "block";
+      fairDealPodiumContent.innerHTML = "";
+      fairDealPodiumContent.appendChild(buildFairDealPodiumBoxes(s, s.fdFinalStats));
+    } else {
+      fairDealPodiumPanel.style.display = "none";
+    }
+  }
+
+  fairDealFinishBtn.addEventListener("click", () => {
+    const s = currentSession;
+    s.fdFinalStyle = s.config.scoringStyle;
+    s.fdFinalStats = computeFairDealPodium(s);
+    updateSessionInStorage();
+    renderFairDealPodiumPanel();
+  });
+
   function renderLeaderboard() {
     leaderboardTable.innerHTML = currentSession.config.scoringStyle === "fairDeal"
       ? buildFairDealLeaderboardHtml(currentSession)
@@ -9408,6 +9494,8 @@
     sessionLaddersBtn.style.display = currentSession.ladderId ? "" : "none";
     rosterLinkModeBtn.style.display = currentSession.config.format === "singles" ? "none" : "";
     midSessionScoringBtn.style.display = currentSession.ladderId ? "none" : "";
+    fairDealFinishBtn.style.display = currentSession.config.scoringStyle === "fairDeal" ? "" : "none";
+    renderFairDealPodiumPanel();
   }
 
   document.querySelectorAll("#panelToggleRow .dropdown-toggle").forEach((btn) => {
@@ -9502,7 +9590,9 @@
     const s = currentSession;
     const formatLabel = (s.ladderId ? "Ladder " : "") + (s.config.format === "singles" ? "Singles" : "Doubles");
     const header = `<div class="print-sheets-header">${formatLabel} · ${s.players.length} players · ${s.rounds.length} rounds · Leaderboard</div>`;
-    return `${header}<table class="schedule-table">${buildLeaderboardTableHtml(s)}</table>`;
+    const tableHtml = s.config.scoringStyle === "fairDeal" ? buildFairDealLeaderboardHtml(s) : buildLeaderboardTableHtml(s);
+    const podiumHtml = s.fdFinalStats ? buildFairDealPrintPodiumHtml(s, s.fdFinalStats) : "";
+    return `${header}<table class="schedule-table">${tableHtml}</table>${podiumHtml}`;
   }
 
   printLeaderboardBtn.addEventListener("click", () => {
