@@ -1441,6 +1441,16 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
+  .fairdeal-stats-heading {
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--green-dark);
+    margin: 14px 0 6px;
+    padding-top: 10px;
+    border-top: 1px solid var(--card-border);
+  }
 
   .swap-mode .team-cell, .swap-mode .resting-pill,
   .remove-mode .team-cell, .remove-mode .resting-pill,
@@ -5129,6 +5139,64 @@
       row.appendChild(span);
       row.appendChild(stat);
       clubStatsPanel.appendChild(row);
+    });
+    renderFairDealClubStatsSection(clubStatsPanel);
+  }
+
+  function computeFairDealClubStats() {
+    const stats = {};
+    pastSessions.forEach((session) => {
+      if (session.fdFinalStyle !== "fairDeal") return;
+      const sessionStats = computeFairDealStats(session);
+      const podium = session.fdFinalStats || {};
+      const goldNames = new Set(podium.gold || []);
+      Object.keys(sessionStats).forEach((name) => {
+        const st = sessionStats[name];
+        if (st.games === 0) return;
+        if (!stats[name]) stats[name] = { sessions: new Set(), games: 0, points: 0, nightsWon: 0 };
+        stats[name].sessions.add(session.id);
+        stats[name].games += st.games;
+        stats[name].points += st.points;
+        if (goldNames.has(name)) stats[name].nightsWon += 1;
+      });
+    });
+    return stats;
+  }
+
+  function getSortedFairDealClubStatsNames(stats) {
+    return Object.keys(stats).sort((a, b) => {
+      if (stats[b].nightsWon !== stats[a].nightsWon) return stats[b].nightsWon - stats[a].nightsWon;
+      const avgA = stats[a].games > 0 ? stats[a].points / stats[a].games : 0;
+      const avgB = stats[b].games > 0 ? stats[b].points / stats[b].games : 0;
+      if (avgB !== avgA) return avgB - avgA;
+      if (stats[b].games !== stats[a].games) return stats[b].games - stats[a].games;
+      return a.localeCompare(b);
+    });
+  }
+
+  function renderFairDealClubStatsSection(container) {
+    const stats = computeFairDealClubStats();
+    const names = getSortedFairDealClubStatsNames(stats);
+    if (names.length === 0) return;
+    const heading = document.createElement("div");
+    heading.className = "leaderboard-section-label fairdeal-stats-heading";
+    heading.textContent = "Fair Deal (all-time)";
+    container.appendChild(heading);
+    const nameDisplayMode = config.mode === "ladder" ? config.ladderNameDisplay : config.sessionNameDisplay;
+    names.forEach((name) => {
+      const st = stats[name];
+      const avg = st.games > 0 ? (st.points / st.games).toFixed(2) : "0.00";
+      const row = document.createElement("div");
+      row.className = "saved-row";
+      const span = document.createElement("span");
+      span.textContent = displayNameFor(name, names, nameDisplayMode);
+      const stat = document.createElement("span");
+      const nightWord = st.sessions.size === 1 ? "night" : "nights";
+      const wonWord = st.nightsWon === 1 ? "win" : "wins";
+      stat.textContent = `${st.sessions.size} ${nightWord} · ${st.nightsWon} ${wonWord} · ${st.games} games · ${avg} avg pts`;
+      row.appendChild(span);
+      row.appendChild(stat);
+      container.appendChild(row);
     });
   }
 
@@ -9653,6 +9721,17 @@
       html += `<tr><td>${displayNameFor(name, names, nameDisplayMode)}</td><td>${st.sessions.size}</td><td>${st.games}</td><td>${st.wins}</td></tr>`;
     });
     html += "</tbody></table>";
+    const fdStats = computeFairDealClubStats();
+    const fdNames = getSortedFairDealClubStatsNames(fdStats);
+    if (fdNames.length > 0) {
+      html += `<div class="print-sheets-header">Fair Deal (all-time)</div><table class="schedule-table"><thead><tr><th>Player</th><th>Nights</th><th>Nights Won</th><th>Games</th><th>Avg pts</th></tr></thead><tbody>`;
+      fdNames.forEach((name) => {
+        const st = fdStats[name];
+        const avg = st.games > 0 ? (st.points / st.games).toFixed(2) : "0.00";
+        html += `<tr><td>${displayNameFor(name, fdNames, nameDisplayMode)}</td><td>${st.sessions.size}</td><td>${st.nightsWon}</td><td>${st.games}</td><td>${avg}</td></tr>`;
+      });
+      html += "</tbody></table>";
+    }
     return html;
   }
 
