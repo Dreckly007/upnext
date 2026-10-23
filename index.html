@@ -385,7 +385,8 @@
   .dropdown-row .dropdown { flex: 1 1 160px; min-width: 0; margin-top: 0; }
   .dropdown-row.expanded .dropdown { flex: 1 1 100%; }
   #sessionSectionsRow > .dropdown-panel,
-  #sessionSectionsRow > .timer-section {
+  #sessionSectionsRow > .timer-section,
+  #sessionSectionsRow > .mid-session-scoring-panel {
     flex: 1 1 100%;
   }
   #setupDropdownRow { display: block; }
@@ -923,6 +924,8 @@
   .install-tip .small-btn { flex-shrink: 0; white-space: nowrap; }
 
   .timer-section { text-align: center; margin: 6px 0 24px; }
+  .mid-session-scoring-panel { margin: 6px 0 24px; }
+  .mid-session-scoring-panel #midFdGameTypeField { margin-top: 14px; }
   .timer-display { font-size: 3.2rem; font-weight: 800; color: var(--green-dark); line-height: 1; }
   .timer-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; }
   .timer-btn { padding: 10px 26px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
@@ -2698,6 +2701,7 @@
             <button class="outline-btn no-share" id="timerToggleBtn">Timer</button>
             <button class="outline-btn no-share" id="regenerateBtn">Regenerate Schedule</button>
             <button class="outline-btn" id="criteriaToggleBtn" aria-expanded="false">Criteria</button>
+          <button class="outline-btn no-share" id="midSessionScoringBtn" style="display:none;">Scoring</button>
           </div>
         </div>
       </div>
@@ -2719,6 +2723,22 @@
             <option value="none">None</option>
           </select>
           <button class="timer-sound-test" id="timerSoundTestBtn">🔊 Test</button>
+        </div>
+      </div>
+
+      <div class="mid-session-scoring-panel no-print no-share" id="midSessionScoringPanel" style="display:none;">
+        <label class="section-label">Scoring style</label>
+        <div class="format-toggle" id="midScoringStyleToggle">
+          <button type="button" class="format-btn" data-scoring-style="full">Full scores</button>
+          <button type="button" class="format-btn" data-scoring-style="fairDeal">Fair Deal</button>
+          <button type="button" class="format-btn" data-scoring-style="none">No scoring</button>
+        </div>
+        <div id="midFdGameTypeField" style="display:none;">
+          <label class="section-label">Game type</label>
+          <div class="format-toggle" id="midFdGameTypeToggle">
+            <button type="button" class="format-btn" data-fd-game-type="timed">Timed</button>
+            <button type="button" class="format-btn" data-fd-game-type="to11">Play to 11</button>
+          </div>
         </div>
       </div>
       </div>
@@ -3637,6 +3657,11 @@
   const criteriaToggleBtn = document.getElementById("criteriaToggleBtn");
   const timerToggleBtn = document.getElementById("timerToggleBtn");
   const timerSection = document.getElementById("timerSection");
+  const midSessionScoringBtn = document.getElementById("midSessionScoringBtn");
+  const midSessionScoringPanel = document.getElementById("midSessionScoringPanel");
+  const midScoringStyleButtons = document.querySelectorAll("#midScoringStyleToggle .format-btn");
+  const midFdGameTypeField = document.getElementById("midFdGameTypeField");
+  const midFdGameTypeButtons = document.querySelectorAll("#midFdGameTypeToggle .format-btn");
   const timerDisplay = document.getElementById("timerDisplay");
   const timerStartBtn = document.getElementById("timerStartBtn");
   const timerResetBtn = document.getElementById("timerResetBtn");
@@ -8401,6 +8426,38 @@
     timerSection.style.display = showing ? "none" : "block";
   });
 
+  function syncMidScoringPanel() {
+    const c = currentSession.config;
+    midScoringStyleButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.scoringStyle === c.scoringStyle);
+    });
+    midFdGameTypeField.style.display = c.scoringStyle === "fairDeal" ? "block" : "none";
+    midFdGameTypeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.fdGameType === c.fdGameType);
+    });
+  }
+  midScoringStyleButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      currentSession.config.scoringStyle = btn.dataset.scoringStyle;
+      updateSessionInStorage();
+      syncMidScoringPanel();
+      renderAll();
+    });
+  });
+  midFdGameTypeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      currentSession.config.fdGameType = btn.dataset.fdGameType;
+      updateSessionInStorage();
+      syncMidScoringPanel();
+      renderAll();
+    });
+  });
+  midSessionScoringBtn.addEventListener("click", () => {
+    const showing = midSessionScoringPanel.style.display !== "none";
+    midSessionScoringPanel.style.display = showing ? "none" : "block";
+    if (!showing) syncMidScoringPanel();
+  });
+
   criteriaToggleBtn.addEventListener("click", () => {
     const collapsed = infoBar.classList.toggle("panel-collapsed");
     criteriaToggleBtn.classList.toggle("active", !collapsed);
@@ -8535,7 +8592,7 @@
     const wrap = document.createElement("div");
     wrap.className = "fairdeal-result-wrap";
 
-    const activeGameType = court.fdResult ? (court.fdGameType || config.fdGameType) : config.fdGameType;
+    const activeGameType = court.fdResult ? (court.fdGameType || currentSession.config.fdGameType) : currentSession.config.fdGameType;
     const options = [{ key: "A", label: `${court.teamA.join(" & ")} won` }];
     if (activeGameType === "timed") options.push({ key: "draw", label: "Draw" });
     options.push({ key: "B", label: `${court.teamB.join(" & ")} won` });
@@ -8556,7 +8613,7 @@
         } else {
           court.fdResult = key;
           court.fdClose = key === "draw" ? null : false;
-          court.fdGameType = config.fdGameType;
+          court.fdGameType = currentSession.config.fdGameType;
         }
         updateSessionInStorage();
         renderRound();
@@ -9350,6 +9407,7 @@
     updateRosterPanelState();
     sessionLaddersBtn.style.display = currentSession.ladderId ? "" : "none";
     rosterLinkModeBtn.style.display = currentSession.config.format === "singles" ? "none" : "";
+    midSessionScoringBtn.style.display = currentSession.ladderId ? "none" : "";
   }
 
   document.querySelectorAll("#panelToggleRow .dropdown-toggle").forEach((btn) => {
