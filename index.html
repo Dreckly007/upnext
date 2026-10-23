@@ -1749,6 +1749,10 @@
           <span class="mode-btn-title">Tournament</span>
           <span class="mode-btn-desc">Groups, seeding, and a knockout bracket</span>
         </button>
+        <button type="button" class="format-btn" data-mode="fairDeal">
+          <span class="mode-btn-title">Fair Deal</span>
+          <span class="mode-btn-desc">Fair rotation with a points table. Tap the winner, crown a champion.</span>
+        </button>
       </div>
 
       <div class="inline-form" id="sharedCodeEntryRow">
@@ -2449,6 +2453,15 @@
           <span class="arrow">▾</span>
         </button>
         <div class="dropdown-panel">
+          <div class="field" id="scoringStyleField">
+            <label class="section-label">Scoring style</label>
+            <div class="format-toggle" id="scoringStyleToggle">
+              <button type="button" class="format-btn active" data-scoring-style="full">Full scores</button>
+              <button type="button" class="format-btn" data-scoring-style="fairDeal">Fair Deal</button>
+              <button type="button" class="format-btn" data-scoring-style="none">No scoring</button>
+            </div>
+          </div>
+
           <div class="paired-grid">
             <div class="field" id="targetScoreField" style="display:none;">
               <label for="targetScoreInput">Points to win</label>
@@ -2474,6 +2487,32 @@
                   <span class="estimate-number" id="targetScoreEstimateNumber"></span>
                   <span class="estimate-reason" id="targetScoreEstimateReason"></span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="paired-grid cols-3" id="fairDealSettingsFields" style="display:none;">
+            <div class="field">
+              <label class="section-label">Game type</label>
+              <div class="format-toggle" id="fdGameTypeToggle">
+                <button type="button" class="format-btn active" data-fd-game-type="timed">Timed</button>
+                <button type="button" class="format-btn" data-fd-game-type="to11">Play to 11</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="fdCloseMarginInput">Close-loss margin</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="fdCloseMarginInput" data-step="-1" aria-label="Decrease close-loss margin">−</button>
+                <input type="number" id="fdCloseMarginInput" min="1" max="5" value="3" />
+                <button type="button" class="stepper-btn" data-target="fdCloseMarginInput" data-step="1" aria-label="Increase close-loss margin">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="fdQualifyPctInput">Qualifying minimum (%)</label>
+              <div class="number-stepper">
+                <button type="button" class="stepper-btn" data-target="fdQualifyPctInput" data-step="-5" aria-label="Decrease qualifying minimum">−</button>
+                <input type="number" id="fdQualifyPctInput" min="10" max="100" value="50" />
+                <button type="button" class="stepper-btn" data-target="fdQualifyPctInput" data-step="5" aria-label="Increase qualifying minimum">+</button>
               </div>
             </div>
           </div>
@@ -3491,6 +3530,11 @@
   const setupFormatSection = document.getElementById("setupFormatSection");
   const setupTimingSection = document.getElementById("setupTimingSection");
   const setupScoringSection = document.getElementById("setupScoringSection");
+  const scoringStyleButtons = document.querySelectorAll("#scoringStyleToggle .format-btn");
+  const fairDealSettingsFields = document.getElementById("fairDealSettingsFields");
+  const fdGameTypeButtons = document.querySelectorAll("#fdGameTypeToggle .format-btn");
+  const fdCloseMarginInput = document.getElementById("fdCloseMarginInput");
+  const fdQualifyPctInput = document.getElementById("fdQualifyPctInput");
   const pickDropdown = document.getElementById("pickDropdown");
   const manageDropdown = document.getElementById("manageDropdown");
   const sessionsDropdown = document.getElementById("sessionsDropdown");
@@ -3739,11 +3783,11 @@
       btn.classList.toggle("active", btn.dataset.planningMode === config.planningMode);
     });
 
-    setupScoringSection.style.display = gamesMode ? "block" : "none";
-    targetScoreField.style.display = gamesMode ? "block" : "none";
-    winByTwoField.style.display = gamesMode ? "block" : "none";
-    targetScoreEstimateField.style.display = gamesMode ? "block" : "none";
-    if (gamesMode) {
+    const showFullScoring = gamesMode && config.scoringStyle === "full";
+    targetScoreField.style.display = showFullScoring ? "block" : "none";
+    winByTwoField.style.display = showFullScoring ? "block" : "none";
+    targetScoreEstimateField.style.display = showFullScoring ? "block" : "none";
+    if (showFullScoring) {
       const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
       const perGame = estimateMinutesForTarget(target);
       const total = gamesToPlay * (perGame + CHANGEOVER_MINUTES);
@@ -3751,8 +3795,21 @@
       targetScoreEstimateReason.textContent =
         `for ${gamesToPlay} game${gamesToPlay === 1 ? "" : "s"} · ${perGame} min/game + ${CHANGEOVER_MINUTES} min changeover`;
     }
+    fairDealSettingsFields.style.display = config.scoringStyle === "fairDeal" ? "grid" : "none";
+    syncScoringStyleButtons();
     updateRoundsHint();
     updateAccordionSummaries();
+  }
+
+  function syncScoringStyleButtons() {
+    scoringStyleButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.scoringStyle === config.scoringStyle);
+    });
+    fdGameTypeButtons.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.fdGameType === config.fdGameType);
+    });
+    fdCloseMarginInput.value = config.fdCloseMargin;
+    fdQualifyPctInput.value = config.fdQualifyPct;
   }
 
   function updateAccordionSummaries() {
@@ -3785,8 +3842,14 @@
         : "Not set yet";
     }
 
-    const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
-    scoringSummary.textContent = `To ${target}, win by ${config.winByTwo ? 2 : 1}`;
+    if (config.scoringStyle === "fairDeal") {
+      scoringSummary.textContent = `Fair Deal · ${config.fdGameType === "to11" ? "Play to 11" : "Timed"}`;
+    } else if (config.scoringStyle === "none") {
+      scoringSummary.textContent = "No scoring";
+    } else {
+      const target = Math.max(1, Math.min(21, parseInt(targetScoreInput.value, 10) || 11));
+      scoringSummary.textContent = `To ${target}, win by ${config.winByTwo ? 2 : 1}`;
+    }
   }
 
   function resetSetupAccordion() {
@@ -6767,8 +6830,11 @@
   }
 
   function syncModeUI() {
+    const fairDealActive = config.mode === "session" && config.scoringStyle === "fairDeal";
     modeButtons.forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.mode === config.mode);
+      btn.classList.toggle("active", btn.dataset.mode === "fairDeal"
+        ? fairDealActive
+        : btn.dataset.mode === config.mode && !fairDealActive);
     });
     const isLadder = config.mode === "ladder";
     const isTournament = config.mode === "tournament";
@@ -6807,9 +6873,15 @@
   }
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      config.mode = btn.dataset.mode;
+      if (btn.dataset.mode === "fairDeal") {
+        config.mode = "session";
+        config.scoringStyle = "fairDeal";
+      } else {
+        config.mode = btn.dataset.mode;
+      }
       save(STORAGE.config, config);
       syncModeUI();
+      updateGamesModeUI();
       showSetupView();
     });
   });
@@ -7222,6 +7294,29 @@
   winByTwoNoBtn.addEventListener("click", () => {
     config.winByTwo = false;
     syncWinByTwoButtons();
+    save(STORAGE.config, config);
+  });
+
+  scoringStyleButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.scoringStyle = btn.dataset.scoringStyle;
+      save(STORAGE.config, config);
+      updateGamesModeUI();
+    });
+  });
+  fdGameTypeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      config.fdGameType = btn.dataset.fdGameType;
+      save(STORAGE.config, config);
+      syncScoringStyleButtons();
+    });
+  });
+  fdCloseMarginInput.addEventListener("input", () => {
+    config.fdCloseMargin = Math.min(5, Math.max(1, parseInt(fdCloseMarginInput.value, 10) || 3));
+    save(STORAGE.config, config);
+  });
+  fdQualifyPctInput.addEventListener("input", () => {
+    config.fdQualifyPct = Math.min(100, Math.max(10, parseInt(fdQualifyPctInput.value, 10) || 50));
     save(STORAGE.config, config);
   });
 
