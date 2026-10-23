@@ -3170,6 +3170,10 @@
     tournamentGroups: 2,
     tournamentAdvance: 2,
     syncWorkerUrl: "",
+    scoringStyle: "full",
+    fdGameType: "timed",
+    fdCloseMargin: 3,
+    fdQualifyPct: 50,
     schemaVersion: CONFIG_SCHEMA_VERSION,
   });
   config.syncWorkerUrl = config.syncWorkerUrl || "";
@@ -3196,6 +3200,10 @@
   config.tournamentCompetitionType = ["clubs", "clubGroups"].includes(config.tournamentCompetitionType)
     ? config.tournamentCompetitionType
     : "standard";
+  config.scoringStyle = ["fairDeal", "none"].includes(config.scoringStyle) ? config.scoringStyle : "full";
+  config.fdGameType = config.fdGameType === "to11" ? "to11" : "timed";
+  config.fdCloseMargin = Math.min(5, Math.max(1, config.fdCloseMargin || 3));
+  config.fdQualifyPct = Math.min(100, Math.max(1, config.fdQualifyPct || 50));
   config.tournamentHoursPerDay = config.tournamentHoursPerDay ?? 0;
   config.tournamentDaysAvailable = config.tournamentDaysAvailable ?? 1;
   config.sessionNameDisplay = config.sessionNameDisplay === "first" ? "first" : "both";
@@ -3210,6 +3218,23 @@
     config.courtLabels = ["1"];
     config.schemaVersion = CONFIG_SCHEMA_VERSION;
     save(STORAGE.config, config);
+  }
+
+  function ensureFairDealSessionDefaults(session) {
+    if (!session || !session.config) return session;
+    const c = session.config;
+    c.scoringStyle = ["fairDeal", "none"].includes(c.scoringStyle) ? c.scoringStyle : "full";
+    c.fdGameType = c.fdGameType === "to11" ? "to11" : "timed";
+    c.fdCloseMargin = Math.min(5, Math.max(1, c.fdCloseMargin || 3));
+    c.fdQualifyPct = Math.min(100, Math.max(1, c.fdQualifyPct || 50));
+    (session.rounds || []).forEach((round) => {
+      round.courts.forEach((court) => {
+        if (court.fdResult === undefined) court.fdResult = "";
+        if (court.fdClose === undefined) court.fdClose = null;
+        if (court.fdGameType === undefined) court.fdGameType = "";
+      });
+    });
+    return session;
   }
 
   let currentSession = null;
@@ -4855,6 +4880,7 @@
         if (session.maxRoundReached === undefined) {
           session.maxRoundReached = session.rounds.length - 1;
         }
+        ensureFairDealSessionDefaults(session);
         currentSession = session;
         currentRoundIndex = session.maxRoundReached ?? 0;
         resetPendingRoster();
@@ -4905,6 +4931,7 @@
     continueSessionBanner.style.display = "flex";
     continueSessionText.textContent = `Session in progress — Round ${(unfinished.maxRoundReached ?? 0) + 1} of ${unfinished.rounds.length}`;
     continueSessionBtn.onclick = () => {
+      ensureFairDealSessionDefaults(unfinished);
       currentSession = unfinished;
       currentRoundIndex = unfinished.maxRoundReached ?? 0;
       resetPendingRoster();
@@ -6888,6 +6915,7 @@
           selectLadder(ladder);
           const unfinished = findUnfinishedSession(ladder.id);
           if (unfinished) {
+            ensureFairDealSessionDefaults(unfinished);
             currentSession = unfinished;
             currentRoundIndex = unfinished.maxRoundReached ?? 0;
             resetPendingRoster();
@@ -7704,6 +7732,9 @@
         teamB: res.split.teamB,
         scoreA: "",
         scoreB: "",
+        fdResult: "",
+        fdClose: null,
+        fdGameType: "",
       }));
 
       rounds.push({ round: r + 1, courts, sitOuts: sittingOut });
@@ -9611,6 +9642,7 @@
       maxUnitOpponent: Object.values(combined.unitOpponentCount).reduce((m, v) => Math.max(m, v), 0),
       flipCount: countRoleFlips(data.rounds, data.config.format),
     };
+    ensureFairDealSessionDefaults(currentSession);
     currentRoundIndex = 0;
     isSharedReadOnlyView = true;
     document.body.classList.add("shared-view");
