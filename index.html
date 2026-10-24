@@ -513,6 +513,8 @@
   }
   .small-btn.add { color: var(--green-dark); border-color: var(--green-pale-border); background: var(--green-pale); }
   .small-btn.remove { color: #c0392b; }
+  .players-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 8px; }
+  .players-label-row .section-label { margin: 0; }
   .rating-up { color: #2e7d32; font-weight: 700; }
   .rating-down { color: #c0392b; font-weight: 700; }
   .in-progress-tag {
@@ -2283,7 +2285,10 @@
             <span id="continueSessionText"></span>
             <button type="button" class="small-btn add" id="continueSessionBtn">Continue</button>
           </div>
-          <label class="section-label">Today's players</label>
+          <div class="players-label-row">
+            <label class="section-label">Today's players</label>
+            <button type="button" class="small-btn remove" id="clearTodayPlayersBtn" style="display:none;">Clear all</button>
+          </div>
           <div class="inline-form">
             <input type="text" id="playerFirstNameInput" placeholder="First name" />
             <input type="text" id="playerSurnameInput" placeholder="Surname" />
@@ -3375,6 +3380,7 @@
   const ladderNameDisplayField = document.getElementById("ladderNameDisplayField");
   const ladderNameDisplayButtons = document.querySelectorAll("#ladderNameDisplayToggle .format-btn");
   const todayChips = document.getElementById("todayChips");
+  const clearTodayPlayersBtn = document.getElementById("clearTodayPlayersBtn");
   const fixedPairsRow = document.getElementById("fixedPairsRow");
   const fixedPairsModeBtn = document.getElementById("fixedPairsModeBtn");
   const fixedPairsHint = document.getElementById("fixedPairsHint");
@@ -4030,6 +4036,7 @@
       }
       todayChips.appendChild(chip);
     });
+    clearTodayPlayersBtn.style.display = todayPlayers.length > 0 ? "" : "none";
     updateAccordionSummaries();
   }
 
@@ -4674,6 +4681,19 @@
     renderTodayChips();
     renderPickPanel();
   }
+
+  clearTodayPlayersBtn.addEventListener("click", () => {
+    if (todayPlayers.length === 0) return;
+    if (!confirm("Clear all players from today's list?")) return;
+    todayPlayers = [];
+    fixedPairs = [];
+    pairingMode = false;
+    pairingFirstPick = null;
+    save(STORAGE.today, todayPlayers);
+    save(STORAGE.fixedPairs, fixedPairs);
+    renderTodayChips();
+    renderPickPanel();
+  });
 
   function submitPlayerAdd() {
     const firstName = playerFirstNameInput.value.trim();
