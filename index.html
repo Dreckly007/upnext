@@ -7679,6 +7679,8 @@
         Math.pow(partnerCount[teamBKey] || 0, 2);
       if (lastOpponentRound[teamAKey] === currentRound - 1) partnerScore += 50;
       if (lastOpponentRound[teamBKey] === currentRound - 1) partnerScore += 50;
+      if (lastPartnerRound[teamAKey] === currentRound - 1) partnerScore += 50;
+      if (lastPartnerRound[teamBKey] === currentRound - 1) partnerScore += 50;
       if (requiredPairs) {
         if (requiredPairs.has(teamAKey)) partnerScore -= 1000;
         if (requiredPairs.has(teamBKey)) partnerScore -= 1000;
@@ -7689,6 +7691,7 @@
           const k = pairKey(a, b);
           opponentScore += Math.pow(opponentCount[k] || 0, 2);
           if (lastPartnerRound[k] === currentRound - 1) opponentScore += 50;
+          if (lastOpponentRound[k] === currentRound - 1) opponentScore += 50;
         });
       });
       const score = partnerScore * 4 + opponentScore;
@@ -7782,6 +7785,7 @@
           const k = pairKey(a, b);
           s += Math.pow(opponentCount[k] || 0, 2);
           if (lastPartnerRound[k] === currentRound - 1) s += 50;
+          if (lastOpponentRound[k] === currentRound - 1) s += 50;
         });
       });
       return s;
@@ -7814,6 +7818,7 @@
       const k = pairKey(teamB[0], teamB[1]);
       score += Math.pow(partnerCount[k] || 0, 2);
       if (lastOpponentRound[k] === currentRound - 1) score += 50;
+      if (lastPartnerRound[k] === currentRound - 1) score += 50;
       if (remainingRequired && remainingRequired.has(k)) score -= 1000;
       return { split: { teamA, teamB }, score };
     }
