@@ -1782,7 +1782,7 @@
       <div class="format-toggle mode-toggle mode-toggle-cards" id="modeToggle">
         <button type="button" class="format-btn active" data-mode="session">
           <span class="mode-btn-title">Session Scheduler</span>
-          <span class="mode-btn-desc">One-off session with fair, rotating matchups</span>
+          <span class="mode-btn-desc">One-off session with fair, rotating matchups — full scores, Fair Deal points, or no scoring at all</span>
         </button>
         <button type="button" class="format-btn" data-mode="ladder">
           <span class="mode-btn-title">Ladder</span>
@@ -1791,10 +1791,6 @@
         <button type="button" class="format-btn" data-mode="tournament">
           <span class="mode-btn-title">Tournament</span>
           <span class="mode-btn-desc">Groups, seeding, and a knockout bracket</span>
-        </button>
-        <button type="button" class="format-btn" data-mode="fairDeal">
-          <span class="mode-btn-title">Fair Deal</span>
-          <span class="mode-btn-desc">Fair rotation with a points table. Tap the winner, crown a champion.</span>
         </button>
       </div>
 
@@ -6958,16 +6954,16 @@
     } else if (config.mode === "tournament") {
       sectionTitleBar.textContent = currentTournament ? `Tournament · ${currentTournament.name || "Untitled Tournament"}` : "Tournament";
     } else {
-      sectionTitleBar.textContent = "Session Scheduler";
+      const scoringStyle = (sessionView.style.display !== "none" && currentSession)
+        ? currentSession.config.scoringStyle
+        : config.scoringStyle;
+      sectionTitleBar.textContent = scoringStyle === "fairDeal" ? "Fair Deal" : "Session Scheduler";
     }
   }
 
   function syncModeUI() {
-    const fairDealActive = config.mode === "session" && config.scoringStyle === "fairDeal";
     modeButtons.forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.mode === "fairDeal"
-        ? fairDealActive
-        : btn.dataset.mode === config.mode && !fairDealActive);
+      btn.classList.toggle("active", btn.dataset.mode === config.mode);
     });
     const isLadder = config.mode === "ladder";
     const isTournament = config.mode === "tournament";
@@ -7006,12 +7002,7 @@
   }
   modeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (btn.dataset.mode === "fairDeal") {
-        config.mode = "session";
-        config.scoringStyle = "fairDeal";
-      } else {
-        config.mode = btn.dataset.mode;
-      }
+      config.mode = btn.dataset.mode;
       save(STORAGE.config, config);
       syncModeUI();
       updateGamesModeUI();
@@ -9564,6 +9555,7 @@
     midSessionScoringBtn.style.display = currentSession.ladderId ? "none" : "";
     fairDealFinishBtn.style.display = currentSession.config.scoringStyle === "fairDeal" ? "" : "none";
     renderFairDealPodiumPanel();
+    updateSectionTitleBar();
   }
 
   document.querySelectorAll("#panelToggleRow .dropdown-toggle").forEach((btn) => {
