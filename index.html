@@ -2415,6 +2415,16 @@
             </div>
           </div>
 
+          <div class="field estimate-field" id="courtsEstimateField" style="display:none;">
+            <div class="estimate-box">
+              <div class="estimate-box-header">Ideal courts for your group</div>
+              <div class="estimate-box-panel">
+                <span class="estimate-number" id="courtsEstimateNumber"></span>
+                <span class="estimate-reason" id="courtsEstimateReason"></span>
+              </div>
+            </div>
+          </div>
+
           <div class="courts-row" id="courtLabelsRow"></div>
         </div>
       </div>
@@ -3609,6 +3619,9 @@
   const roundsEstimateField = document.getElementById("roundsEstimateField");
   const roundsEstimateNumber = document.getElementById("roundsEstimateNumber");
   const roundsEstimateReason = document.getElementById("roundsEstimateReason");
+  const courtsEstimateField = document.getElementById("courtsEstimateField");
+  const courtsEstimateNumber = document.getElementById("courtsEstimateNumber");
+  const courtsEstimateReason = document.getElementById("courtsEstimateReason");
   const targetScoreField = document.getElementById("targetScoreField");
   const targetScoreInput = document.getElementById("targetScoreInput");
   const winByTwoField = document.getElementById("winByTwoField");
@@ -3926,6 +3939,29 @@
 
     const courts = Math.max(1, parseInt(courtsInput.value, 10) || 1);
     formatSummary.textContent = `${config.format === "singles" ? "Singles" : "Doubles"} · ${courts} court${courts === 1 ? "" : "s"}`;
+
+    const formatLabel = config.format === "singles" ? "singles" : "doubles";
+    const playersPerCourt = config.format === "singles" ? 2 : 4;
+    const idealCourts = Math.floor(n / playersPerCourt);
+    if (n === 0) {
+      courtsEstimateField.style.display = "none";
+    } else if (idealCourts === 0) {
+      courtsEstimateField.style.display = "block";
+      courtsEstimateNumber.textContent = `${n} player${n === 1 ? "" : "s"}`;
+      courtsEstimateReason.textContent = `isn't quite enough for a full ${formatLabel} court yet (need ${playersPerCourt})`;
+    } else {
+      courtsEstimateField.style.display = "block";
+      const sitOut = n - idealCourts * playersPerCourt;
+      courtsEstimateNumber.textContent = `${idealCourts} court${idealCourts === 1 ? "" : "s"}`;
+      let reason = `for ${n} ${formatLabel} players`;
+      if (sitOut > 0) reason += `, ${sitOut} sitting out each round`;
+      if (courts > idealCourts) {
+        reason += ` · your extra court${courts - idealCourts === 1 ? "" : "s"} won't be used`;
+      } else if (courts < idealCourts) {
+        reason += ` · you're set to ${courts}, so more will sit out than needed`;
+      }
+      courtsEstimateReason.textContent = reason;
+    }
 
     const gamesMode = isGamesMode();
     if (gamesMode) {
