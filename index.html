@@ -2714,6 +2714,7 @@
             <button class="outline-btn no-share" id="regenerateBtn">Regenerate Schedule</button>
             <button class="outline-btn" id="criteriaToggleBtn" aria-expanded="false">Criteria</button>
           <button class="outline-btn no-share" id="midSessionScoringBtn" style="display:none;">Scoring</button>
+          <button class="outline-btn no-share" id="addRoundsBtn">Add Rounds</button>
           </div>
         </div>
       </div>
@@ -3045,6 +3046,26 @@
         <div class="modal-actions">
           <button class="modal-btn primary" id="timerSetConfirmBtn">Set</button>
           <button class="modal-btn cancel" id="timerSetCancelBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay no-print" id="addRoundsOverlay" style="display:none;">
+      <div class="modal-card">
+        <div class="modal-title">Add extra rounds</div>
+        <div class="modal-body">
+          <div class="field">
+            <label for="addRoundsInput">How many rounds?</label>
+            <div class="number-stepper">
+              <button type="button" class="stepper-btn" data-target="addRoundsInput" data-step="-1" aria-label="Decrease rounds to add">−</button>
+              <input type="number" id="addRoundsInput" min="1" max="20" value="1" />
+              <button type="button" class="stepper-btn" data-target="addRoundsInput" data-step="1" aria-label="Increase rounds to add">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn primary" id="addRoundsConfirmBtn">Add</button>
+          <button class="modal-btn cancel" id="addRoundsCancelBtn">Cancel</button>
         </div>
       </div>
     </div>
@@ -3698,6 +3719,11 @@
   const timerSetSecondsInput = document.getElementById("timerSetSecondsInput");
   const timerSetConfirmBtn = document.getElementById("timerSetConfirmBtn");
   const timerSetCancelBtn = document.getElementById("timerSetCancelBtn");
+  const addRoundsBtn = document.getElementById("addRoundsBtn");
+  const addRoundsOverlay = document.getElementById("addRoundsOverlay");
+  const addRoundsInput = document.getElementById("addRoundsInput");
+  const addRoundsConfirmBtn = document.getElementById("addRoundsConfirmBtn");
+  const addRoundsCancelBtn = document.getElementById("addRoundsCancelBtn");
   const timerSoundSelect = document.getElementById("timerSoundSelect");
   const timerSoundTestBtn = document.getElementById("timerSoundTestBtn");
   const courtsContainer = document.getElementById("courtsContainer");
@@ -8063,9 +8089,15 @@
 
     s.rounds = frozenRounds.concat(tailRounds);
     s.players = newRoster.slice();
-    s.actualCourts = Math.max(...s.rounds.map((r) => r.courts.length));
     if (options.resetMaxRoundReached) s.maxRoundReached = frozenCount;
 
+    recomputeSessionFairnessStats(s);
+    updateSessionInStorage();
+    renderAll();
+  }
+
+  function recomputeSessionFairnessStats(s) {
+    s.actualCourts = Math.max(...s.rounds.map((r) => r.courts.length));
     const combined = computeFairnessState(s.rounds, s.config.format);
     const fixedKeys = fixedPairKeysFor(s.fixedPairs);
     s.maxPartner = computeMaxExcludingFixed(combined.partnerCount, fixedKeys);
@@ -8073,7 +8105,17 @@
     s.maxGroup = Object.values(combined.groupCount).reduce((m, v) => Math.max(m, v), 0);
     s.maxUnitOpponent = Object.values(combined.unitOpponentCount).reduce((m, v) => Math.max(m, v), 0);
     s.flipCount = countRoleFlips(s.rounds, s.config.format);
+  }
 
+  function addExtraRounds(count) {
+    const s = currentSession;
+    const state = computeFairnessState(s.rounds, s.config.format);
+    const { rounds: newRounds } = generateRounds(
+      s.players, count, s.config.courts, s.config.courtLabels, s.config.format,
+      { ...state, startRound: s.rounds.length }, null, s.fixedPairs
+    );
+    s.rounds = s.rounds.concat(newRounds);
+    recomputeSessionFairnessStats(s);
     updateSessionInStorage();
     renderAll();
   }
@@ -8599,6 +8641,20 @@
     timerSeconds = minutes * 60 + seconds;
     updateTimerDisplay();
     closeTimerSet();
+  });
+
+  function closeAddRounds() {
+    addRoundsOverlay.style.display = "none";
+  }
+  addRoundsBtn.addEventListener("click", () => {
+    addRoundsInput.value = "1";
+    addRoundsOverlay.style.display = "flex";
+  });
+  addRoundsCancelBtn.addEventListener("click", closeAddRounds);
+  addRoundsConfirmBtn.addEventListener("click", () => {
+    const count = Math.max(1, Math.min(20, parseInt(addRoundsInput.value, 10) || 1));
+    addExtraRounds(count);
+    closeAddRounds();
   });
 
   function updateSessionInStorage() {
