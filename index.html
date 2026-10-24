@@ -487,6 +487,21 @@
   .saved-row:last-child, .session-row:last-child { border-bottom: none; }
   .saved-row span { flex: 1; }
   .saved-row-dupr { width: 64px; padding: 6px 8px; text-align: center; margin: 0 8px; }
+  .dupr-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    background: var(--green-pale);
+    border: 1px solid var(--green-pale-border);
+    color: var(--green-dark);
+    border-radius: 999px;
+    padding: 4px 10px;
+    margin: 0 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
   .saved-row-editing { flex-wrap: wrap; gap: 6px; }
   .saved-row-edit-input { flex: 1 1 90px; min-width: 70px; padding: 6px 8px; }
   #managePanel {
@@ -4878,6 +4893,7 @@
   }
 
   let managePanelEditIndex = null;
+  let managePanelDuprEditIndex = null;
 
   function renderManagePanel() {
     managePanel.innerHTML = "";
@@ -4966,23 +4982,42 @@
       span.textContent = name;
       row.appendChild(span);
       if (config.mode !== "ladder") {
-        const duprInput = document.createElement("input");
-        duprInput.type = "number";
-        duprInput.className = "saved-row-dupr";
-        duprInput.min = "2";
-        duprInput.max = "8";
-        duprInput.step = "0.01";
-        duprInput.placeholder = "DUPR";
         const existing = duprRatingFor(name);
-        if (existing != null) duprInput.value = existing.toFixed(2);
-        duprInput.addEventListener("change", () => {
-          const val = duprInput.value.trim() === "" ? null : parseFloat(duprInput.value);
-          setDuprRating(name, val);
-          renderTodayChips();
-          renderPickPanel();
-          renderTournamentPickPanels();
-        });
-        row.appendChild(duprInput);
+        if (managePanelDuprEditIndex === i) {
+          const duprInput = document.createElement("input");
+          duprInput.type = "number";
+          duprInput.className = "saved-row-dupr";
+          duprInput.min = "2";
+          duprInput.max = "8";
+          duprInput.step = "0.01";
+          duprInput.placeholder = "DUPR";
+          if (existing != null) duprInput.value = existing.toFixed(2);
+          duprInput.addEventListener("change", () => {
+            const val = duprInput.value.trim() === "" ? null : parseFloat(duprInput.value);
+            setDuprRating(name, val);
+            renderTodayChips();
+            renderPickPanel();
+            renderTournamentPickPanels();
+          });
+          duprInput.addEventListener("blur", () => {
+            managePanelDuprEditIndex = null;
+            renderManagePanel();
+          });
+          duprInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === "Escape") duprInput.blur();
+          });
+          row.appendChild(duprInput);
+        } else {
+          const chip = document.createElement("button");
+          chip.type = "button";
+          chip.className = "dupr-chip";
+          chip.textContent = existing != null ? `DUPR ${existing.toFixed(2)}` : "Set DUPR";
+          chip.addEventListener("click", () => {
+            managePanelDuprEditIndex = i;
+            renderManagePanel();
+          });
+          row.appendChild(chip);
+        }
       }
       const editBtn = document.createElement("button");
       editBtn.className = "small-btn";
@@ -5006,6 +5041,13 @@
       row.appendChild(btn);
       managePanel.appendChild(row);
     });
+    if (managePanelDuprEditIndex != null) {
+      const duprInput = managePanel.querySelector(".saved-row-dupr");
+      if (duprInput) {
+        duprInput.focus();
+        duprInput.select();
+      }
+    }
   }
 
   function syncSavedSortButtons() {
